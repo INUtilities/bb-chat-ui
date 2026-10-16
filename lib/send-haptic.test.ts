@@ -524,3 +524,28 @@ test("the composer latest-event proxy buzzes once through the forwarded host jum
   listeners.get('click')!({ target:dom.window.document.querySelector('[data-bb-chat-ui-info-all]'), isTrusted:true } as unknown as Event);
   assert.equal(messages.length, 2, 'the all-information button in the capsule still buzzes');
 });
+
+test("send response scanning is skipped without haptic capability", t => {
+  const dom = new JSDOM('<div data-thread-window><form data-promptbox><button type="submit" data-promptbox-submit-action>Send</button></form></div>');
+  const keys=['Element','HTMLElement','HTMLButtonElement','HTMLFormElement'] as const;
+  const previous=keys.map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)] as const);
+  for(const key of keys)Object.defineProperty(globalThis,key,{configurable:true,value:dom.window[key]});
+  t.after(()=>{for(const [key,d] of previous){if(d)Object.defineProperty(globalThis,key,d);else Reflect.deleteProperty(globalThis,key);}dom.window.close();});
+  const root=dom.window.document.querySelector('[data-thread-window]')!;
+  const query=root.querySelectorAll.bind(root);let scans=0;
+  root.querySelectorAll=((s:string)=>{scans++;return query(s);}) as typeof query;
+  for(const capabilities of [[],['badge'],['haptic']]) {
+    Object.assign(dom.window,{bb:{native:{capabilities,post(){}}}});
+    const listeners=new Map<string,(event:Event)=>void>();
+    const doc={body:null,defaultView:dom.window,
+      addEventListener:(type:string,listener:(event:Event)=>void)=>listeners.set(type,listener),
+      removeEventListener:(type:string)=>listeners.delete(type),
+    } as unknown as Document;
+    const stop=injectSendHaptic(doc);scans=0;
+    try {
+      listeners.get('submit')!({target:root.querySelector('form'),submitter:root.querySelector('button')} as unknown as Event);
+      if(capabilities.includes('haptic'))assert.ok(scans>0,'phone keeps response tracking');
+      else assert.equal(scans,0,'incapable clients never inspect assistant output');
+    }finally{stop();}
+  }
+});

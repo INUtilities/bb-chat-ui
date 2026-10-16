@@ -221,6 +221,8 @@ export function injectSendHaptic(document: Document): () => void {
   };
 
   const arm = (button: HTMLButtonElement) => {
+    // Without a haptic bridge (desktop, web) the response watch can never pulse; skip its scans.
+    if (!readHapticBridge(view)?.capabilities?.includes("haptic")) return;
     armedButton = button;
     const root = button.closest("[data-thread-window]");
     armedWindow = root instanceof HTMLElement ? root : null;
