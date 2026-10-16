@@ -4,7 +4,7 @@ import test from "node:test";
 import { userAttachmentsCss } from "./user-attachments.ts";
 
 const USER_BUBBLE =
-  String.raw`\[data-message-column\] > \.group\\/message\.ml-auto > \.flex > \.rounded-xl:has\(> \.mt-2\.space-y-2\)`;
+  String.raw`\[data-message-column\] > \.group\\/message\.ml-auto > \.flex > \.rounded-xl\[data-bb-chat-ui-attach-bubble\]`;
 
 test("lifts user photos and files above the message bubble", () => {
   const css = userAttachmentsCss();
@@ -51,11 +51,11 @@ test("lifts user photos and files above the message bubble", () => {
   );
   assert.match(
     css,
-    new RegExp(`${USER_BUBBLE}:not\\(:has\\(> \\.break-words\\)\\) > p\\s*\\{[^}]*display:\\s*none;`),
+    new RegExp(`${USER_BUBBLE}\\[data-bb-chat-ui-attach-no-body\\] > p\\s*\\{[^}]*display:\\s*none;`),
   );
   assert.match(
     css,
-    new RegExp(`${USER_BUBBLE}:has\\(> \\.mt-1\\) > \\.break-words\\s*\\{[^}]*padding-bottom:\\s*1\\.75rem;`),
+    new RegExp(`${USER_BUBBLE}\\[data-bb-chat-ui-attach-meta\\] > \\.break-words\\s*\\{[^}]*padding-bottom:\\s*1\\.75rem;`),
   );
   assert.match(
     css,
@@ -73,7 +73,7 @@ test("lifts user photos and files above the message bubble", () => {
 
 test("thickens user file chips and paints a file icon", () => {
   const css = userAttachmentsCss();
-  const chip = `${USER_BUBBLE} > \\.mt-2\\.space-y-2 > \\.flex:not\\(:has\\(img\\)\\) > :is\\(a, button, span\\)`;
+  const chip = `${USER_BUBBLE} > \\.mt-2\\.space-y-2 > \\.flex\\[data-bb-chat-ui-file-row\\] > :is\\(a, button, span\\)`;
   assert.match(css, new RegExp(`${chip}\\s*\\{[^}]*min-height:\\s*64px;`));
   assert.match(css, new RegExp(`${chip}\\s*\\{[^}]*border-radius:\\s*20px;`));
   assert.match(
@@ -88,7 +88,7 @@ test("thickens user file chips and paints a file icon", () => {
 
 test("enlarges sent file chips only for phones with a narrow helper viewport", () => {
   const css = userAttachmentsCss();
-  const chip = `${USER_BUBBLE} > \\.mt-2\\.space-y-2 > \\.flex:not\\(:has\\(img\\)\\) > :is\\(a, button, span\\)`;
+  const chip = `${USER_BUBBLE} > \\.mt-2\\.space-y-2 > \\.flex\\[data-bb-chat-ui-file-row\\] > :is\\(a, button, span\\)`;
   const marker = 'html[data-bb-chat-ui-root-device="phone"][data-bb-chat-ui-root-viewport="narrow"]';
   const start = css.indexOf(marker);
   const base = css.slice(0, start);
