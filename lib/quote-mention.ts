@@ -54,8 +54,32 @@ export function injectQuoteMentions(doc: Document): () => void {
     }
   };
 
-  const observer = new MutationObserver(lock);
-  observer.observe(root, { childList: true, subtree: true });
+  const observer = new MutationObserver(records => {
+    const candidates = new Set<HTMLElement>();
+    const collect = (element: Element) => {
+      if (element instanceof HTMLElement && element.hasAttribute(MENTION_RESOURCE)) candidates.add(element);
+      for (const node of Array.from(element.querySelectorAll(`[${MENTION_RESOURCE}]`))) {
+        if (node instanceof HTMLElement) candidates.add(node);
+      }
+    };
+    for (const record of records) {
+      const target = record.target instanceof Element ? record.target : record.target.parentElement;
+      const mention = target?.closest(`[${MENTION_RESOURCE}]`);
+      if (mention instanceof HTMLElement) candidates.add(mention);
+      if (record.type === "attributes" && target) collect(target);
+      for (const node of Array.from(record.addedNodes)) {
+        if (!(node instanceof Element)) continue;
+        collect(node);
+        // Code quotes can arrive before the host supplies their source icon.
+        if (node.matches(DIFF_ICON_SOURCE) || node.querySelector(DIFF_ICON_SOURCE)) collect(root);
+      }
+    }
+    for (const node of candidates) if (node.isConnected) lockQuoteMention(node, doc);
+  });
+  observer.observe(root, {
+    childList: true, subtree: true, attributes: true,
+    attributeFilter: [MENTION_RESOURCE, "contenteditable"],
+  });
   const onQuoteGesture = (event: Event) => {
     const gesture = quoteGestureFromTarget(event.target);
     if (!gesture) return;
@@ -92,13 +116,18 @@ function quoteGestureFromTarget(target: EventTarget | null) {
 
 function lockQuoteMentions(doc: Document) {
   for (const node of Array.from(doc.querySelectorAll(`[${MENTION_RESOURCE}]`))) {
-    if (!(node instanceof HTMLElement) || !isQuoteMentionElement(node)) continue;
-    const root = mentionRoot(node) ?? node;
-    if (root.contentEditable !== "false") root.contentEditable = "false";
-    root.style.maxWidth = "100%";
-    root.style.whiteSpace = "nowrap";
-    paintMentionIcon(root, mentionResource(node), doc);
+    if (node instanceof HTMLElement) lockQuoteMention(node, doc);
   }
+}
+
+function lockQuoteMention(node: HTMLElement, doc: Document) {
+  const resource = mentionResource(node);
+  if (!isQuoteMentionResource(resource)) return;
+  const root = mentionRoot(node) ?? node;
+  if (root.contentEditable !== "false") root.contentEditable = "false";
+  root.style.maxWidth = "100%";
+  root.style.whiteSpace = "nowrap";
+  paintMentionIcon(root, resource, doc);
 }
 
 function mentionResource(node: HTMLElement): unknown {
