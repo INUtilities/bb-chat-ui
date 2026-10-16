@@ -625,8 +625,7 @@ export function injectComposerGlass(document: Document): () => void {
 
   let observed: Element | null = null;
   let observer: ResizeObserver | null = null;
-  let stackObserved: Element | null = null;
-  let stackMutations: MutationObserver | null = null;
+  const stackWatches = new Map<HTMLElement, { stack:Element; observer:MutationObserver }>();
   const radiusWatches = new Map<HTMLElement, () => void>();
   const idleHeights = new WeakMap<HTMLElement, number>();
   const animating = new WeakSet<HTMLElement>();
@@ -896,11 +895,9 @@ export function injectComposerGlass(document: Document): () => void {
     for (const node of glassFooters) if (!currentFooters.has(node)) node.removeAttribute(GLASS_MARK);
     glassFooters.clear();
     for (const node of currentFooters) glassFooters.add(node);
+    bindStacks(currentFooters);
     const footer = document.querySelector(FOOTER);
-    if (footer === observed || typeof ResizeObserver === "undefined") {
-      bindStack(footer);
-      return;
-    }
+    if (footer === observed || typeof ResizeObserver === "undefined") return;
     observer?.disconnect();
     observer = null;
     observed = footer;
@@ -910,23 +907,28 @@ export function injectComposerGlass(document: Document): () => void {
       });
       observer.observe(footer);
     }
-    bindStack(footer);
   };
 
-  const bindStack = (footer: Element | null) => {
-    const stack = footer?.querySelector(STACK) ?? null;
-    if (stack === stackObserved) return;
-    stackMutations?.disconnect();
-    stackMutations = null;
-    stackObserved = stack;
-    if (!stack || typeof MutationObserver === "undefined") return;
-    stackMutations = new MutationObserver(() => {
-      scheduleSync();
-    });
-    stackMutations.observe(footer ?? stack, {
-      childList: true, subtree: true, attributes: true,
-      attributeFilter: ["class", "data-queued-messages-mode"],
-    });
+  const releaseDetachedStacks = () => {
+    for (const [footer, watch] of stackWatches) if (!footer.isConnected || !watch.stack.isConnected) {
+      watch.observer.disconnect(); stackWatches.delete(footer);
+    }
+  };
+  const bindStacks = (footers: Iterable<HTMLElement>) => {
+    releaseDetachedStacks();
+    for (const footer of footers) {
+      const stack = footer.querySelector(STACK);
+      const old = stackWatches.get(footer);
+      if (old?.stack === stack) continue;
+      old?.observer.disconnect(); stackWatches.delete(footer);
+      if (!stack || typeof MutationObserver === "undefined") continue;
+      const observer = new MutationObserver(scheduleSync);
+      observer.observe(footer, {
+        childList: true, subtree: true, attributes: true,
+        attributeFilter: ["class", "data-queued-messages-mode"],
+      });
+      stackWatches.set(footer, { stack, observer });
+    }
   };
 
   let mutations: MutationObserver | null = null;
@@ -935,7 +937,7 @@ export function injectComposerGlass(document: Document): () => void {
       if (records.some(record => record.removedNodes.length > 0)) {
         releaseDetachedComposers();
         if (observed && !observed.isConnected) { observer?.disconnect(); observer = null; observed = null; }
-        if (stackObserved && !stackObserved.isConnected) { stackMutations?.disconnect(); stackMutations = null; stackObserved = null; }
+        releaseDetachedStacks();
         for (const node of glassFooters) if (!node.isConnected) { node.removeAttribute(GLASS_MARK); glassFooters.delete(node); }
         if (!document.querySelector(FOOTER)) {
           if (syncFrame) document.defaultView?.cancelAnimationFrame(syncFrame);
@@ -943,9 +945,9 @@ export function injectComposerGlass(document: Document): () => void {
           return;
         }
       }
-      if (observed?.isConnected && stackObserved?.isConnected) {
+      if (observed instanceof HTMLElement && observed.isConnected && stackWatches.has(observed)) {
         const addedComposer = records.some(record => Array.from(record.addedNodes).some(node =>
-          node instanceof HTMLElement && (node.matches(COMPOSER) || node.querySelector(COMPOSER) !== null),
+          node instanceof HTMLElement && (node.matches(`${COMPOSER}, [data-scroll-footer]`) || node.querySelector(`${COMPOSER}, [data-scroll-footer]`) !== null),
         ));
         if (!addedComposer) return;
       }
@@ -961,7 +963,8 @@ export function injectComposerGlass(document: Document): () => void {
     glassFooters.clear();
     for (const node of Array.from(document.querySelectorAll(`[${AGENTATION_SLOT}]`))) node.removeAttribute(AGENTATION_SLOT);
     mutations?.disconnect();
-    stackMutations?.disconnect();
+    for (const watch of stackWatches.values()) watch.observer.disconnect();
+    stackWatches.clear();
     observer?.disconnect();
     for (const stop of radiusWatches.values()) stop();
     radiusWatches.clear();

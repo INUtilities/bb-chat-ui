@@ -127,3 +127,30 @@ test('every composer gets glass and Agentation positioning markers',()=>{
   stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-glass], [data-bb-chat-ui-agentation-slot]'),null);
  }finally{stop();f.cleanup();}
 });
+
+test('secondary composer staging markers follow late insertion, class changes and removal',async()=>{
+ const f=fixture(),first=f.add(),second=f.add(),stop=injectComposerGlass(f.document);
+ try{
+  const slot=f.document.createElement('div'),staging=f.document.createElement('section');slot.append(staging);
+  second.footer.querySelector('.grid')!.append(slot);staging.className='agentation-staging-shell';
+  await f.tick();await f.paint();
+  assert.ok(slot.hasAttribute('data-bb-chat-ui-agentation-slot'),'secondary staging is marked after a late insertion');
+  staging.className='';await f.tick();await f.paint();
+  assert.equal(slot.hasAttribute('data-bb-chat-ui-agentation-slot'),false);
+  staging.className='agentation-staging-shell';await f.tick();await f.paint();
+  assert.ok(slot.hasAttribute('data-bb-chat-ui-agentation-slot'));
+  second.scroller.remove();await f.tick();
+  assert.equal(f.watchers(second.footer),0,'secondary footer observers disconnect on removal');
+  assert.equal(f.watchers(first.footer),1,'the primary remains observed');
+ }finally{stop();f.cleanup();}
+});
+
+test('a late request-only footer is discovered without an input form',async()=>{
+ const f=fixture();f.add();const stop=injectComposerGlass(f.document);
+ try{
+  const second=f.add();second.composer.remove();
+  await f.tick();await f.paint();
+  assert.ok(second.footer.hasAttribute('data-bb-chat-ui-glass'));
+  assert.equal(f.watchers(second.footer),1);
+ }finally{stop();f.cleanup();}
+});
