@@ -5,6 +5,9 @@ const MARK = "data-bb-chat-ui-mention-pill";
 const WIDE = "data-bb-chat-ui-mention-wide";
 const REMOVE = "data-bb-chat-ui-mention-remove";
 const RESOURCE = "data-prompt-mention-resource";
+// Set on the compact editor wrapper (outside ProseMirror) instead of .ProseMirror:has(.prompt-mention-pill).
+const HAS_MENTION = "data-bb-chat-ui-has-mention";
+const HAS_QUOTE = "data-bb-chat-ui-has-quote-mention";
 const SCOPE = ':is([data-promptbox-editor-content], [data-message-column], section[aria-label="Queued messages"])';
 const PILL = `${SCOPE} .prompt-mention-pill`;
 const PAINTED = `${PILL}[data-prompt-mention][${RESOURCE}]`;
@@ -132,14 +135,14 @@ ${PAINTED} > button[${REMOVE}]:focus-visible {
     height: 12px;
   }
 
-[data-promptbox-compact-content] .ProseMirror:has(.prompt-mention-pill) {
+[data-promptbox-compact-content][${HAS_MENTION}] .ProseMirror {
   display: flex !important;
   align-items: center !important;
   height: 100%;
   max-height: none !important;
   overflow: hidden !important;
 }
-[data-promptbox-compact-content] .ProseMirror:has(.prompt-mention-pill) > * {
+[data-promptbox-compact-content][${HAS_MENTION}] .ProseMirror > * {
   display: flex !important;
   align-items: center !important;
   height: 100%;
@@ -225,15 +228,20 @@ export function injectMentionPills(doc: Document): () => void {
   doc.head.append(style);
   const labels = new Map<HTMLElement, { original: string; display: string }>();
   const titles = new Map<HTMLElement, string>();
+  const compactWrappers = new Set<HTMLElement>();
 
   const paint = () => {
+    const wrappers = new Map<HTMLElement, boolean>();
     for (const pill of Array.from(doc.querySelectorAll<HTMLElement>(PILL))) {
-      pill.setAttribute(MARK, "");
+      const wrapper = pill.closest<HTMLElement>("[data-promptbox-compact-content]");
+      if (!pill.hasAttribute(MARK)) pill.setAttribute(MARK, "");
       const resource = readResource(pill);
+      if (wrapper) wrappers.set(wrapper, (wrappers.get(wrapper) ?? false) ||
+        (resource?.kind === "plugin" && resource.itemId?.startsWith("quote:") === true));
       const hash = commitHash(resource);
       const wide = hash !== null || resource?.icon === "FileDiff" ||
         (resource?.kind === "path" && /:\d+(?:[-–]\d+)?$/.test(resource.label ?? ""));
-      pill.toggleAttribute(WIDE, wide);
+      if (pill.hasAttribute(WIDE) !== wide) pill.toggleAttribute(WIDE, wide);
       const label = pill.querySelector<HTMLElement>(":scope > .truncate");
       if (hash && label && label.textContent !== hash) {
         labels.set(label, { original: label.textContent ?? "", display: hash });
@@ -256,6 +264,13 @@ export function injectMentionPills(doc: Document): () => void {
         pill.append(remove);
       }
     }
+    for (const wrapper of compactWrappers) if (!wrappers.has(wrapper)) { wrapper.removeAttribute(HAS_MENTION); wrapper.removeAttribute(HAS_QUOTE); }
+    compactWrappers.clear();
+    for (const [wrapper, quote] of wrappers) {
+      compactWrappers.add(wrapper);
+      if (!wrapper.hasAttribute(HAS_MENTION)) wrapper.setAttribute(HAS_MENTION, "");
+      if (wrapper.hasAttribute(HAS_QUOTE) !== quote) wrapper.toggleAttribute(HAS_QUOTE, quote);
+    }
     for (const label of labels.keys()) if (!label.isConnected) labels.delete(label);
     for (const pill of titles.keys()) if (!pill.isConnected) titles.delete(pill);
   };
@@ -271,7 +286,10 @@ export function injectMentionPills(doc: Document): () => void {
       return Array.from(mutation.addedNodes).some((node) =>
         node instanceof Element &&
         (node.matches(PILL) || node.querySelector(PILL) !== null),
-      );
+      ) || (compactWrappers.size > 0 && Array.from(mutation.removedNodes).some((node) =>
+        node instanceof Element &&
+        (node.matches(".prompt-mention-pill") || node.querySelector(".prompt-mention-pill") !== null),
+      ));
     });
     // No layout is read here. Decorate before the browser paints the new pill.
     if (relevant) paint();
@@ -320,6 +338,8 @@ export function injectMentionPills(doc: Document): () => void {
       pill.removeAttribute(MARK);
       pill.removeAttribute(WIDE);
     }
+    for (const wrapper of compactWrappers) { wrapper.removeAttribute(HAS_MENTION); wrapper.removeAttribute(HAS_QUOTE); }
+    compactWrappers.clear();
     for (const [label, original] of labels) {
       if (label.textContent === original.display) label.textContent = original.original;
     }

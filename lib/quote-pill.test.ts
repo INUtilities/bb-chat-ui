@@ -177,11 +177,11 @@ test("paints the pill without watching or rewriting the quote node", () => {
   assert.doesNotMatch(mentionSelector, /:not\(\[data-promptbox-compact-content\]\)/);
   assert.match(
     css,
-    /\[data-promptbox-compact-content\] \.ProseMirror:has\(\.prompt-mention-pill\[data-prompt-mention-resource\*='"itemId":"quote:'\]\)\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;/,
+    /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;/,
   );
   assert.match(
     css,
-    /\[data-promptbox-compact-content\] \.ProseMirror:has\(\.prompt-mention-pill\[data-prompt-mention-resource\*='"itemId":"quote:'\]\) > \*\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;[^}]*height:\s*100%;/,
+    /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror > \*\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;[^}]*height:\s*100%;/,
   );
   assert.match(css, /html\[data-bb-chat-ui-root-hit-target="small"\]/);
   assert.doesNotMatch(css, /max-height:\s*20px/);

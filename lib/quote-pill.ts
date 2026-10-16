@@ -11,7 +11,8 @@ const PENDING_COMPOSER_QUOTE =
 const QUOTE_MENTION_PILL =
   '.prompt-mention-pill[data-prompt-mention-resource*=\'"itemId":"quote:\']';
 const COMPOSER_QUOTE_MENTION = `[data-promptbox-editor-scroll] [data-promptbox-editor-content] ${QUOTE_MENTION_PILL}`;
-const COMPACT_QUOTE_MENTION_LINE = `[data-promptbox-compact-content] .ProseMirror:has(${QUOTE_MENTION_PILL})`;
+// mention-pill marks the compact editor wrapper that holds a quote pill (was .ProseMirror:has(...) > *).
+const COMPACT_QUOTE_MENTION_LINE = `[data-promptbox-compact-content][data-bb-chat-ui-has-quote-mention] .ProseMirror`;
 const SENT_MENTION_PILL =
   "[data-message-column] [data-markdown-preview] .prompt-mention-pill";
 
