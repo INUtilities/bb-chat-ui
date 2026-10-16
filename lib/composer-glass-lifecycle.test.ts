@@ -37,8 +37,9 @@ function fixture() {
     return {scroller,composer,footer:scroller.querySelector<HTMLElement>('[data-scroll-footer]')!};
   };
   const tick=()=>new Promise<void>(resolve=>setImmediate(resolve));
+  const paint=async()=>{for(const[id,run]of [...frames]){frames.delete(id);run(0);}await tick();};
   const watchers=(target:Node)=>mutations.filter(m=>m.target===target&&m.active).length;
-  return {dom,document,add,tick,watchers,mutations,sizes,frames,timers,cleanup() {
+  return {dom,document,add,tick,paint,watchers,mutations,sizes,frames,timers,cleanup() {
     for(const [key,descriptor] of previous) {if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
     dom.window.close();
   }};
@@ -53,7 +54,7 @@ test('removing the last footer disconnects composer, stack, and resize observers
     assert.equal(f.watchers(first.footer),0,'the old stack observer cannot retain an empty-page footer');
     assert.equal(f.sizes.filter(s=>s.active).length,0,'the old resize observer is disconnected during the empty gap');
     first.scroller.remove();await f.tick();
-    f.document.body.append(first.scroller);await f.tick();
+    f.document.body.append(first.scroller);await f.tick();await f.paint();
     assert.equal(f.watchers(first.composer),1,'the same DOM can bind again after it is reattached');
     stop();assert.equal(f.watchers(first.composer),0);
   } finally {stop();f.cleanup();}
@@ -66,7 +67,7 @@ test('a detached secondary composer is released while the first footer stays con
     second.scroller.remove();await f.tick();
     assert.equal(f.watchers(second.composer),0,'the connected primary footer must not suppress cleanup');
     assert.equal(f.watchers(first.composer),1,'the remaining composer keeps its own observer');
-    f.document.body.append(second.scroller);await f.tick();
+    f.document.body.append(second.scroller);await f.tick();await f.paint();
     assert.equal(f.watchers(second.composer),1,'a secondary composer can reattach without moving the primary footer');
     first.composer.setAttribute('data-promptbox-compact','');await f.tick();
     assert.match(first.composer.style.animation,/bb-chat-ui-composer-radius/,'the live composer keeps its motion');
@@ -91,8 +92,38 @@ test('detaching an animating composer cancels its frame, timer, and radius liste
     assert.equal(composer.style.animation,'','a detached radius animation is cleared before reattachment');
     composer.style.animation='';composer.removeAttribute('data-promptbox-compact');await f.tick();
     assert.equal(composer.style.animation,'','a detached composer cannot restart plugin motion');
-    f.document.body.append(scroller);await f.tick();assert.equal(f.watchers(composer),1);
+    f.document.body.append(scroller);await f.tick();await f.paint();assert.equal(f.watchers(composer),1);
     composer.setAttribute('data-promptbox-compact','');await f.tick();
     assert.match(composer.style.animation,/bb-chat-ui-composer-radius/,'reattached DOM starts new motion normally');
   } finally {stop();f.cleanup();}
+});
+
+test('glass measurements coalesce until a frame and cancel on unload',async()=>{
+ const f=fixture(),first=f.add();let reads=0;
+ const rect=first.composer.getBoundingClientRect.bind(first.composer);
+ first.composer.getBoundingClientRect=()=>{reads++;return rect();};
+ const stop=injectComposerGlass(f.document);
+ try{
+  await f.tick();reads=0;
+  for(let i=0;i<4;i++){first.footer.querySelector('.grid')!.append(f.document.createElement('span'));await f.tick();}
+  assert.equal(reads,0,'mutation callbacks do not force layout');
+  assert.equal(f.frames.size,1,'one pending measurement frame per burst');
+  const [id,run]=[...f.frames.entries()][0];f.frames.delete(id);run(0);
+  assert.ok(reads>0);
+  first.footer.querySelector('.grid')!.append(f.document.createElement('span'));await f.tick();
+  stop();assert.equal(f.frames.size,0,'unload cancels deferred work');
+ }finally{stop();f.cleanup();}
+});
+
+test('every composer gets glass and Agentation positioning markers',()=>{
+ const f=fixture(),first=f.add(),second=f.add();
+ for(const item of [first,second])item.footer.querySelector('.grid')!.innerHTML='<div><section class="agentation-staging-shell"></section></div>';
+ const stop=injectComposerGlass(f.document);
+ try{
+  for(const item of [first,second]){
+   assert.ok(item.footer.hasAttribute('data-bb-chat-ui-glass'));
+   assert.ok(item.footer.querySelector('.agentation-staging-shell')!.parentElement!.hasAttribute('data-bb-chat-ui-agentation-slot'));
+  }
+  stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-glass], [data-bb-chat-ui-agentation-slot]'),null);
+ }finally{stop();f.cleanup();}
 });

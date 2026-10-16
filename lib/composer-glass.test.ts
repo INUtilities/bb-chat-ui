@@ -52,14 +52,14 @@ test("spreads a translucent footer fade above the composer without moving it", (
 test("keeps the expanded editor minimum height independent of banners", () => {
   assert.match(
     composerGlassCss,
-    /\[data-scroll-footer\]:has\(\.chat-prompt-box\) \[data-follow-up-composer-anchor\] \[data-promptbox\]:not\(\[data-promptbox-compact\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:\s*68px !important;\s*\}/,
+    /\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-follow-up-composer-anchor\] \[data-promptbox\]:not\(\[data-promptbox-compact\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:\s*68px !important;\s*\}/,
   );
 });
 
 test("container-collapsed follow-up editors keep the native 48px line box", () => {
   // BB can collapse through a style container without data-promptbox-compact.
   assert.match(composerGlassCss,
-    /@container follow-up-composer style\(--follow-up-composer-container-compact: true\)\s*\{\s*\[data-scroll-footer\]:has\(\.chat-prompt-box\) \[data-follow-up-composer\]:not\(\[data-follow-up-composer-expanded\]\) \[data-promptbox\]:not\(\[data-promptbox-voice-active\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:48px !important;\s*\}/);
+    /@container follow-up-composer style\(--follow-up-composer-container-compact: true\)\s*\{\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-follow-up-composer\]:not\(\[data-follow-up-composer-expanded\]\) \[data-promptbox\]:not\(\[data-promptbox-voice-active\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:48px !important;\s*\}/);
 });
 
 test("keeps the host canvas and uses each thread surface tone for the fade", () => {
@@ -81,7 +81,7 @@ test("uses more translucent glass and soft highlights across composer controls",
   assert.match(css, /oklch\(from var\(--bb-chat-ui-glass-base, var\(--background\)\) min\(1, calc\(l \+ 0\.075\)\) c h \/ 0\.68\)/);
   assert.match(
     css,
-    /#thread-prompt-banner-git-toggle,\s*\[data-scroll-footer\]:has\(\.chat-prompt-box\) button\[aria-label="Scroll to latest event"\],[\s\S]*\.agentation-staging-shell\s*\{[^}]*border-color:\s*transparent !important;/,
+    /#thread-prompt-banner-git-toggle,\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] button\[aria-label="Scroll to latest event"\],[\s\S]*\.agentation-staging-shell\s*\{[^}]*border-color:\s*transparent !important;/,
   );
   assert.match(
     css,
@@ -94,7 +94,7 @@ test("uses more translucent glass and soft highlights across composer controls",
   assert.match(css, /oklch\(from var\(--bb-chat-ui-glass-base, var\(--background\)\) min\(1, calc\(l \+ 0\.075\)\) c h \/ 0\.76\)/);
   assert.match(
     css,
-    /\.dark \[data-scroll-footer\]:has\(\.chat-prompt-box\) #thread-prompt-banner-git-toggle,\s*\.dark \[data-scroll-footer\]:has\(\.chat-prompt-box\) button\[aria-label="Scroll to latest event"\],[\s\S]*\.agentation-staging-shell\s*\{[^}]*border-color:\s*transparent !important;/,
+    /\.dark \[data-scroll-footer\]\[data-bb-chat-ui-glass\] #thread-prompt-banner-git-toggle,\s*\.dark \[data-scroll-footer\]\[data-bb-chat-ui-glass\] button\[aria-label="Scroll to latest event"\],[\s\S]*\.agentation-staging-shell\s*\{[^}]*border-color:\s*transparent !important;/,
   );
   assert.match(
     css,
@@ -122,15 +122,15 @@ test("uses more translucent glass and soft highlights across composer controls",
   );
   assert.match(
     css,
-    /html\[data-bb-chat-ui-root-device="phone"\]\[data-bb-chat-ui-root-viewport="narrow"\][\s\S]*\.dark \[data-scroll-footer\]:has\(\.chat-prompt-box\) \[data-promptbox\]\s*\{[^}]*box-shadow:\s*0 6px 16px -10px color-mix\(in oklab, black 60%, transparent\),/,
+    /html\[data-bb-chat-ui-root-device="phone"\]\[data-bb-chat-ui-root-viewport="narrow"\][\s\S]*\.dark \[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\]\s*\{[^}]*box-shadow:\s*0 6px 16px -10px color-mix\(in oklab, black 60%, transparent\),/,
   );
   assert.match(
     css,
-    /html\[data-bb-chat-ui-root-device="phone"\]\[data-bb-chat-ui-root-viewport="narrow"\][\s\S]*\.dark \[data-scroll-footer\]:has\(\.chat-prompt-box\) \[data-promptbox\]:focus-within\s*\{[^}]*box-shadow:\s*0 8px 20px -12px color-mix\(in oklab, var\(--ink, var\(--foreground\)\) 34%, transparent\),/,
+    /html\[data-bb-chat-ui-root-device="phone"\]\[data-bb-chat-ui-root-viewport="narrow"\][\s\S]*\.dark \[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\]:focus-within\s*\{[^}]*box-shadow:\s*0 8px 20px -12px color-mix\(in oklab, var\(--ink, var\(--foreground\)\) 34%, transparent\),/,
   );
   assert.match(
     css,
-    /\.dark \[data-scroll-footer\]:has\(\.chat-prompt-box\) \[data-promptbox\]\s*\{[^}]*border-color:\s*transparent !important;/,
+    /\.dark \[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\]\s*\{[^}]*border-color:\s*transparent !important;/,
   );
   assert.doesNotMatch(
     css,
@@ -415,7 +415,7 @@ test("rounds buttons inside the composer like the mobile composer", () => {
   const css = composerGlassCss;
   assert.match(
     css,
-    /\[data-promptbox\] button:not\(:has\(img\)\),\s*\[data-scroll-footer\]:has\(\.chat-prompt-box\) \[data-promptbox\] \[role="button"\]:not\(:has\(img\)\)\s*\{[^}]*border-radius:\s*999px !important;/,
+    /\[data-promptbox\] button:not\(:has\(img\)\),\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\] \[role="button"\]:not\(:has\(img\)\)\s*\{[^}]*border-radius:\s*999px !important;/,
   );
   assert.match(
     css,
@@ -452,7 +452,7 @@ test("stacks each side independently above the to-do card", () => {
 });
 
 test("anchors the actual Agentation box upward, including a contents plugin wrapper", () => {
-  assert.match(composerGlassCss, /:has\(> \.agentation-staging-shell\)\s*\{[^}]*position:\s*absolute;[^}]*height:\s*32px;/);
+  assert.match(composerGlassCss, /\[data-bb-chat-ui-agentation-slot\]\s*\{[^}]*position:\s*absolute;[^}]*height:\s*32px;/);
   assert.match(composerGlassCss, /\.agentation-staging-shell\s*\{[^}]*position:\s*absolute;[^}]*bottom:\s*0;/);
   assert.doesNotMatch(composerGlassCss, /repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(composerGlassCss, /section\[aria-label="To-do list"\]\s*\{[^}]*order:\s*2;/);
@@ -544,7 +544,7 @@ test("lifts only an open mention composer face onto its before layer", () => {
     selector: selector.trim().replace(/\s+/g, " "),
     body,
   }));
-  const liftSelector = '[data-scroll-footer]:has(.chat-prompt-box) [data-promptbox]:has([class~="@container/mention-menu"])';
+  const liftSelector = '[data-scroll-footer][data-bb-chat-ui-glass] [data-promptbox]:has([class~="@container/mention-menu"])';
   const lift = blocks.find((block) => block.selector === liftSelector);
   assert.ok(lift, "open mention composer");
   assert.match(lift.body, /background:\s*transparent !important;/);
@@ -552,7 +552,7 @@ test("lifts only an open mention composer face onto its before layer", () => {
   assert.match(lift.body, /-webkit-backdrop-filter:\s*none !important;/);
   assert.match(lift.body, /isolation:\s*isolate;/);
   assert.equal(lift.body.includes("box-shadow"), false);
-  const darkFaceAt = composerGlassCss.indexOf(".dark [data-scroll-footer]:has(.chat-prompt-box) [data-promptbox]");
+  const darkFaceAt = composerGlassCss.indexOf(".dark [data-scroll-footer][data-bb-chat-ui-glass] [data-promptbox]");
   const liftAt = composerGlassCss.indexOf(`${liftSelector} {`);
   assert.ok(darkFaceAt >= 0 && liftAt > darkFaceAt);
 
@@ -597,7 +597,7 @@ test("lifts only an open mention composer face onto its before layer", () => {
       '[class~="@container/mention-menu"] button:not(:disabled):not([aria-disabled="true"])',
     ],
   );
-  const closed = blocks.find((block) => block.selector.startsWith("[data-scroll-footer]:has(.chat-prompt-box) [data-promptbox],"));
+  const closed = blocks.find((block) => block.selector.startsWith("[data-scroll-footer][data-bb-chat-ui-glass] [data-promptbox],"));
   assert.ok(closed);
   assert.ok(closed.body.includes(`background: ${LIGHT_GLASS_FACE} !important;`));
   assert.match(closed.body, /backdrop-filter:\s*blur\(14px\) saturate\(1\.25\);/);

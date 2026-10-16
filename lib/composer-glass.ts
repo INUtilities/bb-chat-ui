@@ -2,6 +2,11 @@ import { PHONE_NARROW, NARROW_VIEWPORT, ROOMY_VIEWPORT, SMALL_HIT_TARGET, isDesk
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
 
 const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
+// JS-set markers replace :has() where the rule subject is generic (measured: those make every
+// transcript row insertion restyle the whole app while scrolling).
+const GLASS_MARK = "data-bb-chat-ui-glass";
+const FOOTER_MARK = `[data-scroll-footer][${GLASS_MARK}]`;
+const AGENTATION_SLOT = "data-bb-chat-ui-agentation-slot";
 const PLATE = ":scope > .relative";
 const COMPOSER = "[data-promptbox]";
 const FADE_HEIGHT = "--bb-chat-ui-fade-height";
@@ -13,10 +18,10 @@ const PILL = "#thread-prompt-banner-git-toggle";
 const JUMP_BUTTON = 'button[aria-label="Scroll to latest event"]';
 const STACK = "[data-promptbox-shell] > .grid";
 
-const FACE = `${FOOTER} [data-promptbox],
-${FOOTER} ${PILL},
-${FOOTER} ${JUMP_BUTTON},
-${FOOTER} [data-promptbox-shell] .agentation-staging-shell`;
+const FACE = `${FOOTER_MARK} [data-promptbox],
+${FOOTER_MARK} ${PILL},
+${FOOTER_MARK} ${JUMP_BUTTON},
+${FOOTER_MARK} [data-promptbox-shell] .agentation-staging-shell`;
 
 const INK = "var(--ink, var(--foreground))";
 const LIGHT_COMPOSER_EDGE = "color-mix(in oklab, white 60%, transparent)";
@@ -53,10 +58,10 @@ ${glassSurfaceScopeCss}
   to { border-radius: var(${COMPOSER_RADIUS_TO}) !important; }
 }
 
-${FOOTER} > .relative {
+${FOOTER_MARK} > .relative {
   background: transparent !important;
 }
-${FOOTER} [data-overflow-fade="above"] {
+${FOOTER_MARK} [data-overflow-fade="above"] {
   top: auto !important;
   right: 0 !important;
   bottom: 0 !important;
@@ -71,7 +76,7 @@ ${FOOTER} [data-overflow-fade="above"] {
     var(--background) 100%
   ) !important;
 }
-[data-thread-window][data-surface-tone="sidebar"] ${FOOTER} [data-overflow-fade="above"] {
+[data-thread-window][data-surface-tone="sidebar"] ${FOOTER_MARK} [data-overflow-fade="above"] {
   background-image: linear-gradient(
     to bottom,
     transparent,
@@ -116,22 +121,22 @@ ${FACE} {
 .dark [class~="@container/mention-menu"]::before {
   background: ${DARK_GLASS_FACE};
 }
-${FOOTER} [data-promptbox-shell] .agentation-staging-shell--expanded {
+${FOOTER_MARK} [data-promptbox-shell] .agentation-staging-shell--expanded {
   box-shadow:
     0 12px 32px -14px ${LIGHT_SHADOW},
     inset 0 1px 3px ${LIGHT_EDGE};
 }
-${FOOTER} [data-follow-up-composer-anchor] [data-promptbox]:not([data-promptbox-compact]) [data-promptbox-editor-scroll] {
+${FOOTER_MARK} [data-follow-up-composer-anchor] [data-promptbox]:not([data-promptbox-compact]) [data-promptbox-editor-scroll] {
   min-height: 68px !important;
 }
 /* Container collapse can omit data-promptbox-compact. Keep its native
    48px viewport rather than applying the expanded minimum. */
 @container follow-up-composer style(--follow-up-composer-container-compact: true) {
-  ${FOOTER} [data-follow-up-composer]:not([data-follow-up-composer-expanded]) [data-promptbox]:not([data-promptbox-voice-active]) [data-promptbox-editor-scroll] {
+  ${FOOTER_MARK} [data-follow-up-composer]:not([data-follow-up-composer-expanded]) [data-promptbox]:not([data-promptbox-voice-active]) [data-promptbox-editor-scroll] {
     min-height:48px !important;
   }
 }
-${FOOTER} [data-promptbox] {
+${FOOTER_MARK} [data-promptbox] {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -142,70 +147,70 @@ ${FOOTER} [data-promptbox] {
     0 12px 32px -14px ${LIGHT_SHADOW},
     inset 0 1px 3px ${LIGHT_COMPOSER_EDGE};
 }
-  ${NARROW_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     max-height: 100dvh;
   }
-  ${NARROW_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) > .relative,
-  ${NARROW_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) .chat-prompt-box,
-  ${NARROW_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) [data-promptbox-shell] {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) > .relative,
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) .chat-prompt-box,
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-promptbox-shell] {
     display: flex;
     min-height: 0;
     max-height: 100%;
     flex-direction: column;
     justify-content: flex-end;
   }
-  ${NARROW_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) [data-promptbox-shell] > .grid {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-promptbox-shell] > .grid {
     min-height: 0;
     overflow-y: auto;
   }
-  ${NARROW_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) [data-follow-up-composer-anchor] {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-follow-up-composer-anchor] {
     flex-shrink: 0;
   }
 
-  ${ROOMY_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) {
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
   }
-  ${ROOMY_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) > .relative,
-  ${ROOMY_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) .chat-prompt-box,
-  ${ROOMY_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) [data-promptbox-shell] {
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) > .relative,
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) .chat-prompt-box,
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-promptbox-shell] {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
   }
-  ${ROOMY_VIEWPORT} ${FOOTER}:has([data-promptbox-compact]) [data-follow-up-composer-anchor] {
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-follow-up-composer-anchor] {
     flex-shrink: 0;
   }
 
-  ${SMALL_HIT_TARGET} ${FOOTER} [data-promptbox] {
+  ${SMALL_HIT_TARGET} ${FOOTER_MARK} [data-promptbox] {
     transition:
       ${SHADOW_TRANSITION},
       ${COLLAPSE_TRANSITION};
   }
 
 @media (prefers-reduced-motion: reduce) {
-  ${SMALL_HIT_TARGET} ${FOOTER} [data-promptbox] {
+  ${SMALL_HIT_TARGET} ${FOOTER_MARK} [data-promptbox] {
     transition: ${SHADOW_TRANSITION};
   }
 }
-${FOOTER} [data-promptbox][data-promptbox-compact] {
+${FOOTER_MARK} [data-promptbox][data-promptbox-compact] {
   border-radius: 999px !important;
 }
-${FOOTER} [data-promptbox][data-promptbox-compact]:has([aria-label="Exit handoff"]) {
+${FOOTER_MARK} [data-promptbox][data-promptbox-compact]:has([aria-label="Exit handoff"]) {
   border-radius: 1.375rem !important;
 }
-${FOOTER} [data-promptbox] button:not(:has(img)),
-${FOOTER} [data-promptbox] [role="button"]:not(:has(img)) {
+${FOOTER_MARK} [data-promptbox] button:not(:has(img)),
+${FOOTER_MARK} [data-promptbox] [role="button"]:not(:has(img)) {
   border-radius: 999px !important;
 }
-${FOOTER} [data-promptbox] [data-promptbox-send-menu] {
+${FOOTER_MARK} [data-promptbox] [data-promptbox-send-menu] {
   border-radius: 999px !important;
 }
-${FOOTER} [data-promptbox]:focus-within {
+${FOOTER_MARK} [data-promptbox]:focus-within {
   border-color: transparent !important;
   box-shadow:
     0 18px 44px -16px color-mix(in oklab, ${INK} 34%, transparent),
@@ -218,13 +223,13 @@ ${darkScope(FACE)} {
     0 6px 18px -12px ${DARK_SHADOW},
     inset 0 1px 3px ${DARK_EDGE};
 }
-${FOOTER} [data-promptbox]:has([class~="@container/mention-menu"]) {
+${FOOTER_MARK} [data-promptbox]:has([class~="@container/mention-menu"]) {
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   isolation: isolate;
 }
-${FOOTER} [data-promptbox]:has([class~="@container/mention-menu"])::before {
+${FOOTER_MARK} [data-promptbox]:has([class~="@container/mention-menu"])::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -235,7 +240,7 @@ ${FOOTER} [data-promptbox]:has([class~="@container/mention-menu"])::before {
   backdrop-filter: blur(14px) saturate(1.25);
   -webkit-backdrop-filter: blur(14px) saturate(1.25);
 }
-.dark ${FOOTER} [data-promptbox]:has([class~="@container/mention-menu"])::before {
+.dark ${FOOTER_MARK} [data-promptbox]:has([class~="@container/mention-menu"])::before {
   background: ${DARK_GLASS_FACE};
 }
 [class~="@container/mention-menu"] .sticky.bg-background {
@@ -255,47 +260,47 @@ ${FOOTER} [data-promptbox]:has([class~="@container/mention-menu"])::before {
 [class~="@container/mention-menu"] button:not(:disabled):not([aria-disabled="true"]) {
   cursor: pointer;
 }
-${darkScope(`${FOOTER} [data-promptbox-shell] .agentation-staging-shell--expanded`)} {
+${darkScope(`${FOOTER_MARK} [data-promptbox-shell] .agentation-staging-shell--expanded`)} {
   box-shadow:
     0 12px 32px -14px ${DARK_SHADOW},
     inset 0 1px 3px ${DARK_EDGE};
 }
-${darkScope(`${FOOTER} [data-promptbox]`)} {
+${darkScope(`${FOOTER_MARK} [data-promptbox]`)} {
   border-color: transparent !important;
   box-shadow:
     0 12px 32px -14px ${DARK_SHADOW},
     inset 0 1px 3px ${DARK_COMPOSER_EDGE};
 }
-${darkScope(`${FOOTER} [data-promptbox]:focus-within`)} {
+${darkScope(`${FOOTER_MARK} [data-promptbox]:focus-within`)} {
   border-color: transparent !important;
   box-shadow:
     0 18px 44px -16px color-mix(in oklab, ${INK} 34%, transparent),
     inset 0 1px 3px ${DARK_COMPOSER_EDGE};
 }
-  ${PHONE_NARROW} ${FOOTER} [data-promptbox] {
+  ${PHONE_NARROW} ${FOOTER_MARK} [data-promptbox] {
     box-shadow:
       0 6px 16px -10px ${LIGHT_SHADOW},
       inset 0 1px 3px ${LIGHT_COMPOSER_EDGE};
   }
-  ${PHONE_NARROW} ${FOOTER} [data-promptbox]:focus-within {
+  ${PHONE_NARROW} ${FOOTER_MARK} [data-promptbox]:focus-within {
     box-shadow:
       0 8px 20px -12px color-mix(in oklab, ${INK} 34%, transparent),
       inset 0 1px 3px ${LIGHT_COMPOSER_EDGE};
   }
-  ${PHONE_NARROW}.dark ${FOOTER} [data-promptbox] {
+  ${PHONE_NARROW}.dark ${FOOTER_MARK} [data-promptbox] {
     box-shadow:
       0 6px 16px -10px ${DARK_SHADOW},
       inset 0 1px 3px ${DARK_COMPOSER_EDGE};
   }
-  ${PHONE_NARROW}.dark ${FOOTER} [data-promptbox]:focus-within {
+  ${PHONE_NARROW}.dark ${FOOTER_MARK} [data-promptbox]:focus-within {
     box-shadow:
       0 8px 20px -12px color-mix(in oklab, ${INK} 34%, transparent),
       inset 0 1px 3px ${DARK_COMPOSER_EDGE};
   }
-${FOOTER} .chat-prompt-box {
+${FOOTER_MARK} .chat-prompt-box {
   position: relative;
 }
-${FOOTER} ${JUMP_BUTTON} {
+${FOOTER_MARK} ${JUMP_BUTTON} {
   position: absolute;
   width: 32px !important;
   height: 32px !important;
@@ -309,29 +314,29 @@ ${FOOTER} ${JUMP_BUTTON} {
   transform: none;
   z-index: 21;
 }
-${FOOTER} ${STACK} {
+${FOOTER_MARK} ${STACK} {
   position: relative;
   grid-template-columns: minmax(0, 1fr);
   overflow: visible !important;
 }
-${FOOTER} ${STACK} > * {
+${FOOTER_MARK} ${STACK} > * {
   order: 0;
 }
-${FOOTER} ${STACK}[${CONTROLS}]::after {
+${FOOTER_MARK} ${STACK}[${CONTROLS}]::after {
   content: "";
   order: 1;
   height: var(--bb-chat-ui-controls-height);
 }
-${FOOTER} ${STACK} > section[aria-label="To-do list"] {
+${FOOTER_MARK} ${STACK} > section[aria-label="To-do list"] {
   order: 2;
 }
-${FOOTER} ${STACK} section:has(${PILL}) {
+${FOOTER_MARK} ${STACK} section:has(${PILL}) {
   position: absolute;
   bottom: var(--bb-chat-ui-controls-bottom, 0px);
   left: 0;
   max-width: var(--bb-chat-ui-agentation-width, 100%);
 }
-${FOOTER} ${STACK} :has(> .agentation-staging-shell) {
+${FOOTER_MARK} ${STACK} [${AGENTATION_SLOT}] {
   position: absolute;
   bottom: calc(var(--bb-chat-ui-controls-bottom, 0px) + var(--bb-chat-ui-agentation-bottom, 0px));
   left: 0;
@@ -341,44 +346,44 @@ ${FOOTER} ${STACK} :has(> .agentation-staging-shell) {
   z-index: 40;
   overflow: visible;
 }
-${FOOTER} ${STACK} .agentation-staging-shell {
+${FOOTER_MARK} ${STACK} .agentation-staging-shell {
   position: absolute;
   bottom: 0;
   left: 0;
   max-width: 100%;
 }
-${FOOTER} ${STACK} .agentation-staging-shell:not(.agentation-staging-shell--expanded) {
+${FOOTER_MARK} ${STACK} .agentation-staging-shell:not(.agentation-staging-shell--expanded) {
   height: 32px;
   overflow: clip;
   justify-content: center;
 }
-${FOOTER} ${STACK} .agentation-staging-shell > .grid {
+${FOOTER_MARK} ${STACK} .agentation-staging-shell > .grid {
   position: relative;
 }
-${FOOTER} ${STACK} .agentation-staging-shell:not(.agentation-staging-shell--expanded) > div:first-child {
+${FOOTER_MARK} ${STACK} .agentation-staging-shell:not(.agentation-staging-shell--expanded) > div:first-child {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-${FOOTER} ${STACK} .agentation-staging-shell--expanded {
+${FOOTER_MARK} ${STACK} .agentation-staging-shell--expanded {
   width: 100%;
   max-width: none;
 }
-${FOOTER} ${STACK} > section[aria-label="Queued messages"] {
+${FOOTER_MARK} ${STACK} > section[aria-label="Queued messages"] {
   position: absolute !important;
   bottom: var(--bb-chat-ui-controls-bottom, 0px);
   transform: translateY(calc(-1 * var(--bb-chat-ui-queue-bottom, 0px)));
   right: 0;
   width: 100%;
 }
-${FOOTER} ${STACK}[${CONTROLS_MOTION}] :has(> .agentation-staging-shell) {
+${FOOTER_MARK} ${STACK}[${CONTROLS_MOTION}] [${AGENTATION_SLOT}] {
   transition: width 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-${FOOTER} ${STACK}[${CONTROLS_MOTION}] > section[aria-label="Queued messages"] {
+${FOOTER_MARK} ${STACK}[${CONTROLS_MOTION}] > section[aria-label="Queued messages"] {
   transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  ${FOOTER} ${STACK}[${CONTROLS_MOTION}] :has(> .agentation-staging-shell),
-  ${FOOTER} ${STACK}[${CONTROLS_MOTION}] > section[aria-label="Queued messages"] {
+  ${FOOTER_MARK} ${STACK}[${CONTROLS_MOTION}] [${AGENTATION_SLOT}],
+  ${FOOTER_MARK} ${STACK}[${CONTROLS_MOTION}] > section[aria-label="Queued messages"] {
     transition: none;
   }
 }
@@ -857,12 +862,26 @@ export function injectComposerGlass(document: Document): () => void {
     }
   };
 
+  // Layout reads inside mutation callbacks force a full style+layout per React commit.
+  // Coalesce every trigger into one frame-aligned sync instead.
+  let syncFrame = 0;
+  const scheduleSync = () => {
+    const view = document.defaultView;
+    if (syncFrame || !view) return;
+    syncFrame = view.requestAnimationFrame(() => { syncFrame = 0; sync(); });
+  };
+  const glassFooters = new Set<HTMLElement>();
   const sync = () => {
     releaseDetachedComposers();
     const footers = document.querySelectorAll(FOOTER);
+    const currentFooters = new Set<HTMLElement>();
     for (let index = 0; index < footers.length; index += 1) {
       const footerNode = footers.item(index);
       if (!(footerNode instanceof HTMLElement)) continue;
+      currentFooters.add(footerNode);
+      if (!footerNode.hasAttribute(GLASS_MARK)) footerNode.setAttribute(GLASS_MARK, "");
+      alignFade(footerNode);
+      alignComposerControls(footerNode);
       const composers = footerNode.querySelectorAll(COMPOSER);
       for (let composerIndex = 0; composerIndex < composers.length; composerIndex += 1) {
         const composer = composers.item(composerIndex);
@@ -874,11 +893,10 @@ export function injectComposerGlass(document: Document): () => void {
         }
       }
     }
+    for (const node of glassFooters) if (!currentFooters.has(node)) node.removeAttribute(GLASS_MARK);
+    glassFooters.clear();
+    for (const node of currentFooters) glassFooters.add(node);
     const footer = document.querySelector(FOOTER);
-    if (footer instanceof HTMLElement) {
-      alignFade(footer);
-      alignComposerControls(footer);
-    }
     if (footer === observed || typeof ResizeObserver === "undefined") {
       bindStack(footer);
       return;
@@ -888,7 +906,7 @@ export function injectComposerGlass(document: Document): () => void {
     observed = footer;
     if (footer instanceof HTMLElement) {
       observer = new ResizeObserver(() => {
-        sync();
+        scheduleSync();
       });
       observer.observe(footer);
     }
@@ -903,7 +921,7 @@ export function injectComposerGlass(document: Document): () => void {
     stackObserved = stack;
     if (!stack || typeof MutationObserver === "undefined") return;
     stackMutations = new MutationObserver(() => {
-      sync();
+      scheduleSync();
     });
     stackMutations.observe(footer ?? stack, {
       childList: true, subtree: true, attributes: true,
@@ -914,20 +932,34 @@ export function injectComposerGlass(document: Document): () => void {
   let mutations: MutationObserver | null = null;
   if (document.body && typeof MutationObserver !== "undefined") {
     mutations = new MutationObserver((records) => {
-      if (records.some(record => record.removedNodes.length > 0)) releaseDetachedComposers();
+      if (records.some(record => record.removedNodes.length > 0)) {
+        releaseDetachedComposers();
+        if (observed && !observed.isConnected) { observer?.disconnect(); observer = null; observed = null; }
+        if (stackObserved && !stackObserved.isConnected) { stackMutations?.disconnect(); stackMutations = null; stackObserved = null; }
+        for (const node of glassFooters) if (!node.isConnected) { node.removeAttribute(GLASS_MARK); glassFooters.delete(node); }
+        if (!document.querySelector(FOOTER)) {
+          if (syncFrame) document.defaultView?.cancelAnimationFrame(syncFrame);
+          syncFrame = 0;
+          return;
+        }
+      }
       if (observed?.isConnected && stackObserved?.isConnected) {
         const addedComposer = records.some(record => Array.from(record.addedNodes).some(node =>
           node instanceof HTMLElement && (node.matches(COMPOSER) || node.querySelector(COMPOSER) !== null),
         ));
         if (!addedComposer) return;
       }
-      sync();
+      scheduleSync();
     });
     mutations.observe(document.body, { childList: true, subtree: true });
   }
   sync();
 
   return () => {
+    if (syncFrame) document.defaultView?.cancelAnimationFrame(syncFrame);
+    for (const node of glassFooters) node.removeAttribute(GLASS_MARK);
+    glassFooters.clear();
+    for (const node of Array.from(document.querySelectorAll(`[${AGENTATION_SLOT}]`))) node.removeAttribute(AGENTATION_SLOT);
     mutations?.disconnect();
     stackMutations?.disconnect();
     observer?.disconnect();
@@ -984,6 +1016,10 @@ function alignComposerControls(footer: HTMLElement): void {
   const column = footer.querySelector(".chat-prompt-box");
   const stack = footer.querySelector(STACK);
   if (!(column instanceof HTMLElement) || !(stack instanceof HTMLElement)) return;
+  // Marks the parent of the staging shell (was `:has(> .agentation-staging-shell)` in CSS).
+  const slot = stack.querySelector(".agentation-staging-shell")?.parentElement ?? null;
+  for (const node of Array.from(stack.querySelectorAll(`[${AGENTATION_SLOT}]`))) if (node !== slot) node.removeAttribute(AGENTATION_SLOT);
+  if (slot && !slot.hasAttribute(AGENTATION_SLOT)) slot.setAttribute(AGENTATION_SLOT, "");
   if (stack.hasAttribute("data-bb-chat-ui-info-stack")) {
     stack.removeAttribute(CONTROLS);
     const anchor = footer.querySelector("[data-follow-up-composer-anchor]") ?? stack;
