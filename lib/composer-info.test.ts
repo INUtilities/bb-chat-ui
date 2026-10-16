@@ -4527,6 +4527,12 @@ test("queue rerendering does not turn existing messages into extra droplets", as
   const a=add('a'); add('b');
   let flights=0;
   f.dom.window.HTMLElement.prototype.animate=function(){if(this.classList.contains('bbk-drop')) flights++;return {cancel(){}} as Animation;};
+  const timeout=f.dom.window.setTimeout.bind(f.dom.window);
+  let nextFlight:(()=>void)|null=null;
+  f.dom.window.setTimeout=((callback:TimerHandler,delay?:number,...args:unknown[])=>{
+    if(delay===45){assert.equal(typeof callback,'function');nextFlight=callback as ()=>void;return -45;}
+    return timeout(callback,delay,...args);
+  }) as typeof f.dom.window.setTimeout;
   const stop=injectComposerInfo(f.document);
   a.remove(); await f.tick();
   add('a'); add('c'); count.textContent='3'; await f.tick();
@@ -4543,7 +4549,8 @@ test("queue rerendering does not turn existing messages into extra droplets", as
   assert.equal(flights,3,'a rerender between the row and counter preserves their shared arrival');
   add('f'); add('g'); count.textContent='7'; await f.tick();
   assert.equal(flights,4,'the first of two sends leaves immediately');
-  await new Promise<void>(resolve => f.dom.window.setTimeout(resolve, 40));
+  assert.ok(nextFlight,'the next flight is scheduled with a 45ms stagger');
+  (nextFlight as ()=>void)();
   assert.equal(flights,5,'the second send follows 45ms later');
   stop();f.dom.window.close();
 });
