@@ -154,3 +154,18 @@ test('a late request-only footer is discovered without an input form',async()=>{
   assert.equal(f.watchers(second.footer),1);
  }finally{stop();f.cleanup();}
 });
+
+test('an empty connected footer loses glass markers and observers until its composer returns',async()=>{
+ const f=fixture(),first=f.add(),stop=injectComposerGlass(f.document);
+ try{
+  const column=first.footer.querySelector('.chat-prompt-box')!;column.remove();await f.tick();
+  assert.ok(first.footer.isConnected);
+  assert.equal(first.footer.hasAttribute('data-bb-chat-ui-glass'),false);
+  assert.equal(f.watchers(first.footer),0);
+  assert.equal(f.sizes.filter(s=>s.active).length,0);
+  assert.equal(f.frames.size,0);
+  first.footer.querySelector('.relative')!.append(column);await f.tick();await f.paint();
+  assert.ok(first.footer.hasAttribute('data-bb-chat-ui-glass'));
+  assert.equal(f.watchers(first.footer),1);
+ }finally{stop();f.cleanup();}
+});

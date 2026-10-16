@@ -910,7 +910,7 @@ export function injectComposerGlass(document: Document): () => void {
   };
 
   const releaseDetachedStacks = () => {
-    for (const [footer, watch] of stackWatches) if (!footer.isConnected || !watch.stack.isConnected) {
+    for (const [footer, watch] of stackWatches) if (!footer.isConnected || !footer.matches(FOOTER) || !watch.stack.isConnected) {
       watch.observer.disconnect(); stackWatches.delete(footer);
     }
   };
@@ -936,9 +936,9 @@ export function injectComposerGlass(document: Document): () => void {
     mutations = new MutationObserver((records) => {
       if (records.some(record => record.removedNodes.length > 0)) {
         releaseDetachedComposers();
-        if (observed && !observed.isConnected) { observer?.disconnect(); observer = null; observed = null; }
+        if (observed && (!observed.isConnected || !observed.matches(FOOTER))) { observer?.disconnect(); observer = null; observed = null; }
         releaseDetachedStacks();
-        for (const node of glassFooters) if (!node.isConnected) { node.removeAttribute(GLASS_MARK); glassFooters.delete(node); }
+        for (const node of glassFooters) if (!node.isConnected || !node.matches(FOOTER)) { node.removeAttribute(GLASS_MARK); glassFooters.delete(node); }
         if (!document.querySelector(FOOTER)) {
           if (syncFrame) document.defaultView?.cancelAnimationFrame(syncFrame);
           syncFrame = 0;
@@ -947,7 +947,7 @@ export function injectComposerGlass(document: Document): () => void {
       }
       if (observed instanceof HTMLElement && observed.isConnected && stackWatches.has(observed)) {
         const addedComposer = records.some(record => Array.from(record.addedNodes).some(node =>
-          node instanceof HTMLElement && (node.matches(`${COMPOSER}, [data-scroll-footer]`) || node.querySelector(`${COMPOSER}, [data-scroll-footer]`) !== null),
+          node instanceof HTMLElement && (node.matches(`${COMPOSER}, [data-scroll-footer], .chat-prompt-box`) || node.querySelector(`${COMPOSER}, [data-scroll-footer], .chat-prompt-box`) !== null),
         ));
         if (!addedComposer) return;
       }
