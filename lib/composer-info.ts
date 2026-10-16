@@ -16,8 +16,8 @@ const WRAP = `${MARK}-wrap`;
 const OPEN = `${MARK}-open`;
 const SOURCE = `${MARK}-settings`;
 const REQUEST = ['tool-use-ask', 'plugin-request-banner', 'plan-review-request', 'approval-banner', 'user-question-banner', 'plan-review-banner'].map(id => `[data-testid="${id}"]`).join(", ");
-const GUARDED_STACK = `:where(${STACK}):is([${MARK}-stack], :has([${SOURCE}]))`;
-const PENDING_CARD = `:not(:where([${WRAP}], [${MARK}-bar], [${MARK}-body-fade], [${OPEN}], ${REQUEST}, :has(${REQUEST})))`;
+const GUARDED_STACK = `:where(${STACK}):is([${MARK}-stack], [${MARK}-guard])`;
+const PENDING_CARD = `:not(:where([${WRAP}], [${MARK}-bar], [${MARK}-body-fade], [${OPEN}], ${REQUEST}, [${MARK}-holds-request]))`;
 const QUESTION = ['tool-use-ask', 'plugin-request-banner', 'user-question-banner'].map(id => `[data-testid="${id}"]`).join(", ");
 const HOST_JUMP = 'button[aria-label="Scroll to latest event"]';
 // Child avatars are 30px circles overlapping by 12px, so each circle adds 18px.
@@ -84,13 +84,13 @@ ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD}
 [${MARK}-stack] [${MARK}-collapse] { display:none !important; }
 ${DETAIL} > h3[${MARK}-close-heading] { display:flex; align-items:center; min-height:28px; margin:0 0 8px; font-size:12px; font-weight:600; }
 /* Native cards already have a gutter on layout wrappers; the popover supplies it once. */
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-git-body, #thread-prompt-banner-parent-thread-toggle, [aria-label^="Pull request "]),
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) > div:has(#thread-prompt-banner-parent-thread-toggle),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-git-body, #thread-prompt-banner-parent-thread-toggle, [aria-label^="Pull request "]),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > [${MARK}-parent-toggle-wrap],
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-parent-thread-toggle, #thread-prompt-banner-parent-thread-body) { display:none !important; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) > :not([${MARK}-parent-row]):not([${MARK}-dismiss]),
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) #thread-prompt-banner-parent-thread-body,
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) :is(svg, [data-icon-root]):not([${MARK}-parent-row] *),
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]):not(:has(#thread-prompt-banner-parent-thread-body)) :is(span:has(> a), a[href*="/threads/"]) { display:none !important; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > :not([${MARK}-parent-row]):not([${MARK}-dismiss]),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] #thread-prompt-banner-parent-thread-body,
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(svg, [data-icon-root]):not([${MARK}-parent-row] *),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row]:not([${MARK}-with-parent-body]) :is([${MARK}-parent-link-wrap], a[href*="/threads/"]) { display:none !important; }
 ${NATIVE_DETAIL} :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"]) { padding-left:0 !important; padding-right:0 !important; }
 ${NATIVE_DETAIL} > button[aria-expanded][aria-controls][class~="px-3"] { padding-left:0 !important; padding-right:0 !important; }
 ${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"],[class~="px-2"]) { padding-left:0 !important; padding-right:0 !important; }
@@ -99,7 +99,7 @@ ${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { mar
 ${DETAIL} [${MARK}-close-heading] { box-sizing:border-box; padding-right:34px !important; }
 ${NATIVE_DETAIL}[aria-label="Machine status"] > div[class~="p-1"][${MARK}-close-heading] { padding-right:34px !important; }
 ${DETAIL} [${MARK}-native-dismiss] { position:absolute; top:18px; right:24px; color:var(--subtle-foreground); cursor:pointer; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) [${MARK}-native-dismiss] { top:8px; right:8px; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] [${MARK}-native-dismiss] { top:8px; right:8px; }
 ${DETAIL}[aria-label="Goal"] { display:flex !important; flex-direction:column; outline:0 !important; }
 ${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] { order:2; display:flex; justify-content:flex-end; margin-top:8px; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > button[aria-expanded][aria-controls],
@@ -199,7 +199,7 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar] [${MARK}-provider-icon], [${MARK}-avatar] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
 [${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:min(50dvh,26rem) !important; overflow:auto !important; margin:0 !important; padding:16px 24px !important; order:0 !important; border:0 !important; border-radius:18px !important; background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); color:var(--foreground); box-shadow:0 12px 32px -14px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"]:has([${MARK}-parent-row]) { padding:8px !important; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] { padding:8px !important; }
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
 [${MARK}-menu] header { display:flex; align-items:center; gap:6px; font-size:12px; padding-bottom:8px; }
 [${MARK}-menu] header button:last-child { margin-left:auto; }
@@ -259,7 +259,7 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-stack] [data-testid="plugin-interaction-shell"]:not([data-expanded]) > :first-child span { align-items:center; }
 [${MARK}-stack] [data-testid="plugin-interaction-shell"] form > .sticky { background:transparent !important; border-top:0 !important; box-shadow:none !important; }
 /* Expanded secret header hairline is the 1px line on the scroll edge. Other request shells keep it. */
-[${MARK}-stack] [data-testid="plugin-interaction-shell"]:has(form[class~="@container/secrets"]) > :first-child { border-bottom-color:transparent !important; }
+[${MARK}-stack] [data-testid="plugin-interaction-shell"][${MARK}-secret] > :first-child { border-bottom-color:transparent !important; }
 [${MARK}-stack] [data-testid="plan-review-request"] { position:relative; background:transparent !important; border:0 !important; border-radius:0 !important; overflow:visible !important; box-shadow:none !important; }
 [${MARK}-stack] [data-testid="plan-review-request"] > .overflow-auto { padding-left:0 !important; padding-right:0 !important; }
 [${MARK}-stack] [data-testid="plan-review-request"] > p { border-top:0 !important; padding-left:0 !important; padding-right:0 !important; }
@@ -535,6 +535,22 @@ export function injectComposerInfo(document: Document): () => void {
     const generatedHeadings = new Set<HTMLElement>();
     const nativeDismisses = new Map<HTMLElement, HTMLButtonElement>();
     const parentRows = new Map<HTMLElement, HTMLButtonElement>();
+    // Markers the CSS reads instead of :has() (a generic-subject :has() restyles the app on every row insertion).
+    const setMark = (node: Element, name: string, on: boolean) => { if (node.hasAttribute(name) !== on) node.toggleAttribute(name, on); };
+    const WITH_PARENT_ROW = `${MARK}-with-parent-row`, WITH_PARENT_BODY = `${MARK}-with-parent-body`;
+    const PARENT_TOGGLE_WRAP = `${MARK}-parent-toggle-wrap`, PARENT_LINK_WRAP = `${MARK}-parent-link-wrap`;
+    const clearParentMarks = (host: HTMLElement) => {
+      host.removeAttribute(WITH_PARENT_ROW); host.removeAttribute(WITH_PARENT_BODY);
+      for (const node of Array.from(host.querySelectorAll(`[${PARENT_TOGGLE_WRAP}], [${PARENT_LINK_WRAP}]`))) {
+        node.removeAttribute(PARENT_TOGGLE_WRAP); node.removeAttribute(PARENT_LINK_WRAP);
+      }
+    };
+    const markParent = (host: HTMLElement) => {
+      setMark(host, WITH_PARENT_ROW, true);
+      setMark(host, WITH_PARENT_BODY, host.querySelector("#thread-prompt-banner-parent-thread-body") !== null);
+      for (const child of Array.from(host.children)) setMark(child, PARENT_TOGGLE_WRAP, child.tagName === "DIV" && child.querySelector("#thread-prompt-banner-parent-thread-toggle") !== null);
+      for (const span of Array.from(host.querySelectorAll("span"))) setMark(span, PARENT_LINK_WRAP, Array.from(span.children).some(child => child.tagName === "A"));
+    };
     const droppedParents = new WeakSet<HTMLElement>();
     const collapseRows = new Set<HTMLElement>();
     const closeHeadings = new Set<HTMLElement>();
@@ -570,7 +586,7 @@ export function injectComposerInfo(document: Document): () => void {
       const escapeAttr = (value: string) => view?.CSS?.escape(value) ?? value.replace(/["\\]/g, "\\$&");
       const readParent = () => readInfoData(stack.querySelector(`[${SOURCE}]`))?.value.parent ?? null;
       const parentHost = item?.key === "parent" && item.node.hasAttribute(OPEN) ? item.node : null;
-      for (const [host, row] of parentRows) if (host !== parentHost) { row.remove(); parentRows.delete(host); }
+      for (const [host, row] of parentRows) if (host !== parentHost) { row.remove(); parentRows.delete(host); clearParentMarks(host); }
       if (parentHost) {
         const parent = readParent();
         const currentRow = parentRows.get(parentHost);
@@ -580,7 +596,7 @@ export function injectComposerInfo(document: Document): () => void {
         if (parent) droppedParents.delete(parentHost);
         else if (blocked) droppedParents.add(parentHost);
         const title = parent?.title ?? (blocked ? "" : nativeParentLink()?.textContent?.replace(/\s+/g, " ").trim() ?? "");
-        if (!title) { currentRow?.remove(); parentRows.delete(parentHost); }
+        if (!title) { currentRow?.remove(); parentRows.delete(parentHost); clearParentMarks(parentHost); }
         else {
           let row = currentRow;
           if (!row) {
@@ -614,6 +630,7 @@ export function injectComposerInfo(document: Document): () => void {
             row.replaceChildren(...(wantIcon ? [icon, label] : [label]));
           }
           if (row.parentElement !== parentHost) parentHost.prepend(row);
+          markParent(parentHost);
         }
       }
       const namedAction = (labels: Map<HTMLElement, HTMLElement>, key: InfoKind, selector: string, mark: string, textFor: (button: HTMLElement) => string) => {
@@ -2164,7 +2181,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const heading of panelHeadings) heading.removeAttribute(`${MARK}-panel-heading`);
       for (const heading of generatedHeadings) heading.remove();
       for (const button of nativeDismisses.values()) button.remove();
-      for (const row of parentRows.values()) row.remove();
+      for (const [host, row] of parentRows) { row.remove(); clearParentMarks(host); }
       for (const row of collapseRows) row.removeAttribute(`${MARK}-collapse`);
       for (const heading of closeHeadings) heading.removeAttribute(`${MARK}-close-heading`);
       for (const heading of generatedCloseHeadings) heading.remove();
@@ -2189,20 +2206,66 @@ export function injectComposerInfo(document: Document): () => void {
   };
   document.addEventListener(composerDataChanged, onData);
   const discovery = `[data-promptbox-shell], [data-bb-chat-ui-device], ${HOST_JUMP}`;
-  const observer = new view.MutationObserver(records => {
-    const discoversInfo = (node: Node) => node instanceof view.Element &&
-      (node.matches(discovery) || !!node.querySelector(discovery));
+  const discoversInfo = (node: Node) => node instanceof view.Element &&
+    (node.matches(discovery) || !!node.querySelector(discovery));
+  // Pending-card guard markers replace `:has([SOURCE])` / `:has(REQUEST)` in the CSS. They are written
+  // synchronously in the observer callbacks (before paint), so unclassified native cards still never flash.
+  const GUARD = `${MARK}-guard`, HOLDS_REQUEST = `${MARK}-holds-request`;
+  const toggleMark = (node: Element, name: string, on: boolean) => { if (node.hasAttribute(name) !== on) node.toggleAttribute(name, on); };
+  const guardStack = (stack: Element) => {
+    toggleMark(stack, GUARD, stack.querySelector(`[${SOURCE}]`) !== null);
+    for (const host of [stack, ...Array.from(stack.querySelectorAll(`[${WRAP}]`))]) {
+      for (const child of Array.from(host.children)) toggleMark(child, HOLDS_REQUEST, !child.matches(REQUEST) && child.querySelector(REQUEST) !== null);
+    }
+  };
+  const guardShell = (shell: Element | null | undefined) => { const stack = shell?.querySelector(":scope > .grid"); if (stack) guardStack(stack); };
+  // Composer details (text, labels, attributes) are only observed inside composer shells.
+  const shellObserver = new view.MutationObserver(records => {
+    const shells = new Set<Element>();
+    for (const record of records) {
+      const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
+      const shell = target?.closest("[data-promptbox-shell]");
+      if (shell) shells.add(shell);
+    }
+    for (const shell of shells) guardShell(shell);
     if (records.some(record => {
       const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
       // Counts, labels and popover markup in our bar are output. Re-reading them
       // would turn each fan/count animation step into another full sync and fit.
-      if (target?.closest(`[${MARK}-bar]`)) return false;
-      // Only changed subtrees are searched: searching body would always find an existing composer.
-      return record.attributeName === "data-bb-chat-ui-device" || !!target?.closest(`[data-promptbox-shell], ${HOST_JUMP}`) ||
-        Array.from(record.addedNodes).some(discoversInfo) || Array.from(record.removedNodes).some(discoversInfo);
+      return !target?.closest(`[${MARK}-bar]`);
     })) schedule();
   });
-  observer.observe(document.body, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:[`${MARK}-thread`, `${MARK}-read-only-label`, `${MARK}-restore-error`, "data-queued-message-id", "data-bb-chat-ui-device", "aria-label", "aria-expanded", "aria-disabled", "disabled", "title", "href", "data-testid"] });
+  const watchedShells = new Set<Element>();
+  const watchShells = () => {
+    if (Array.from(watchedShells).some(shell => !shell.isConnected)) {
+      shellObserver.disconnect();
+      for (const shell of watchedShells) if (!shell.isConnected) {
+        for (const node of Array.from(shell.querySelectorAll(`[${GUARD}], [${HOLDS_REQUEST}]`))) {
+          node.removeAttribute(GUARD); node.removeAttribute(HOLDS_REQUEST);
+        }
+      }
+      watchedShells.clear();
+    }
+    for (const shell of Array.from(document.querySelectorAll("[data-promptbox-shell]"))) {
+      guardShell(shell);
+      if (watchedShells.has(shell)) continue;
+      watchedShells.add(shell);
+      shellObserver.observe(shell, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:[`${MARK}-thread`, `${MARK}-read-only-label`, `${MARK}-restore-error`, "data-queued-message-id", "data-bb-chat-ui-device", "aria-label", "aria-expanded", "aria-disabled", "disabled", "title", "href", "data-testid"] });
+    }
+  };
+  // The body only tells us when composer shells (or the host jump button) mount or unmount.
+  // Transcript rows never contain them, so streaming and scrolling batches are skipped early.
+  const observer = new view.MutationObserver(records => {
+    if (records.some(record => {
+      if (record.attributeName === "data-bb-chat-ui-device") return true;
+      const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
+      if (target?.closest("[data-timeline-items]")) return false;
+      return Array.from(record.addedNodes).some(discoversInfo) || Array.from(record.removedNodes).some(discoversInfo);
+    })) { watchShells(); schedule(); }
+  });
+  // Only the plugin's own device marker is watched as an attribute; BB never writes it.
+  observer.observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:["data-bb-chat-ui-device"] });
+  watchShells();
   const onKey = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     for (const [stack, state] of states) if (stack.contains(event.target as Node) || event.target === document) state.close(true);
@@ -2224,6 +2287,9 @@ export function injectComposerInfo(document: Document): () => void {
   return () => {
     disposed = true;
     observer.disconnect();
+    shellObserver.disconnect();
+    watchedShells.clear();
+    for (const node of Array.from(document.querySelectorAll(`[${GUARD}], [${HOLDS_REQUEST}]`))) { node.removeAttribute(GUARD); node.removeAttribute(HOLDS_REQUEST); }
     document.removeEventListener(composerDataChanged, onData);
     if (frame) view.cancelAnimationFrame(frame);
     document.removeEventListener("keydown", onKey);

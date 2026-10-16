@@ -272,6 +272,9 @@ test("fresh native cards stay hidden before the next frame without hiding reques
     assert.equal(f.dom.window.getComputedStyle(plugin).display, 'none', 'new unknown banner also waits for classification');
     const request = f.document.createElement('section'); request.innerHTML = '<div data-testid="user-question-banner">Question<button>Answer</button></div>';
     stack.append(request);
+    // Marker updates run at the mutation checkpoint, before paint and without
+    // waiting for the animation frame that classifies ordinary cards.
+    await Promise.resolve(); await Promise.resolve();
     assert.notEqual(f.dom.window.getComputedStyle(request).display, 'none', 'request wrapper stays visible immediately');
     assert.notEqual(f.dom.window.getComputedStyle(request.firstElementChild!).display, 'none');
     request.remove(); await f.tick();
@@ -283,6 +286,7 @@ test("fresh native cards stay hidden before the next frame without hiding reques
       node.removeAttribute('data-bb-chat-ui-info-unit'); node.removeAttribute('data-bb-chat-ui-info-open');
     }
     shell.querySelector('[data-bb-chat-ui-info-bar]')!.remove(); f.document.body.append(shell);
+    await Promise.resolve(); await Promise.resolve();
     const freshGoal = shell.querySelector('section[aria-label="Goal"]')!;
     assert.equal(f.dom.window.getComputedStyle(freshGoal).display, 'none', 'a new composer with a bridge is guarded before mounting');
     shell.remove();
@@ -5155,5 +5159,37 @@ test('late cancellation of a previous thread fan cannot finish the new count ste
   for(const callback of late.splice(0))callback();
   assert.equal(timers.size,3,'old animation callbacks must leave the new timers intact');
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-count]')!.textContent,'+13');
+ }finally{stop();f.dom.window.close();}
+});
+
+test('request guards are marked in the mutation checkpoint without waiting for a layout frame',async()=>{
+ const f=fixture();let frame=0;
+ f.dom.window.requestAnimationFrame=()=>++frame;f.dom.window.cancelAnimationFrame=()=>{};
+ const stop=injectComposerInfo(f.document);
+ try{
+  const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  assert.ok(stack.hasAttribute('data-bb-chat-ui-info-guard'));
+  const host=f.document.createElement('section');host.innerHTML='<div data-testid="approval-banner"><button>Approve</button></div>';stack.append(host);
+  await Promise.resolve();await Promise.resolve();
+  assert.ok(host.hasAttribute('data-bb-chat-ui-info-holds-request'));
+  assert.notEqual(f.dom.window.getComputedStyle(host).display,'none');
+  const shell=f.document.createElement('div');shell.setAttribute('data-promptbox-shell','');
+  shell.innerHTML='<div class="grid"><span hidden data-bb-chat-ui-info-settings="{}"></span><section>New card</section></div>';
+  f.document.body.append(shell);await Promise.resolve();await Promise.resolve();
+  assert.ok(shell.firstElementChild!.hasAttribute('data-bb-chat-ui-info-guard'));
+  assert.equal(f.dom.window.getComputedStyle(shell.querySelector('section')!).display,'none');
+  stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-info-guard], [data-bb-chat-ui-info-holds-request]'),null);
+ }finally{stop();f.dom.window.close();}
+});
+
+test('detached composer shells stop scheduling layout for the remaining chat',async()=>{
+ const f=fixture(),first=f.document.querySelector<HTMLElement>('[data-promptbox-shell] > .grid')!;
+ const second=f.document.querySelector('[data-promptbox-shell]')!.cloneNode(true) as HTMLElement;f.document.body.append(second);
+ let reads=0;first.getBoundingClientRect=()=>{reads++;return {width:900}as DOMRect;};
+ const stop=injectComposerInfo(f.document);
+ try{
+  await f.tick();second.remove();await f.tick();reads=0;
+  second.querySelector('section[aria-label="Goal"] button')!.textContent='detached change';await f.tick();
+  assert.equal(reads,0,'a removed shell must not keep a live mutation subscription');
  }finally{stop();f.dom.window.close();}
 });
