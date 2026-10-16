@@ -51,6 +51,27 @@ test("unrelated document changes do not rewrite an already locked quote", async 
   } finally { stop(); f.cleanup(); }
 });
 
+test("reprocessing unchanged quote contents does not rewrite styles or icon markers", async () => {
+  const f = fixture();
+  const quotes = [f.quote("MessageSquare"), f.quote("Quote"), f.quote("FileDiff")];
+  const stop = injectQuoteMentions(f.document);
+  const records: MutationRecord[] = [];
+  const observer = new f.dom.window.MutationObserver(batch => records.push(...batch));
+  try {
+    await f.tick();
+    for (const quote of quotes) observer.observe(quote, {
+      attributes: true, subtree: true,
+      attributeFilter: ["contenteditable", "style", "data-bb-chat-ui-quote-icon"],
+    });
+    // Host content changes must still be observed without rewriting the
+    // already correct presentation of any of the three quote kinds.
+    for (const quote of quotes) quote.append(f.document.createTextNode("updated label"));
+    await f.tick();
+    assert.deepEqual(records.map(record => record.attributeName), [],
+      "an unchanged quote presentation must not invalidate styles again");
+  } finally { observer.disconnect(); stop(); f.cleanup(); }
+});
+
 test("sidebar mutations skip document-wide quote scans while nested new quotes are locked", async () => {
   const f = fixture();
   f.quote();

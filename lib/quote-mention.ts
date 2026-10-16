@@ -125,8 +125,8 @@ function lockQuoteMention(node: HTMLElement, doc: Document) {
   if (!isQuoteMentionResource(resource)) return;
   const root = mentionRoot(node) ?? node;
   if (root.contentEditable !== "false") root.contentEditable = "false";
-  root.style.maxWidth = "100%";
-  root.style.whiteSpace = "nowrap";
+  if (root.style.maxWidth !== "100%") root.style.maxWidth = "100%";
+  if (root.style.whiteSpace !== "nowrap") root.style.whiteSpace = "nowrap";
   paintMentionIcon(root, resource, doc);
 }
 
@@ -145,18 +145,21 @@ function paintMentionIcon(root: HTMLElement, resource: unknown, doc: Document) {
   const code =
     record.icon === QUOTE_CODE_ICON ||
     (typeof record.label === "string" && record.label.startsWith("diff --git "));
+  const mark = (value: string) => {
+    if (root.getAttribute(ICON_MARK) !== value) root.setAttribute(ICON_MARK, value);
+  };
   if (code) {
-    root.setAttribute(ICON_MARK, "code");
+    mark("code");
     paintCodeIcon(root, doc);
     return;
   }
   if (record.icon === QUOTE_WHOLE_ICON) {
-    root.setAttribute(ICON_MARK, "whole");
+    mark("whole");
     const icon = iconRoot(root);
     if (icon) clearQuoteGlyph(icon);
     return;
   }
-  root.setAttribute(ICON_MARK, "selection");
+  mark("selection");
   paintMessageIcon(root);
 }
 
@@ -184,7 +187,7 @@ function paintMessageIcon(root: HTMLElement) {
   const parent = icon.parentElement;
   if (!parent) return;
   icon.querySelector(`[${CODE_CLONE}]`)?.remove();
-  if (icon instanceof HTMLElement || icon instanceof SVGElement) {
+  if ((icon instanceof HTMLElement || icon instanceof SVGElement) && icon.style.display !== "none") {
     icon.style.display = "none";
   }
   if (parent.querySelector(`:scope > [${MESSAGE_GLYPH}]`)) return;
@@ -203,7 +206,7 @@ function paintMessageIcon(root: HTMLElement) {
 
 function clearQuoteGlyph(icon: Element) {
   icon.parentElement?.querySelector(`:scope > [${MESSAGE_GLYPH}]`)?.remove();
-  if (icon instanceof HTMLElement || icon instanceof SVGElement) {
+  if ((icon instanceof HTMLElement || icon instanceof SVGElement) && icon.style.display !== "") {
     icon.style.display = "";
   }
 }
