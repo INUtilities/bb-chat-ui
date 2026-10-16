@@ -438,7 +438,12 @@ export function injectQueuedMessages(document: Document): () => void {
 
   let mutations: MutationObserver | null = null;
   if (document.body && typeof MutationObserver !== "undefined") {
-    mutations = new MutationObserver(() => {
+    // The queue lives in the composer; transcript batches (scroll, streaming) cannot change it.
+    mutations = new MutationObserver((records) => {
+      if (records.every((record) => {
+        const target = record.target.nodeType === 1 ? record.target as Element : record.target.parentElement;
+        return target?.closest("[data-timeline-items]") != null;
+      })) return;
       sync();
     });
     mutations.observe(document.body, {
