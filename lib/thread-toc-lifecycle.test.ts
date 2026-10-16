@@ -54,3 +54,20 @@ test('replacing just a TOC rail releases the old rail and retains exactly one li
     assert.equal(f.count(next),3,'same-batch moves do not duplicate bindings');assert.equal(next.querySelector('span')!.style.width,'32px','connected roots keep their current hover');
   } finally {stop();f.cleanup();}
 });
+
+test('sidebar and message changes skip TOC scans while nested new rails are still discovered',async()=>{
+  const f=fixture();const root=f.makeRoot();const stop=injectThreadToc(f.document);
+  try {
+    await f.tick();
+    let scans=0;const query=f.document.querySelectorAll.bind(f.document);
+    f.document.querySelectorAll=((selector:string)=>{if(selector.startsWith('[data-thread-toc]'))scans++;return query(selector);}) as typeof f.document.querySelectorAll;
+    const sidebar=f.document.createElement('aside');sidebar.innerHTML='<div>Sidebar row</div>';f.document.body.append(sidebar);await f.tick();
+    sidebar.firstElementChild!.textContent='Updated row';await f.tick();
+    assert.equal(scans,0,'unrelated changes do not scan all TOC roots or rails');
+    const wrapper=f.document.createElement('section');wrapper.innerHTML='<div data-thread-toc><button class="no-scrollbar"><span class="rounded-full"></span></button></div>';
+    f.document.body.append(wrapper);await f.tick();
+    const rail=wrapper.querySelector('button')!;assert.equal(f.count(rail),3);
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));assert.equal(rail.querySelector('span')!.style.width,'32px');
+    assert.equal(f.count(root),1);
+  } finally {stop();f.cleanup();}
+});

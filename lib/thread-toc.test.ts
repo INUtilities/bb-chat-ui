@@ -65,7 +65,7 @@ test("keeps rail clicks and leave working after the button is replaced", () => {
     Node: globalThis.Node,
     MutationObserver: globalThis.MutationObserver,
   };
-  let repaint: (() => void) | null = null;
+  let repaint: ((records: MutationRecord[]) => void) | null = null;
   class DomNode {
     parent: DomNode | null = null;
     contains(other: DomNode | null): boolean {
@@ -187,7 +187,7 @@ test("keeps rail clicks and leave working after the button is replaced", () => {
   globalThis.HTMLElement = DomElement as unknown as typeof HTMLElement;
   globalThis.HTMLButtonElement = DomButton as unknown as typeof HTMLButtonElement;
   globalThis.MutationObserver = class {
-    constructor(callback: () => void) {
+    constructor(callback: (records: MutationRecord[]) => void) {
       repaint = callback;
     }
     observe() {}
@@ -231,7 +231,7 @@ test("keeps rail clicks and leave working after the button is replaced", () => {
     liveButton.append(liveTick);
     firstButton.remove();
     root.append(liveButton);
-    repaint?.();
+    repaint?.([{ target: root, addedNodes: [liveButton] } as unknown as MutationRecord]);
 
     const middleTick = new DomElement("span", "rounded-full");
     middleTick.top = 10;
@@ -253,9 +253,9 @@ test("keeps rail clicks and leave working after the button is replaced", () => {
     }
     panel.append(list);
     root.append(panel);
-    repaint?.();
+    repaint?.([{ target: root, addedNodes: [panel] } as unknown as MutationRecord]);
     assert.equal(targets[3].clicks, 1);
-    repaint?.();
+    repaint?.([{ target: root, addedNodes: [] } as unknown as MutationRecord]);
     assert.equal(targets[3].clicks, 1);
 
     clickRail(liveButton, 21);

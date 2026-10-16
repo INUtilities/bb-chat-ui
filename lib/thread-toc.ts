@@ -118,7 +118,15 @@ export function injectThreadToc(document: Document): () => void {
       if (node instanceof HTMLElement) syncHoveredMessage(node);
     }
   };
-  const observer = new MutationObserver(paint);
+  const observer = new MutationObserver(records => {
+    if (Array.from(cleanups.keys()).some(node => !node.isConnected) || records.some(record => {
+      const target = record.target instanceof HTMLElement ? record.target : record.target.parentElement;
+      if (target?.closest("[data-thread-toc]")) return true;
+      return Array.from(record.addedNodes).some(node => node instanceof HTMLElement &&
+        (node.matches("[data-thread-toc]") || node.querySelector("[data-thread-toc]")),
+      );
+    })) paint();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
   paint();
 
