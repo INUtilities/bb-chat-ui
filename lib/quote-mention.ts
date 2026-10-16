@@ -94,7 +94,7 @@ function lockQuoteMentions(doc: Document) {
   for (const node of Array.from(doc.querySelectorAll(`[${MENTION_RESOURCE}]`))) {
     if (!(node instanceof HTMLElement) || !isQuoteMentionElement(node)) continue;
     const root = mentionRoot(node) ?? node;
-    root.contentEditable = "false";
+    if (root.contentEditable !== "false") root.contentEditable = "false";
     root.style.maxWidth = "100%";
     root.style.whiteSpace = "nowrap";
     paintMentionIcon(root, mentionResource(node), doc);
