@@ -169,3 +169,60 @@ test('an empty connected footer loses glass markers and observers until its comp
   assert.equal(f.watchers(first.footer),1);
  }finally{stop();f.cleanup();}
 });
+
+test('footer markers follow compact state, image descendants and Diff section changes', async () => {
+  const f=fixture(),first=f.add();
+  first.composer.innerHTML='<button data-action></button>';
+  const stop=injectComposerGlass(f.document);
+  try {
+    const action=first.composer.querySelector('button')!;
+    const stack=first.footer.querySelector('.grid')!;
+    first.composer.setAttribute('data-promptbox-compact','');await f.tick();
+    assert.ok(first.footer.hasAttribute('data-bb-chat-ui-compact-footer'),'compact layout is marked before a measurement frame');
+    first.composer.removeAttribute('data-promptbox-compact');await f.tick();
+    assert.equal(first.footer.hasAttribute('data-bb-chat-ui-compact-footer'),false);
+    action.innerHTML='<img alt="provider">';
+    stack.insertAdjacentHTML('beforeend','<section data-diff><button id="thread-prompt-banner-git-toggle"></button></section>');
+    await f.tick();await f.paint();
+    assert.ok(action.hasAttribute('data-bb-chat-ui-has-image'));
+    assert.ok(stack.querySelector('[data-diff]')!.hasAttribute('data-bb-chat-ui-diff-section'));
+    action.replaceChildren();stack.querySelector('[data-diff] button')!.remove();await f.tick();await f.paint();
+    assert.equal(action.hasAttribute('data-bb-chat-ui-has-image'),false);
+    assert.equal(stack.querySelector('[data-diff]')!.hasAttribute('data-bb-chat-ui-diff-section'),false);
+    first.composer.setAttribute('data-promptbox-compact','');action.innerHTML='<img alt="provider">';await f.tick();await f.paint();
+    const column=first.footer.querySelector('.chat-prompt-box')!;column.remove();await f.tick();
+    assert.equal(first.footer.hasAttribute('data-bb-chat-ui-compact-footer'),false,'connected empty footers release all markers');
+    assert.equal(action.hasAttribute('data-bb-chat-ui-has-image'),false,'removed descendants release markers too');
+    first.footer.querySelector('.relative')!.append(column);await f.tick();await f.paint();
+    assert.ok(first.footer.hasAttribute('data-bb-chat-ui-compact-footer'));
+    assert.ok(action.hasAttribute('data-bb-chat-ui-has-image'));
+    stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-compact-footer], [data-bb-chat-ui-has-image], [data-bb-chat-ui-diff-section]'),null);
+  } finally {stop();f.cleanup();}
+});
+
+test('new composers bind radius motion before the deferred layout frame',async()=>{
+  const f=fixture();f.add();const stop=injectComposerGlass(f.document);
+  try {
+    const second=f.add();await f.tick();
+    second.composer.setAttribute('data-promptbox-compact','');await f.tick();
+    assert.match(second.composer.style.animation,/bb-chat-ui-composer-radius/);
+  } finally {stop();f.cleanup();}
+});
+
+test('moving marked buttons and Diff sections between footers preserves their current owner',async()=>{
+ const f=fixture(),first=f.add(),second=f.add();
+ second.composer.innerHTML='<button><img alt="provider"></button>';
+ second.footer.querySelector('.grid')!.innerHTML='<section><button id="thread-prompt-banner-git-toggle"></button></section>';
+ const stop=injectComposerGlass(f.document);
+ try {
+  const button=second.composer.querySelector('button')!,section=second.footer.querySelector('.grid section')!;
+  for(const target of [first,second]){
+   target.composer.append(button);target.footer.querySelector('.grid')!.append(section);await f.tick();await f.paint();
+   assert.ok(button.hasAttribute('data-bb-chat-ui-has-image'),'image marker survives movement in both directions');
+   assert.ok(section.hasAttribute('data-bb-chat-ui-diff-section'),'Diff marker survives movement in both directions');
+  }
+  first.footer.querySelector('.relative')!.append(button,section);await f.tick();await f.paint();
+  assert.equal(button.hasAttribute('data-bb-chat-ui-has-image'),false,'buttons outside the input are no longer marked');
+  assert.equal(section.hasAttribute('data-bb-chat-ui-diff-section'),false,'sections outside the stack are no longer marked');
+ }finally{stop();f.cleanup();}
+});

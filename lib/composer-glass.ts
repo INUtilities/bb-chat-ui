@@ -7,6 +7,9 @@ const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
 const GLASS_MARK = "data-bb-chat-ui-glass";
 const FOOTER_MARK = `[data-scroll-footer][${GLASS_MARK}]`;
 const AGENTATION_SLOT = "data-bb-chat-ui-agentation-slot";
+const COMPACT_MARK = "data-bb-chat-ui-compact-footer";
+const HAS_IMAGE = "data-bb-chat-ui-has-image";
+const DIFF_SECTION = "data-bb-chat-ui-diff-section";
 const PLATE = ":scope > .relative";
 const COMPOSER = "[data-promptbox]";
 const FADE_HEIGHT = "--bb-chat-ui-fade-height";
@@ -147,42 +150,42 @@ ${FOOTER_MARK} [data-promptbox] {
     0 12px 32px -14px ${LIGHT_SHADOW},
     inset 0 1px 3px ${LIGHT_COMPOSER_EDGE};
 }
-  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     max-height: 100dvh;
   }
-  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) > .relative,
-  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) .chat-prompt-box,
-  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-promptbox-shell] {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] > .relative,
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] .chat-prompt-box,
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] [data-promptbox-shell] {
     display: flex;
     min-height: 0;
     max-height: 100%;
     flex-direction: column;
     justify-content: flex-end;
   }
-  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-promptbox-shell] > .grid {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] [data-promptbox-shell] > .grid {
     min-height: 0;
     overflow-y: auto;
   }
-  ${NARROW_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-follow-up-composer-anchor] {
+  ${NARROW_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] [data-follow-up-composer-anchor] {
     flex-shrink: 0;
   }
 
-  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) {
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
   }
-  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) > .relative,
-  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) .chat-prompt-box,
-  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-promptbox-shell] {
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] > .relative,
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] .chat-prompt-box,
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] [data-promptbox-shell] {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
   }
-  ${ROOMY_VIEWPORT} ${FOOTER_MARK}:has([data-promptbox-compact]) [data-follow-up-composer-anchor] {
+  ${ROOMY_VIEWPORT} ${FOOTER_MARK}[${COMPACT_MARK}] [data-follow-up-composer-anchor] {
     flex-shrink: 0;
   }
 
@@ -203,8 +206,8 @@ ${FOOTER_MARK} [data-promptbox][data-promptbox-compact] {
 ${FOOTER_MARK} [data-promptbox][data-promptbox-compact]:has([aria-label="Exit handoff"]) {
   border-radius: 1.375rem !important;
 }
-${FOOTER_MARK} [data-promptbox] button:not(:has(img)),
-${FOOTER_MARK} [data-promptbox] [role="button"]:not(:has(img)) {
+${FOOTER_MARK} [data-promptbox] button:not([${HAS_IMAGE}]),
+${FOOTER_MARK} [data-promptbox] [role="button"]:not([${HAS_IMAGE}]) {
   border-radius: 999px !important;
 }
 ${FOOTER_MARK} [data-promptbox] [data-promptbox-send-menu] {
@@ -330,7 +333,7 @@ ${FOOTER_MARK} ${STACK}[${CONTROLS}]::after {
 ${FOOTER_MARK} ${STACK} > section[aria-label="To-do list"] {
   order: 2;
 }
-${FOOTER_MARK} ${STACK} section:has(${PILL}) {
+${FOOTER_MARK} ${STACK} section[${DIFF_SECTION}] {
   position: absolute;
   bottom: var(--bb-chat-ui-controls-bottom, 0px);
   left: 0;
@@ -771,6 +774,13 @@ export function injectComposerGlass(document: Document): () => void {
           view?.matchMedia("(prefers-reduced-motion: reduce)").matches ?? false,
       });
       compact = nextCompact;
+      const footer = composer.closest("[data-scroll-footer]");
+      if (footer) {
+        const compact = footer.querySelector("[data-promptbox-compact]") !== null;
+        toggleMark(footer, COMPACT_MARK, compact);
+        if (compact) markerNodes.get(COMPACT_MARK)!.add(footer);
+        else markerNodes.get(COMPACT_MARK)!.delete(footer);
+      }
       if (change != null) {
         const current = ++generation;
         applyComposerRadius(composer, change);
@@ -870,10 +880,32 @@ export function injectComposerGlass(document: Document): () => void {
     syncFrame = view.requestAnimationFrame(() => { syncFrame = 0; sync(); });
   };
   const glassFooters = new Set<HTMLElement>();
+  const markerNodes = new Map<string, Set<Element>>([COMPACT_MARK, HAS_IMAGE, DIFF_SECTION].map(name => [name, new Set<Element>()]));
+  const releaseDetachedMarkers = () => {
+    for (const [name, nodes] of markerNodes) for (const node of nodes) if (!node.isConnected || !node.closest(FOOTER)) {
+      node.removeAttribute(name); nodes.delete(node);
+    }
+  };
+  const syncFooterMarkers = (footers: Iterable<HTMLElement>) => {
+    const compact = new Set<Element>(), images = new Set<Element>(), sections = new Set<Element>();
+    for (const footer of footers) {
+      if (footer.querySelector("[data-promptbox-compact]")) compact.add(footer);
+      for (const button of Array.from(footer.querySelectorAll('[data-promptbox] button, [data-promptbox] [role="button"]'))) if (button.querySelector("img")) images.add(button);
+      const section = footer.querySelector(STACK)?.querySelector(PILL)?.closest("section");
+      if (section) sections.add(section);
+    }
+    // Reconcile all footers together: a node moved between them keeps its new marker.
+    for (const [name, current] of [[COMPACT_MARK, compact], [HAS_IMAGE, images], [DIFF_SECTION, sections]] as const) {
+      for (const node of markerNodes.get(name)!) if (!current.has(node)) toggleMark(node, name, false);
+      for (const node of current) toggleMark(node, name, true);
+      markerNodes.set(name, current);
+    }
+  };
   const sync = () => {
     releaseDetachedComposers();
     const footers = document.querySelectorAll(FOOTER);
-    const currentFooters = new Set<HTMLElement>();
+    const currentFooters = new Set(Array.from(footers).filter((node): node is HTMLElement => node instanceof HTMLElement));
+    syncFooterMarkers(currentFooters);
     for (let index = 0; index < footers.length; index += 1) {
       const footerNode = footers.item(index);
       if (!(footerNode instanceof HTMLElement)) continue;
@@ -925,7 +957,7 @@ export function injectComposerGlass(document: Document): () => void {
       const observer = new MutationObserver(scheduleSync);
       observer.observe(footer, {
         childList: true, subtree: true, attributes: true,
-        attributeFilter: ["class", "data-queued-messages-mode"],
+        attributeFilter: ["class", "role", "id", "data-queued-messages-mode"],
       });
       stackWatches.set(footer, { stack, observer });
     }
@@ -936,6 +968,7 @@ export function injectComposerGlass(document: Document): () => void {
     mutations = new MutationObserver((records) => {
       if (records.some(record => record.removedNodes.length > 0)) {
         releaseDetachedComposers();
+        releaseDetachedMarkers();
         if (observed && (!observed.isConnected || !observed.matches(FOOTER))) { observer?.disconnect(); observer = null; observed = null; }
         releaseDetachedStacks();
         for (const node of glassFooters) if (!node.isConnected || !node.matches(FOOTER)) { node.removeAttribute(GLASS_MARK); glassFooters.delete(node); }
@@ -945,12 +978,16 @@ export function injectComposerGlass(document: Document): () => void {
           return;
         }
       }
-      if (observed instanceof HTMLElement && observed.isConnected && stackWatches.has(observed)) {
-        const addedComposer = records.some(record => Array.from(record.addedNodes).some(node =>
-          node instanceof HTMLElement && (node.matches(`${COMPOSER}, [data-scroll-footer], .chat-prompt-box`) || node.querySelector(`${COMPOSER}, [data-scroll-footer], .chat-prompt-box`) !== null),
-        ));
-        if (!addedComposer) return;
+      // Discover once; bind motion now without forcing deferred geometry work.
+      let addedComposer = false;
+      const discovery = `${COMPOSER}, [data-scroll-footer], .chat-prompt-box`;
+      for (const record of records) for (const node of Array.from(record.addedNodes)) {
+        if (!(node instanceof HTMLElement)) continue;
+        const matches = [...(node.matches(discovery) ? [node] : []), ...Array.from(node.querySelectorAll<HTMLElement>(discovery))];
+        if (matches.length) addedComposer = true;
+        for (const candidate of matches) if (candidate.matches(COMPOSER) && candidate.closest(FOOTER)) bindComposerRadius(candidate);
       }
+      if (observed instanceof HTMLElement && observed.isConnected && stackWatches.has(observed) && !addedComposer) return;
       scheduleSync();
     });
     mutations.observe(document.body, { childList: true, subtree: true });
@@ -961,6 +998,7 @@ export function injectComposerGlass(document: Document): () => void {
     if (syncFrame) document.defaultView?.cancelAnimationFrame(syncFrame);
     for (const node of glassFooters) node.removeAttribute(GLASS_MARK);
     glassFooters.clear();
+    for (const [name, nodes] of markerNodes) { for (const node of nodes) node.removeAttribute(name); nodes.clear(); }
     for (const node of Array.from(document.querySelectorAll(`[${AGENTATION_SLOT}]`))) node.removeAttribute(AGENTATION_SLOT);
     mutations?.disconnect();
     for (const watch of stackWatches.values()) watch.observer.disconnect();
@@ -993,6 +1031,10 @@ export function injectComposerGlass(document: Document): () => void {
       if (column instanceof HTMLElement) column.style.removeProperty(JUMP_BOTTOM);
     }
   };
+}
+
+function toggleMark(node: Element, name: string, on: boolean): void {
+  if (node.hasAttribute(name) !== on) node.toggleAttribute(name, on);
 }
 
 function alignFade(footer: HTMLElement): void {

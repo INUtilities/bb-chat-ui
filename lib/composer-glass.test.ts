@@ -159,14 +159,14 @@ test("keeps the collapsing composer on the bottom edge", () => {
   );
   assert.match(
     css,
-    /html\[data-bb-chat-ui-root-viewport="narrow"\][\s\S]*:has\(\[data-promptbox-compact\]\)[\s\S]*max-height:\s*100dvh;[\s\S]*\[data-promptbox-shell\] > \.grid\s*\{[^}]*overflow-y:\s*auto;/,
+    /html\[data-bb-chat-ui-root-viewport="narrow"\][\s\S]*\[data-bb-chat-ui-compact-footer\][\s\S]*max-height:\s*100dvh;[\s\S]*\[data-promptbox-shell\] > \.grid\s*\{[^}]*overflow-y:\s*auto;/,
   );
   const desktop = css.slice(
     css.indexOf('html:is([data-bb-chat-ui-root-viewport="medium"], [data-bb-chat-ui-root-viewport="wide"])'),
     css.indexOf('html[data-bb-chat-ui-root-hit-target="small"]'),
   );
   assert.ok(desktop);
-  assert.match(desktop, /:has\(\[data-promptbox-compact\]\)/);
+  assert.match(desktop, /\[data-bb-chat-ui-compact-footer\]/);
   assert.match(desktop, /justify-content:\s*flex-end;/);
   assert.doesNotMatch(desktop, /100dvh|overflow-y:\s*auto/);
   assert.equal(
@@ -415,7 +415,7 @@ test("rounds buttons inside the composer like the mobile composer", () => {
   const css = composerGlassCss;
   assert.match(
     css,
-    /\[data-promptbox\] button:not\(:has\(img\)\),\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\] \[role="button"\]:not\(:has\(img\)\)\s*\{[^}]*border-radius:\s*999px !important;/,
+    /\[data-promptbox\] button:not\(\[data-bb-chat-ui-has-image\]\),\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\] \[role="button"\]:not\(\[data-bb-chat-ui-has-image\]\)\s*\{[^}]*border-radius:\s*999px !important;/,
   );
   assert.match(
     css,
