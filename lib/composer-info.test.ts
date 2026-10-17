@@ -2597,6 +2597,8 @@ test("a collapsed secret card sits on the composer edge and keeps its label cent
     assert.equal(css.borderRadius, "18px");
     assert.ok(f.dom.window.getComputedStyle(banner).animation.includes("bb-info-enter 260ms"));
     card.setAttribute("data-expanded", "");
+    // Marker styling settles at the mutation checkpoint before paint, without a layout frame.
+    await Promise.resolve(); await Promise.resolve();
     assert.equal(f.dom.window.getComputedStyle(card).marginBottom, "8px", "an open card keeps its bottom margin");
     assert.equal(f.dom.window.getComputedStyle(stack).marginBottom, "8px");
   } finally { stop(); f.dom.window.close(); }
@@ -5199,4 +5201,47 @@ test('detached composer shells stop scheduling layout for the remaining chat',as
   second.querySelector('section[aria-label="Goal"] button')!.textContent='detached change';await f.tick();
   assert.equal(reads,0,'a removed shell must not keep a live mutation subscription');
  }finally{stop();f.dom.window.close();}
+});
+
+test('request markers follow nested wrappers, Secret expansion and queue collapse rows before paint',async()=>{
+  const f=fixture(),shell=f.document.querySelector('[data-promptbox-shell]')!,stack=shell.querySelector(':scope > .grid')!;
+  const stop=injectComposerInfo(f.document);
+  try {
+    const holder=f.document.createElement('section');
+    holder.innerHTML='<div data-level><div data-testid="plugin-request-banner"><section data-testid="plugin-interaction-shell"><div>Secret</div><form class="@container/secrets"></form></section></div></div>';
+    stack.append(holder);await Promise.resolve();await Promise.resolve();
+    assert.ok(holder.firstElementChild!.hasAttribute('data-bb-chat-ui-info-holds-request'),'all nested ancestors are protected');
+    assert.ok(shell.hasAttribute('data-bb-chat-ui-info-collapsed-interaction'));
+    const secret=holder.querySelector('[data-testid="plugin-interaction-shell"]')!,form=secret.querySelector('form')!;
+    assert.ok(secret.hasAttribute('data-bb-chat-ui-info-secret-form'));
+    secret.setAttribute('data-expanded','');await Promise.resolve();await Promise.resolve();
+    assert.equal(shell.hasAttribute('data-bb-chat-ui-info-collapsed-interaction'),false);
+    form.className='other-form';await Promise.resolve();await Promise.resolve();
+    assert.equal(secret.hasAttribute('data-bb-chat-ui-info-secret-form'),false,'reused forms release Secret styling');
+    form.className='@container/secrets';await Promise.resolve();await Promise.resolve();
+    assert.ok(secret.hasAttribute('data-bb-chat-ui-info-secret-form'));
+    holder.remove();await Promise.resolve();await Promise.resolve();
+    const queue=stack.querySelector('section[aria-label="Queued messages"]')!;
+    const collapse=f.document.createElement('div');collapse.innerHTML='<button aria-label="Collapse queued messages">Collapse</button>';queue.append(collapse);
+    await Promise.resolve();await Promise.resolve();
+    assert.ok(collapse.hasAttribute('data-bb-chat-ui-info-queue-collapse-wrap'));
+    collapse.firstElementChild!.setAttribute('aria-label','Other action');await Promise.resolve();await Promise.resolve();
+    assert.equal(collapse.hasAttribute('data-bb-chat-ui-info-queue-collapse-wrap'),false);
+    shell.remove();await f.tick();
+    assert.equal(secret.hasAttribute('data-bb-chat-ui-info-secret-form'),false,'detached requests release markers');
+    assert.equal(holder.firstElementChild!.hasAttribute('data-bb-chat-ui-info-holds-request'),false);
+  } finally {stop();f.dom.window.close();}
+});
+
+test('a late inline composer inside the timeline is discovered and cleaned up',async()=>{
+ const f=fixture(),stop=injectComposerInfo(f.document);
+ try {
+  const timeline=f.document.createElement('main');timeline.setAttribute('data-timeline-items','');f.document.body.append(timeline);await f.tick();
+  const shell=f.document.querySelector('[data-promptbox-shell]')!.cloneNode(true) as HTMLElement;
+  shell.querySelector('[data-bb-chat-ui-info-bar]')?.remove();
+  const wrapper=f.document.createElement('article');wrapper.append(shell);timeline.append(wrapper);await f.tick();
+  assert.ok(shell.querySelector('[data-bb-chat-ui-info-bar]'),'inline composer is classified');
+  wrapper.remove();await f.tick();
+  assert.equal(shell.querySelector('[data-bb-chat-ui-info-bar]'),null);
+ } finally {stop();f.dom.window.close();}
 });
