@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 
 import { injectMentionPills } from "./mention-pill.ts";
 import { injectQuoteMentions } from "./quote-mention.ts";
+import { injectQuotePill } from "./quote-pill.ts";
 import { injectComposerGlass } from "./composer-glass.ts";
 
 // Scenarios from the review of the :has() → marker prototype. Each is a live-update path the
@@ -72,4 +73,29 @@ test("every glass footer keeps live markers, not only the first", async () => {
     await f.settle();
     assert.equal(second.hasAttribute("data-bb-chat-ui-glass"), false, "a footer without a prompt box stops being glass");
   } finally { stop(); f.restore(); }
+});
+
+
+test("compact multiline paragraphs retain their width beside file and quote mentions", async () => {
+  for (const resource of [{ kind: "path", label: "file.ts" }, { kind: "plugin", itemId: "quote:multiline", label: "인용" }]) {
+    const pill = `<span class="prompt-mention-pill" data-prompt-mention data-prompt-mention-resource='${JSON.stringify(resource)}'><span class="truncate">${resource.label}</span></span>`;
+    const f = setup(`<div data-promptbox-editor-scroll><div data-promptbox-editor-content><div class="ProseMirror" contenteditable="true"><p>${pill} 첫째 줄 AAAA</p><p>둘째 줄 BBBB</p><p>셋째 줄 CCCC<br>넷째 줄 DDDD</p></div></div></div>`);
+    const stopMention = injectMentionPills(f.document), stopQuote = injectQuotePill(f.document);
+    try {
+      const wrapper = f.document.querySelector("[data-promptbox-editor-content]")!;
+      const editor = wrapper.querySelector(".ProseMirror")!;
+      const paragraphs = Array.from(editor.children);
+      const text = paragraphs.map(node => node.textContent);
+      wrapper.setAttribute("data-promptbox-compact-content", "");
+      await f.settle();
+      for (const paragraph of paragraphs) {
+        assert.equal(f.dom.window.getComputedStyle(paragraph).flexShrink, "0", "a paragraph must not narrow while its text overflows into the next one");
+      }
+      assert.deepEqual(paragraphs.map(node => node.textContent), text, "the original multiline draft is preserved");
+      assert.equal(editor.querySelectorAll("br").length, 1);
+      wrapper.removeAttribute("data-promptbox-compact-content");
+      await f.settle();
+      for (const paragraph of paragraphs) assert.notEqual(f.dom.window.getComputedStyle(paragraph).flexShrink, "0", "expanded paragraphs keep native layout");
+    } finally { stopQuote(); stopMention(); f.restore(); }
+  }
 });

@@ -146,6 +146,7 @@ ${PAINTED} > button[${REMOVE}]:focus-visible {
   display: flex !important;
   align-items: center !important;
   height: 100%;
+  flex-shrink: 0;
   min-width: 0;
   margin: 0 !important;
 }
