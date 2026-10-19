@@ -273,9 +273,32 @@ export function injectSendHaptic(document: Document): () => void {
     postHaptic(readHapticBridge(view), "selection");
   };
 
+  let queueSavePress: {button: HTMLElement; pointerId: number; x: number; y: number} | null = null;
+  let queueSaveClick: {at: number} | null = null;
+  const queueSaveEnabled = (button: Element) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true' && button.getAttribute('aria-busy') !== 'true';
+  const onPointerDown = (event: PointerEvent) => {
+    queueSavePress = null; queueSaveClick = null;
+    if (!event.isTrusted || event.pointerType !== 'touch' || !event.isPrimary || event.button !== 0) return;
+    const button = queueEditorButtonFrom(event.target);
+    if (button?.hasAttribute('data-bb-chat-ui-queue-edit-save') && queueSaveEnabled(button)) {
+      queueSavePress = {button: button as HTMLElement, pointerId: event.pointerId, x: event.clientX, y: event.clientY};
+    }
+  };
+  const cancelSaveTouch = () => { queueSavePress = null; };
+  const onPointerMove = (event: PointerEvent) => {
+    if (queueSavePress?.pointerId === event.pointerId && Math.hypot(event.clientX - queueSavePress.x, event.clientY - queueSavePress.y) > 10) cancelSaveTouch();
+  };
+
   const onPointerUp = (event: PointerEvent) => {
-    // Information controls use click for touch, mouse and keyboard alike.
-    if (composerInfoButtonFrom(event.target) || questionButtonFrom(event.target)) return;
+    const press = queueSavePress; queueSavePress = null;
+    // Native touch save runs on pointerup and may remove the editor before click.
+    if (press && event.isTrusted && event.pointerType === 'touch' && event.isPrimary && press.pointerId === event.pointerId && queueEditorButtonFrom(event.target) === press.button && queueSaveEnabled(press.button) && Math.hypot(event.clientX - press.x, event.clientY - press.y) <= 10 && releasedInside(press.button, event)) {
+      queueSaveClick = {at: view?.performance.now() ?? Date.now()};
+      postHaptic(readHapticBridge(view), 'selection');
+      return;
+    }
+    // Other information controls use click for touch, mouse and keyboard alike.
+    if (composerInfoButtonFrom(event.target) || questionButtonFrom(event.target) || queueEditorButtonFrom(event.target) || queueActionButtonFrom(event.target)) return;
     if (isFileDiffBlockToggle(event.target)) {
       pulseDiffToggle();
       return;
@@ -299,9 +322,16 @@ export function injectSendHaptic(document: Document): () => void {
   };
 
   const onJumpClick = (event: MouseEvent) => {
-    const question = questionButtonFrom(event.target);
+    if (queueSaveClick && event.isTrusted) {
+      // Unmount can retarget the compatibility click to a different pill below.
+      const duplicate = event.detail !== 0 && (view?.performance.now() ?? Date.now()) - queueSaveClick.at < 1000;
+      queueSaveClick = null;
+      if (duplicate) return;
+    }
+    const question = queueActionButtonFrom(event.target) ?? queueEditorButtonFrom(event.target) ?? questionButtonFrom(event.target);
     if (question) {
       if (event.isTrusted && !question.hasAttribute('disabled') && question.getAttribute('aria-disabled') !== 'true') {
+        if (question.hasAttribute('data-bb-chat-ui-queue-edit-save') && !queueSaveEnabled(question)) return;
         postHaptic(readHapticBridge(view), 'selection');
       }
       return;
@@ -332,7 +362,7 @@ export function injectSendHaptic(document: Document): () => void {
     if (!form.matches("[data-promptbox]")) return;
     const submitter = event.submitter;
     if (!(submitter instanceof HTMLButtonElement)) return;
-    if (!submitter.matches(SEND_BUTTON) || submitter.disabled) return;
+    if (!submitter.matches(SEND_BUTTON) || submitter.disabled || queueEditorButtonFrom(submitter)) return;
     if (submitter.getAttribute("aria-busy") === "true") return;
     arm(submitter);
   };
@@ -352,11 +382,18 @@ export function injectSendHaptic(document: Document): () => void {
     });
   }
 
+  document.addEventListener("pointerdown", onPointerDown, true);
+  document.addEventListener("pointermove", onPointerMove, true);
+  document.addEventListener("pointercancel", cancelSaveTouch, true);
   document.addEventListener("pointerup", onPointerUp, true);
   document.addEventListener("click", onJumpClick, true);
   document.addEventListener("submit", onSubmit, true);
 
   return () => {
+    document.removeEventListener("pointerdown", onPointerDown, true);
+    document.removeEventListener("pointermove", onPointerMove, true);
+    document.removeEventListener("pointercancel", cancelSaveTouch, true);
+    queueSavePress = null; queueSaveClick = null;
     document.removeEventListener("pointerup", onPointerUp, true);
     document.removeEventListener("click", onJumpClick, true);
     document.removeEventListener("submit", onSubmit, true);
@@ -421,6 +458,16 @@ function composerInfoButtonFrom(target: EventTarget | null): Element | null {
 function questionButtonFrom(target: EventTarget | null): Element | null {
   const button = asElement(target)?.closest('button');
   return button?.closest(QUESTION_CARD)?.closest('[data-bb-chat-ui-info-stack]') ? button : null;
+}
+
+function queueActionButtonFrom(target: EventTarget | null): Element | null {
+  const button = asElement(target)?.closest('button[role="menuitem"]');
+  return button?.parentElement?.matches('[data-bb-chat-ui-queue-menu][role="menu"]') ? button : null;
+}
+
+function queueEditorButtonFrom(target: EventTarget | null): Element | null {
+  const button = asElement(target)?.closest('button[aria-label="Prompt actions"],button[aria-label="Start voice input"],button[data-bb-chat-ui-queue-edit-save]');
+  return button?.closest('[data-queued-message-inline-editor]')?.closest('section[aria-label="Queued messages"][data-bb-chat-ui-info-open="queue"]') ? button : null;
 }
 
 function jumpButtonFrom(target: EventTarget | null): HTMLButtonElement | null {

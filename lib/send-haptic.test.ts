@@ -549,3 +549,108 @@ test("send response scanning is skipped without haptic capability", t => {
     }finally{stop();}
   }
 });
+
+test('queue editor attachment, voice and save pulse once without send tracking or changing native actions',async t=>{
+  const dom=new JSDOM(`<div data-bb-chat-ui-info-stack><section aria-label="Queued messages" data-bb-chat-ui-info-unit data-bb-chat-ui-info-open="queue"><div data-queued-message-inline-editor><form data-promptbox>
+    <button type="button" aria-label="Prompt actions"><svg></svg></button>
+    <button type="button" aria-label="Start voice input"><svg></svg></button>
+    <button type="submit" data-promptbox-submit-action data-bb-chat-ui-queue-edit-save><svg></svg></button>
+    <button type="button" aria-label="Prompt actions" disabled></button>
+    <button type="button" aria-label="Start voice input" aria-disabled="true"></button>
+  </form></div></section></div><form data-promptbox><button type="button" aria-label="Prompt actions">Normal composer</button></form>`,{url:'https://example.test'});
+  const original={Element:globalThis.Element,HTMLElement:globalThis.HTMLElement,HTMLButtonElement:globalThis.HTMLButtonElement,HTMLFormElement:globalThis.HTMLFormElement};
+  Object.assign(globalThis,{Element:dom.window.Element,HTMLElement:dom.window.HTMLElement,HTMLButtonElement:dom.window.HTMLButtonElement,HTMLFormElement:dom.window.HTMLFormElement});
+  t.after(()=>{Object.assign(globalThis,original);dom.window.close();});
+  const messages:unknown[]=[];
+  Object.assign(dom.window,{bb:{native:{capabilities:['haptic'],post:(message:unknown)=>messages.push(message)}}});
+  const listeners=new Map<string,(event:Event)=>void>();
+  const document={body:null,defaultView:dom.window,addEventListener:(type:string,listener:(event:Event)=>void)=>listeners.set(type,listener),removeEventListener:(type:string)=>listeners.delete(type)} as unknown as Document;
+  const stop=injectSendHaptic(document);t.after(stop);
+  const active=[...dom.window.document.querySelectorAll<HTMLButtonElement>('[data-queued-message-inline-editor] button:not([disabled]):not([aria-disabled])')];
+  let actions=0;
+  for(const [index,button]of active.entries()){
+    const parent=button.parentElement,target=button.querySelector('svg')!;
+    button.addEventListener('click',event=>{event.preventDefault();actions++;});
+    listeners.get('pointerup')!({target,isPrimary:true,pointerType:'touch'} as unknown as Event);
+    listeners.get('click')!({target,isTrusted:true} as unknown as Event);
+    assert.deepEqual(messages,active.slice(0,index+1).map(()=>({type:'haptic',kind:'selection'})));
+    button.click();listeners.get('click')!({target,isTrusted:false} as unknown as Event);
+    assert.equal(messages.length,index+1);assert.equal(button.parentElement,parent);
+  }
+  assert.equal(actions,3);
+  const save=active[2];listeners.get('submit')!({target:save.form,submitter:save} as unknown as Event);
+  await new Promise(resolve=>setTimeout(resolve,100));
+  assert.equal(messages.length,3,'saving a draft must not arm the normal send pulse or response watch');
+  for(const target of dom.window.document.querySelectorAll('button[disabled],button[aria-disabled],body > form button'))listeners.get('click')!({target,isTrusted:true} as unknown as Event);
+  assert.equal(messages.length,3);
+  listeners.get('click')!({target:active[0],isTrusted:true,detail:0} as unknown as Event);
+  assert.equal(messages.length,4,'keyboard activation uses the same single pulse');
+  Object.assign(dom.window,{bb:{native:{capabilities:[],post:(message:unknown)=>messages.push(message)}}});
+  listeners.get('click')!({target:active[1],isTrusted:true} as unknown as Event);
+  assert.equal(messages.length,4,'shells without haptic capability stay quiet');
+  stop();assert.equal(listeners.size,0);
+});
+
+test('touch queue save pulses before the native pointerup save removes the editor and suppresses click',t=>{
+  const dom=new JSDOM('<section aria-label="Queued messages" data-bb-chat-ui-info-open="queue"><div data-queued-message-inline-editor><button data-bb-chat-ui-queue-edit-save><svg></svg></button></div></section>');
+  const listeners=new Map<string,(event:Event)=>void>(),messages:unknown[]=[];
+  Object.assign(dom.window,{bb:{native:{capabilities:['haptic'],post:(message:unknown)=>messages.push(message)}}});
+  const document={body:null,defaultView:dom.window,addEventListener:(type:string,listener:(event:Event)=>void)=>listeners.set(type,listener),removeEventListener:(type:string)=>listeners.delete(type)} as unknown as Document;
+  const stop=injectSendHaptic(document);t.after(()=>{stop();dom.window.close();});
+  const button=dom.window.document.querySelector<HTMLButtonElement>('button')!,editor=button.parentElement!,parent=editor.parentElement!;
+  button.getBoundingClientRect=()=>({left:0,right:32,top:0,bottom:32,width:32,height:32,x:0,y:0,toJSON(){return {};}});
+  const gesture=(extra:Record<string,unknown>={})=>({target:button.querySelector('svg'),isTrusted:true,isPrimary:true,pointerType:'touch',pointerId:1,button:0,clientX:16,clientY:16,...extra}) as unknown as Event;
+  listeners.get('pointerdown')?.(gesture());listeners.get('pointerup')!(gesture());
+  editor.remove(); // Native onTouchSubmit persists immediately; no click or submit event follows.
+  assert.deepEqual(messages,[{type:'haptic',kind:'selection'}]);
+  parent.append(editor);
+  listeners.get('click')!({target:button.querySelector('svg'),isTrusted:true,detail:1} as unknown as Event);
+  assert.equal(messages.length,1,'a compatibility click must not repeat the touch-save pulse');
+  const rejected=[
+    ()=>listeners.get('pointerdown')?.(gesture({isPrimary:false})),
+    ()=>{listeners.get('pointerdown')?.(gesture());listeners.get('pointermove')?.(gesture({clientX:31}));},
+    ()=>{listeners.get('pointerdown')?.(gesture());listeners.get('pointercancel')?.(gesture());},
+    ()=>listeners.get('pointerdown')?.(gesture({isTrusted:false})),
+  ];
+  for(const prepare of rejected){prepare();listeners.get('pointerup')!(gesture());assert.equal(messages.length,1);}
+  for(const flags of [{disabled:true},{'aria-disabled':'true'},{'aria-busy':'true'}]){
+    for(const [key,value]of Object.entries(flags))button.setAttribute(key,String(value));
+    listeners.get('pointerdown')?.(gesture());listeners.get('pointerup')!(gesture());assert.equal(messages.length,1);
+    for(const key of Object.keys(flags))button.removeAttribute(key);
+  }
+  listeners.get('pointerdown')?.(gesture());listeners.get('pointerup')!(gesture({clientX:40}));assert.equal(messages.length,1);
+  listeners.get('pointerdown')?.(gesture());listeners.get('pointerup')!(gesture());assert.equal(messages.length,2,'a fresh touch save is not throttled by the previous save');
+  const retargeted=dom.window.document.createElement('div');retargeted.setAttribute('data-bb-chat-ui-info-bar','');retargeted.innerHTML='<button>Underlying pill</button>';dom.window.document.body.append(retargeted);
+  listeners.get('click')!({target:retargeted.firstElementChild,isTrusted:true,detail:1} as unknown as Event);assert.equal(messages.length,2,'a compatibility click retargeted after native unmount must not buzz the underlying pill');
+  listeners.get('click')!({target:button,isTrusted:true,detail:0} as unknown as Event);assert.equal(messages.length,3,'keyboard activation remains independent');
+  Object.assign(dom.window,{bb:{native:{capabilities:[],post:(message:unknown)=>messages.push(message)}}});
+  listeners.get('pointerdown')?.(gesture());listeners.get('pointerup')!(gesture());assert.equal(messages.length,3);
+  stop();assert.equal(listeners.size,0);
+});
+
+test('queue action popover send, edit and delete pulse once and keep forwarded native actions',t=>{
+  const dom=new JSDOM('<div data-bb-chat-ui-info-stack><section data-bb-chat-ui-info-unit><button data-native>Send</button><button data-native>Edit</button><button data-native>Delete</button></section></div><div data-bb-chat-ui-queue-menu role="menu"><button role="menuitem"><svg></svg></button><button role="menuitem"><svg></svg></button><button role="menuitem"><svg></svg></button><button role="menuitem" disabled></button><button role="menuitem" aria-disabled="true"></button></div><div role="menu"><button role="menuitem">Other menu</button></div>');
+  const listeners=new Map<string,(event:Event)=>void>(),messages:unknown[]=[];
+  const original={Element:globalThis.Element,HTMLButtonElement:globalThis.HTMLButtonElement};
+  Object.assign(globalThis,{Element:dom.window.Element,HTMLButtonElement:dom.window.HTMLButtonElement});
+  Object.assign(dom.window,{bb:{native:{capabilities:['haptic'],post:(message:unknown)=>messages.push(message)}}});
+  const document={body:null,defaultView:dom.window,addEventListener:(type:string,listener:(event:Event)=>void)=>listeners.set(type,listener),removeEventListener:(type:string)=>listeners.delete(type)} as unknown as Document;
+  const stop=injectSendHaptic(document);t.after(()=>{stop();Object.assign(globalThis,original);dom.window.close();});
+  const buttons=[...dom.window.document.querySelectorAll<HTMLButtonElement>('[data-bb-chat-ui-queue-menu] button:not([disabled]):not([aria-disabled])')],native=[...dom.window.document.querySelectorAll<HTMLButtonElement>('[data-native]')];
+  let actions=0;
+  for(const[index,button]of buttons.entries()){
+    const target=button.querySelector('svg')!;native[index].addEventListener('click',()=>actions++);
+    button.addEventListener('click',()=>native[index].click());
+    listeners.get('pointerup')!({target,pointerType:'touch',isPrimary:true} as unknown as Event);
+    listeners.get('click')!({target,isTrusted:true} as unknown as Event);
+    button.click();listeners.get('click')!({target:native[index],isTrusted:false} as unknown as Event);
+    assert.deepEqual(messages,buttons.slice(0,index+1).map(()=>({type:'haptic',kind:'selection'})));
+  }
+  assert.equal(actions,3);
+  for(const target of dom.window.document.querySelectorAll('button[disabled],button[aria-disabled],body > div:not([data-bb-chat-ui-queue-menu]):not([data-bb-chat-ui-info-stack]) button'))listeners.get('click')!({target,isTrusted:true} as unknown as Event);
+  assert.equal(messages.length,3,'disabled and unrelated menu buttons do not pulse');
+  listeners.get('click')!({target:buttons[1],isTrusted:true,detail:0} as unknown as Event);assert.equal(messages.length,4);
+  Object.assign(dom.window,{bb:{native:{capabilities:[],post:(message:unknown)=>messages.push(message)}}});
+  listeners.get('click')!({target:buttons[0],isTrusted:true} as unknown as Event);assert.equal(messages.length,4);
+  stop();assert.equal(listeners.size,0);
+});
