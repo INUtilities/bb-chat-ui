@@ -8,6 +8,7 @@ import { eventHop, pressPop, stickyDrop } from "./motion.ts";
 import { isDesktopChrome } from "./device-chrome.ts";
 import { infoStack } from "./composer-info-stack.ts";
 import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
+import { interceptPrMerge } from "./composer-pr-merge.ts";
 
 const STACK = "[data-promptbox-shell] > .grid";
 const MARK = "data-bb-chat-ui-info";
@@ -128,7 +129,25 @@ ${DETAIL}[aria-label="Model fallback"] [role="status"] > :is(svg, [data-icon-roo
 ${DETAIL}[aria-label="Model fallback"] [role="status"] > span:not([title]) { display:none !important; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { flex:none; width:auto; min-height:28px; margin-left:8px; padding:5px 9px; border-radius:8px; font-size:11px; line-height:18px; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { border-width:0 !important; border-color:transparent !important; box-shadow:none !important; }
+${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { display:inline-flex; align-items:center; justify-content:center; flex:none; width:24px; height:24px; padding:0 !important; font-size:0 !important; text-decoration:none; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:"↗"; font-size:17px; line-height:1; }
+${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title]:has([${MARK}-title-source]) { display:none; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { position:relative; align-items:center; gap:0; padding:4px 34px 4px 12px; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px; background:var(--bb-chat-ui-info-face); backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:none !important; }
+${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; line-height:20px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
+${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-native-dismiss] { top:50%; transform:translateY(-50%); }
+${NATIVE_DETAIL}[${OPEN}="pullRequest"] > div[class~="p-1"][${MARK}-close-heading] { padding-right:34px !important; }
+${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button[aria-label="Choose pull request merge method"] { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:flex-end; width:100%; min-width:0; height:100%; min-height:0; margin:0; padding:0 12px !important; color:var(--foreground); cursor:pointer; }
+${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge method"] svg { display:block; width:14px; height:14px; opacity:1; }
+[data-bb-chat-ui-pr-menu-layer] { z-index:56 !important; }
+[data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
+[data-bb-chat-ui-pr-menu] { border:0 !important; border-radius:18px; background:${LIGHT_GLASS_FACE} !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent); }
+.dark [data-bb-chat-ui-pr-menu] { background:${DARK_GLASS_FACE} !important; box-shadow:0 6px 18px -12px color-mix(in oklab,black 60%,transparent),inset 0 1px 3px color-mix(in oklab,var(--foreground) 8%,transparent); }
 ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
@@ -421,6 +440,7 @@ export function injectComposerInfo(document: Document): () => void {
 
   function mount(stack: HTMLElement) {
     stack.setAttribute(`${MARK}-stack`, "");
+    const prMerge = interceptPrMerge(stack);
     const bar = document.createElement("div");
     bar.setAttribute(`${MARK}-bar`, "");
     const pills = document.createElement("div");
@@ -643,6 +663,16 @@ export function injectComposerInfo(document: Document): () => void {
     const goalClearLabels = new Map<HTMLElement, HTMLElement>();
     const planExitLabels = new Map<HTMLElement, HTMLElement>();
     const fallbackDismissLabels = new Map<HTMLElement, HTMLElement>();
+    let prTitle: HTMLElement | null = null;
+    let prHeading: HTMLElement | null = null;
+    let prLink: HTMLAnchorElement | null = null;
+    let prLinkTitle: string | null = null;
+    const clearPrHeader = () => {
+      prTitle?.remove(); prTitle = null;
+      prHeading?.removeAttribute(`${MARK}-pr-heading`); prHeading = null;
+      if (prLink) { if (prLinkTitle === null) prLink.removeAttribute("title"); else prLink.setAttribute("title",prLinkTitle); }
+      prLink = null; prLinkTitle = null;
+    };
     const bulkActions = new Map<HTMLElement, {ariaLabel:string|null; title:string|null; icon:Element; source:string}>();
     const restoreBulkAction = (button:HTMLElement) => {
       const saved=bulkActions.get(button);if(!saved)return;
@@ -704,6 +734,7 @@ export function injectComposerInfo(document: Document): () => void {
       const item = items.find(item => item.node === activeNode && item.key === active);
       for (const title of readOnlyTitles.keys()) if (title !== item?.trigger || !item.node.hasAttribute(OPEN)) restoreTitle(title);
       if (!item || !item.node.hasAttribute(OPEN)) trackCloseHeading(null,null);
+      if (item?.key !== "pullRequest" || !item.node.hasAttribute(OPEN)) clearPrHeader();
       const escapeAttr = (value: string) => view?.CSS?.escape(value) ?? value.replace(/["\\]/g, "\\$&");
       const readParent = () => readInfoData(stack.querySelector(`[${SOURCE}]`))?.value.parent ?? null;
       const parentHost = item?.key === "parent" && item.node.hasAttribute(OPEN) ? item.node : null;
@@ -786,6 +817,21 @@ export function injectComposerInfo(document: Document): () => void {
           item.node.prepend(heading); generatedCloseHeadings.add(heading);
         }
         heading.setAttribute(`${MARK}-close-heading`, ""); closeHeadings.add(heading);
+        if (item.key === "pullRequest") {
+          const link = heading.querySelector<HTMLAnchorElement>('a[aria-label^="Pull request "][href]');
+          if (link) {
+            if (prHeading !== heading || prLink !== link) clearPrHeader();
+            prHeading = heading; prHeading.setAttribute(`${MARK}-pr-heading`, "");
+            if (prLink !== link) { prLink = link; prLinkTitle = link.getAttribute("title"); }
+            if (link.getAttribute("title") !== "GitHub에서 PR 열기") link.setAttribute("title","GitHub에서 PR 열기");
+            prTitle ??= document.createElement("span");
+            prTitle.setAttribute(`${MARK}-pr-title`, "");
+            const title = stack.querySelector(`[${SOURCE}]`)?.getAttribute(`${MARK}-pr-title`) || link.textContent?.trim() || "Pull request";
+            if (prTitle.textContent !== title) prTitle.textContent = title;
+            if (prTitle.getAttribute("title") !== title) prTitle.setAttribute("title",title);
+            if (prTitle.nextElementSibling !== link) heading.insertBefore(prTitle, link);
+          } else clearPrHeader();
+        }
         const title = item.trigger;
         if (title?.matches('button[aria-expanded][aria-controls]') && heading.contains(title) && item.key !== "pullRequest") {
           if (!readOnlyTitles.has(title)) readOnlyTitles.set(title,{tabIndex:title.getAttribute("tabindex"),ariaDisabled:title.getAttribute("aria-disabled")});
@@ -2278,8 +2324,10 @@ export function injectComposerInfo(document: Document): () => void {
       updateScrollHints();
       trackSecrets();
       guardShell(stack.closest("[data-promptbox-shell]"));
+      prMerge.sync();
     };
     return { sync, bar, close, editing, resize, cleanup() {
+      prMerge.cleanup();
       document.removeEventListener("pointerup", releasePress);
       document.removeEventListener("pointercancel", cancelPress);
       view!.removeEventListener("blur", cancelPress);
@@ -2328,6 +2376,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const row of collapseRows) row.removeAttribute(`${MARK}-collapse`);
       for (const heading of closeHeadings) heading.removeAttribute(`${MARK}-close-heading`);
       for (const heading of generatedCloseHeadings) heading.remove();
+      clearPrHeader();
       for (const node of owned) { node.removeAttribute(UNIT); node.removeAttribute(OPEN); }
       for (const node of wrappers) node.removeAttribute(WRAP);
     } };

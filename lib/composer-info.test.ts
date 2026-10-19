@@ -44,6 +44,139 @@ function fixture() {
   return { dom, document, tick, click };
 }
 
+test("PR Merge opens the native method menu without merging; only an option executes", async () => {
+  const f=fixture();
+  const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  const group=f.document.createElement('div');
+  group.innerHTML='<button type="button">Merge</button><button type="button" aria-label="Choose pull request merge method" aria-expanded="false"><svg><path /></svg></button>';
+  context.append(group);
+  const [merge,caret]=Array.from(group.querySelectorAll('button'));
+  let merges=0,opens=0;
+  merge.addEventListener('click',()=>merges++);
+  caret.addEventListener('keydown',event=>{if(event.key==='ArrowDown'){event.preventDefault();opens++;caret.setAttribute('aria-expanded','true');}});
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    merge.click();
+    assert.equal(merges,0,'the main button must never run its native immediate merge');
+    assert.equal(opens,1);
+    await f.tick();
+    assert.equal(merge.getAttribute('aria-haspopup'),'menu');
+    assert.equal(merge.getAttribute('aria-expanded'),'true');
+    assert.equal(merge.getAttribute('tabindex'),'-1','only the native full-pill trigger stays in the tab order');
+    assert.equal(merge.getAttribute('aria-hidden'),'true');
+    const option=f.document.createElement('button');option.setAttribute('role','menuitem');option.textContent='Squash merge';
+    option.addEventListener('click',()=>merges++);f.document.body.append(option);option.click();
+    assert.equal(merges,1,'native menu actions remain untouched');
+    caret.disabled=true;merge.click();assert.equal(opens,1);assert.equal(merges,1);
+  } finally {stop();}
+  merge.click();assert.equal(merges,2,'unload restores the native main action');
+  assert.equal(merge.hasAttribute('aria-haspopup'),false);
+  assert.equal(merge.hasAttribute('aria-hidden'),false);
+  assert.equal(merge.hasAttribute('tabindex'),false);
+  f.dom.window.close();
+});
+
+test("PR Merge also opens click-based compact menus, including nested targets and dynamic buttons", async () => {
+  const f=fixture(),stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');
+    const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+    const group=f.document.createElement('div');
+    group.innerHTML='<button type="button"><span>Squash merge</span></button><button type="button" aria-label="Choose pull request merge method" aria-expanded="false">▾</button>';
+    context.append(group);
+    const [merge,caret]=Array.from(group.querySelectorAll('button'));
+    let merges=0,opens=0;merge.addEventListener('click',()=>merges++);caret.addEventListener('click',()=>opens++);
+    group.querySelector('span')!.click();assert.equal(merges,0);assert.equal(opens,1);
+    caret.click();assert.equal(opens,2,'the caret still opens the same native menu');
+    merge.setAttribute('aria-disabled','true');merge.click();assert.equal(opens,2);assert.equal(merges,0);
+    const unrelated=f.document.createElement('button');unrelated.textContent='Merge';f.document.body.append(unrelated);
+    unrelated.addEventListener('click',()=>merges++);unrelated.click();assert.equal(merges,1);
+  } finally {stop();f.dom.window.close();}
+});
+
+test("PR method menus stay above the popover and the header reserves its close-button gutter", async () => {
+  const f=fixture();
+  const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  context.innerHTML='<div class="p-1" data-bb-chat-ui-info-close-heading><a aria-label="Pull request 12: Open">PR #12</a><div><button>Merge</button><button aria-label="Choose pull request merge method" aria-expanded="false" aria-controls="pr-methods">▾</button></div></div>';
+  const layer=f.document.createElement('div');layer.setAttribute('data-radix-popper-content-wrapper','');
+  layer.innerHTML='<div role="menu" id="pr-methods">Merge</div>';f.document.body.append(layer);
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');
+    const caret=context.querySelector('[aria-label="Choose pull request merge method"]')!;
+    caret.setAttribute('aria-expanded','true');await f.tick();
+    assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),true);
+    assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),true);
+    assert.equal(f.dom.window.getComputedStyle(context.firstElementChild!).paddingRight,'34px');
+  } finally {stop();}
+  assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),false);
+  assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),false);
+  f.dom.window.close();
+});
+
+test("PR header removes the hidden icon gutter and uses one outlined Merge control with a centered close", async () => {
+  const f=fixture();
+  const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  context.innerHTML='<div class="p-1"><a aria-label="Pull request 12: Open" class="px-2"><span title="Open" class="flex"><svg /></span><span>PR #12</span></a><div><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method" aria-expanded="false"><svg /></button></div></div></div>';
+  const native=f.document.createElement('style');native.textContent='.px-2 { padding-left:8px; }';f.document.head.append(native);
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    const style=(node:Element)=>f.dom.window.getComputedStyle(node);
+    const link=context.querySelector('a')!,group=context.querySelector('.inline-flex')!;
+    assert.equal(style(link).paddingLeft,'8px');
+    assert.equal(style(link).paddingRight,'8px');
+    assert.equal(style(link).paddingTop,'4px');
+    assert.equal(style(link).paddingBottom,'4px');
+    assert.equal(style(link.querySelector('span[title]')!).display,'none','hidden native artwork must not leave an empty box');
+    assert.equal(style(group).borderTopWidth,'1px');
+    assert.equal(style(group).borderRadius,'999px');
+    assert.equal(style(group).padding,'4px 34px 4px 12px');
+    assert.equal(style(group).position,'relative');
+    for(const button of group.querySelectorAll('button')){
+      assert.equal(style(button).backgroundColor,'rgba(0, 0, 0, 0)');
+      assert.equal(style(button).boxShadow,'none');
+      assert.equal(style(button).borderRadius,'0px');
+    }
+    const [label,trigger]=Array.from(group.querySelectorAll('button'));
+    assert.equal(style(label).pointerEvents,'none');
+    assert.equal(style(label).height,'20px');
+    assert.equal(style(trigger).position,'absolute');
+    assert.equal(style(trigger).width,'100%');
+    assert.equal(style(trigger).height,'100%');
+    assert.equal(style(trigger).padding,'0px 12px');
+    const close=context.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
+    assert.equal(style(close).top,'50%');assert.equal(style(close).transform,'translateY(-50%)');
+  } finally {stop();f.dom.window.close();}
+});
+
+test("PR header shows the SDK title on one line and keeps a separate GitHub link", async () => {
+  const f=fixture();
+  const source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+  source.setAttribute('data-bb-chat-ui-info-pr-title','긴 Pull request 제목으로 좁은 화면에서 말줄임을 확인');
+  const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  context.innerHTML='<div class="p-1"><a aria-label="Pull request 42: Open" href="https://github.com/example/repo/pull/42"><span>PR #42</span></a><div><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method">▾</button></div></div></div>';
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    const title=context.querySelector<HTMLElement>('[data-bb-chat-ui-info-pr-title]');
+    const link=context.querySelector<HTMLAnchorElement>('a[aria-label^="Pull request "]')!;
+    assert.equal(title?.textContent,'긴 Pull request 제목으로 좁은 화면에서 말줄임을 확인');
+    assert.equal(title?.getAttribute('title'),title?.textContent);
+    assert.equal(f.dom.window.getComputedStyle(title!).textOverflow,'ellipsis');
+    assert.equal(f.dom.window.getComputedStyle(title!).whiteSpace,'nowrap');
+    assert.equal(link.href,'https://github.com/example/repo/pull/42');
+    assert.equal(link.getAttribute('title'),'GitHub에서 PR 열기');
+    assert.equal(f.dom.window.getComputedStyle(link).fontSize,'0px');
+    source.setAttribute('data-bb-chat-ui-info-pr-title','갱신된 PR 제목');await f.tick();
+    assert.equal(title?.textContent,'갱신된 PR 제목');
+  } finally {stop();}
+  assert.equal(context.querySelector('[data-bb-chat-ui-info-pr-title]'),null);
+  assert.equal(context.querySelector('a')?.hasAttribute('title'),false);
+  f.dom.window.close();
+});
+
 // The historical DOM fixtures encode SDK responses as JSON. Adapt only the fixtures;
 // production bridges publish typed objects and never read these attributes.
 function bridgeFixtureData(dom: JSDOM) {
@@ -889,7 +1022,7 @@ test("named native actions stay separate from popover close", async () => {
     assert.ok(f.document.querySelector('[aria-label="실행 환경 닫기"]'));
     f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');
     const merge = context.querySelector<HTMLElement>("div.inline-flex.rounded")!;
-    assert.equal(paint(merge).borderTopWidth, "0px");
+    assert.equal(paint(merge).borderTopWidth, "1px", "the Merge group has one outer outline");
     assert.equal(paint(context.querySelector("input")!).borderTopWidth, "1px");
     context.querySelector<HTMLButtonElement>("div.inline-flex button")!.click();
     assert.equal(merges, 1);

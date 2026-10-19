@@ -78,9 +78,8 @@ export function startComposerInfoRefresh(
       : lifecycle==="removing" ? "Machine removal in progress" : lifecycle==="cleanup-failed" ? "Machine cleanup failed"
       : environment?.status==="destroyed" ? "Environment unavailable" : null;
     const readOnly={label,canRestore:thread.canRestoreEnvironment};
-    if (!label) return {queue:[] as Queue,pullRequest:null,readOnly,parentThreadId:thread.parentThreadId};
     const results=await Promise.allSettled([
-      reads.queue!==false ? sdk.threads.queuedMessages.list({threadId,signal}) : Promise.resolve([] as Queue),
+      label && reads.queue!==false ? sdk.threads.queuedMessages.list({threadId,signal}) : Promise.resolve([] as Queue),
       reads.pullRequest!==false && thread.environmentId ? sdk.environments.pullRequest({environmentId:thread.environmentId,signal}) : Promise.resolve(null),
     ]);
     return {queue:results[0].status==="fulfilled" ? results[0].value : [],

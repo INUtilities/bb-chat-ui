@@ -51,14 +51,22 @@ function child(id:string, archivedAt:number|null=null) {
 }
 async function ready() { const f=fixture(); await tick(); f.calls.length=0; return f; }
 
+test('active thread reads PR metadata for the popover title without loading the queue',async()=>{
+  const f=fixture();await tick();
+  assert.equal(f.calls.includes('pr'),true);
+  assert.equal(f.calls.includes('queue'),false);
+  assert.equal(f.snapshots.at(-1).pullRequest?.outcome,'absent');
+  f.stop();
+});
+
 test('initial entry, focus refresh and reconnect synchronize all sources',async t=>{
   const f=fixture(); await tick();
-  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','timeline']);
+  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','pr','timeline']);
   assert.equal(f.snapshots.length,1);
   f.calls.length=0; f.refresh(); await flush(t);
-  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','timeline']);
+  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','pr','timeline']);
   f.calls.length=0; f.reconnect(); await flush(t);
-  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','timeline']);
+  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','pr','timeline']);
   f.stop();assert.equal(f.handlers.size,0);
 });
 
@@ -92,9 +100,9 @@ test('parent titles read only that parent and parent relation changes read the c
   f.emit('parent',['title-changed']);await flush(t);
   assert.deepEqual(f.calls,['get:parent']);assert.equal(f.snapshots.at(-1).parent.title,'새 제목');
   f.calls.length=0;f.setParent('next');f.emit('thread',['parent-changed']);await flush(t);
-  assert.deepEqual(f.calls,['get:thread','get:next']);assert.equal(f.snapshots.at(-1).parent.id,'next');
+  assert.deepEqual(f.calls,['get:thread','pr','get:next']);assert.equal(f.snapshots.at(-1).parent.id,'next');
   f.calls.length=0;f.setParent(null);f.emit('thread',['parent-changed']);await flush(t);
-  assert.deepEqual(f.calls,['get:thread']);assert.equal(f.snapshots.at(-1).parent,null);
+  assert.deepEqual(f.calls,['get:thread','pr']);assert.equal(f.snapshots.at(-1).parent,null);
   f.calls.length=0;f.emit('parent',['title-changed']);await flush(t);assert.deepEqual(f.calls,[]);f.stop();
 });
 
@@ -103,16 +111,16 @@ test('archive and environment changes update context; readonly queues and PR rem
   assert.deepEqual(f.calls.sort(),['get:thread','pr','queue']);
   assert.equal(f.snapshots.at(-1).readOnly.label,'Archived thread');
   f.calls.length=0;f.setArchived(false);f.emit('thread',['environment-changed']);await flush(t);
-  assert.deepEqual(f.calls,['get:thread']);assert.equal(f.snapshots.at(-1).queue.length,0);
+  assert.deepEqual(f.calls,['get:thread','pr']);assert.equal(f.snapshots.at(-1).queue.length,0);
   assert.equal(f.snapshots.at(-1).readOnly.label,null);f.stop();
 });
 
 test('missing event metadata stays conservative while bursts merge only their required reads',async t=>{
   const f=await ready();f.emit('thread',['events-appended']);f.emit('child',['title-changed']);
   f.emit('parent',['title-changed']);await flush(t);
-  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','timeline']);
+  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','pr','timeline']);
   f.calls.length=0;f.emit(undefined,['archived-changed']);await flush(t);
-  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','timeline']);f.stop();
+  assert.deepEqual(f.calls.sort(),['children:0','get:parent','get:thread','pr','timeline']);f.stop();
 });
 
 test('an invalidated in-flight batch is retried with the union and never publishes stale state',async t=>{
@@ -123,7 +131,7 @@ test('an invalidated in-flight batch is retried with the union and never publish
   f.setTimeline(async()=>({goal:{objective:'최신'}}));gate.resolve({goal:{objective:'이전'}});await tick();
   assert.equal(f.snapshots.length,before,'in-flight result invalidated by context change');
   await flush(t);
-  assert.deepEqual(f.calls.sort(),['get:next','get:thread','timeline','timeline']);
+  assert.deepEqual(f.calls.sort(),['get:next','get:thread','pr','timeline','timeline']);
   assert.equal(f.snapshots.at(-1).timeline.goal.objective,'최신');
   assert.equal(f.snapshots.at(-1).parent.id,'next');f.stop();
 });

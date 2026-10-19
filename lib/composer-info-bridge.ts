@@ -61,6 +61,7 @@ export function ComposerInfoBridge() {
       ref:source, hidden:true,
       [`${mark}-thread`]:threadId,
       [`${mark}-settings`]:"",
+      [`${mark}-pr-title`]:pullRequest?.title ?? undefined,
       [`${mark}-read-only-label`]:data?.readOnly.label ?? undefined,
     }, ...infoKinds.map(kind => createElement("span", { key:kind.key, [`${mark}-icon`]:kind.key },
       createElement(experimental_Icon, { name:kind.icon, "aria-hidden":true }))),
