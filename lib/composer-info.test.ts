@@ -2089,7 +2089,7 @@ test("child avatars use host provider artwork, including late and updated logos,
   const source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
   source.setAttribute('data-bb-chat-ui-info-children',JSON.stringify([
     {id:'codex-child',title:'Code review',providerId:'codex',state:'run'},
-    {id:'claude-child',title:'UI review',providerId:'claude-code',state:'done'},
+    {id:'claude-child',title:'UI review',providerId:'claude-code',state:'done',unread:true},
   ]));
   const stop=injectComposerInfo(f.document);
   const avatars=()=>[...f.document.querySelectorAll('[data-bb-chat-ui-info-trigger="children"] [data-bb-chat-ui-info-avatar]')];
@@ -2108,6 +2108,12 @@ test("child avatars use host provider artwork, including late and updated logos,
     }
     assert.ok(avatars()[0].querySelector('[data-provider]')?.getAttribute('style')?.includes('/codex.svg'));
     assert.equal(avatars()[1].querySelector('[data-bb-chat-ui-info-avatar-dot] svg'),null,'completion uses a dot without a check');
+    assert.equal(avatars()[1].getAttribute('data-unread'),'true');
+    source.setAttribute('data-bb-chat-ui-info-children',JSON.stringify([
+      {id:'codex-child',title:'Code review',providerId:'codex',state:'run'},
+      {id:'claude-child',title:'UI review',providerId:'claude-code',state:'done',unread:false},
+    ]));await f.tick();
+    assert.equal(avatars()[1].getAttribute('data-unread'),'false','reading a child updates its avatar without a runtime status change');
     source.querySelector('[data-bb-chat-ui-info-child-icon="codex-child"] span')!.setAttribute('style','mask-image:url(/codex-updated.svg)');
     source.setAttribute('data-bb-chat-ui-info-child-providers','updated'); await f.tick();
     assert.ok(avatars()[0].querySelector('[data-provider]')?.getAttribute('style')?.includes('/codex-updated.svg'),'provider metadata refresh updates a same-id avatar');
@@ -2158,7 +2164,9 @@ test("child status dots share the same size and completion uses the thread theme
       assert.equal(css.height, "6px", state);
     }
     const doneRule=[...style.sheet!.cssRules].find(rule=>"selectorText" in rule && rule.selectorText==='[data-bb-chat-ui-info-avatar][data-state="done"] [data-bb-chat-ui-info-avatar-dot]') as CSSStyleRule;
-    assert.equal(doneRule.style.background, "var(--timeline-accent)");
+    assert.equal(doneRule.style.background, "var(--subtle-foreground)");
+    const unreadRule=[...style.sheet!.cssRules].find(rule=>"selectorText" in rule && rule.selectorText==='[data-bb-chat-ui-info-avatar][data-state="done"][data-unread="true"] [data-bb-chat-ui-info-avatar-dot]') as CSSStyleRule;
+    assert.equal(unreadRule.style.background,"var(--timeline-accent)");
   } finally {
     dom.window.close();
   }

@@ -3,7 +3,7 @@ import { experimental_Icon, experimental_ProviderIcon, experimental_useProviders
 import { backgroundActivities } from "./background-activity.ts";
 import { publishInfoData, clearComposerData } from "./composer-data.ts";
 import { composerInfoReads, infoKinds, listedInfo } from "./composer-info-settings.ts";
-import { childExecutionLabel, childState } from "./composer-child.ts";
+import { childExecutionLabel, childState, childUnread } from "./composer-child.ts";
 import { startComposerInfoRefresh, type ComposerInfoSnapshot } from "./composer-info-refresh.ts";
 import { createThreadRestorer, type RestoreState } from "./composer-restore.ts";
 
@@ -32,7 +32,7 @@ export function ComposerInfoBridge() {
     const data = snapshot?.threadId === threadId ? snapshot : null;
     publishInfoData(source.current, {
       settings: values ?? {}, parent: reads.parent ? data?.parent ?? null : null, openThread,
-      children: (reads.children ? data?.children ?? [] : []).map(child => ({ id: child.id, title: child.title ?? child.titleFallback ?? "Child Thread", providerId: child.providerId, state: childState(child.runtime.displayStatus, child.hasPendingInteraction) })),
+      children: (reads.children ? data?.children ?? [] : []).map(child => ({ id: child.id, title: child.title ?? child.titleFallback ?? "Child Thread", providerId: child.providerId, unread: childUnread(child), state: childState(child.runtime.displayStatus, child.hasPendingInteraction) })),
       background: listed.includes("background") ? backgroundActivities(data?.timeline) : [],
     });
   }, [threadId, snapshot, values, openThread]);
@@ -84,7 +84,7 @@ export function ComposerInfoBridge() {
         const state = childState(child.runtime.displayStatus, child.hasPendingInteraction);
         const metadata = childExecutionLabel(child.executionOptions);
         return createElement("button", { key:child.id, type:"button", [`${mark}-child-row`]:"", onClick:() => navigate.toThread(child.id) },
-          createElement("span", { [`${mark}-avatar`]:"", "data-state":state, "aria-hidden":true },
+          createElement("span", { [`${mark}-avatar`]:"", "data-state":state, "data-unread":String(childUnread(child)), "aria-hidden":true },
             createElement("span", { [`${mark}-provider-icon`]:"" }, providerIcon(child.providerId)),
             createElement("span", { [`${mark}-avatar-dot`]:"" })),
           createElement("span", { [`${mark}-child-main`]:"" },

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { childExecutionLabel, childEventRefreshes, childInitial, childListArgs, childState, visibleChildren } from './composer-child.ts';
+import { childUnread, childExecutionLabel, childEventRefreshes, childInitial, childListArgs, childState, visibleChildren } from './composer-child.ts';
 
 test('child avatars abbreviate actual titles and reflect pending input before activity', () => {
   assert.equal(childInitial('UI review'), 'UI');
@@ -43,7 +43,7 @@ test('archived-changed refreshes before the child id gate, including a child nev
   assert.equal(childEventRefreshes({ changes: ['archived-changed'] }, scope), true);
   assert.equal(childEventRefreshes({ id: 'never-seen', changes: ['status-changed'] }, scope), false);
   assert.equal(childEventRefreshes({ id: 'live', changes: ['status-changed'] }, scope), true);
-  assert.equal(childEventRefreshes({ id: 'live', changes: ['read-state-changed'] }, scope), false);
+  assert.equal(childEventRefreshes({ id: 'live', changes: ['read-state-changed'] }, scope), true);
   assert.equal(childEventRefreshes({ id: 'new', changes: ['thread-created'] }, scope), true);
   assert.equal(childEventRefreshes({ id: 'mom', changes: ['title-changed'] }, { ...scope, parentId: 'mom' }), true);
   assert.equal(childEventRefreshes({ id: 'mom', changes: ['status-changed'] }, { ...scope, parentId: 'mom' }), false);
@@ -57,4 +57,16 @@ test('child metadata shows only model and effort without inventing missing value
   assert.equal(childExecutionLabel({model:'gpt-6.1-sol',reasoningLevel:'high'}),'gpt-6.1-sol · high');
   assert.equal(childExecutionLabel({model:'gpt-6.1-sol'}),'gpt-6.1-sol');
   assert.equal(childExecutionLabel(null),'');
+});
+
+
+test('child unread follows attention time and user read time',()=>{
+  assert.equal(childUnread({lastReadAt:null,latestAttentionAt:100}),true);
+  assert.equal(childUnread({lastReadAt:90,latestAttentionAt:100}),true);
+  assert.equal(childUnread({lastReadAt:100,latestAttentionAt:100}),false);
+  assert.equal(childUnread({lastReadAt:110,latestAttentionAt:100}),false);
+  const scope={threadId:'parent',parentId:null,childIds:new Set(['child'])};
+  assert.equal(childEventRefreshes({id:'child',changes:['read-state-changed']},scope),true);
+  assert.equal(childEventRefreshes({id:'parent',changes:['read-state-changed']},scope),false);
+  assert.equal(childEventRefreshes({id:'other',changes:['read-state-changed']},scope),false);
 });

@@ -293,7 +293,8 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-state="run"] [${MARK}-avatar-dot] { animation:bb-info-breathe 2.6s ease-in-out infinite; }
 [${MARK}-avatar][data-state="wait"] [${MARK}-avatar-dot] { background:var(--warning-text,#cfb577); }
 [${MARK}-avatar][data-state="error"] [${MARK}-avatar-dot] { background:var(--destructive-text,#d99090); }
-[${MARK}-avatar][data-state="done"] [${MARK}-avatar-dot] { background:var(--timeline-accent); }
+[${MARK}-avatar][data-state="done"] [${MARK}-avatar-dot] { background:var(--subtle-foreground); }
+[${MARK}-avatar][data-state="done"][data-unread="true"] [${MARK}-avatar-dot] { background:var(--timeline-accent); }
 [${MARK}-avatar] [${MARK}-provider-icon], [${MARK}-avatar] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
 [${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; padding:16px 24px !important; order:0 !important; border:0 !important; border-radius:18px !important; background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); color:var(--foreground); box-shadow:0 12px 32px -14px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
@@ -1536,6 +1537,7 @@ export function injectComposerInfo(document: Document): () => void {
           } else avatar.textContent = childInitial(child.title);
           avatar.setAttribute("data-child", child.id);
           avatar.setAttribute("data-state", stateOf(child));
+          avatar.setAttribute("data-unread", String(child.unread ?? false));
           avatar.style.zIndex = String(index + 1);
           const dot = document.createElement("span"); dot.setAttribute(`${MARK}-avatar-dot`, "");
           avatar.append(dot);

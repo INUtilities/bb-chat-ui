@@ -254,3 +254,12 @@ test('child execution lookup failure keeps known metadata and retries on refresh
   assert.equal(f.snapshots.at(-1).children[0].executionOptions.model,'gpt-6-astra');
   f.stop();
 });
+
+test('reading a known child refreshes its read state without loading the parent timeline',async t=>{
+  const f=await ready();
+  f.setChildren([{...child('child'),lastReadAt:100,latestAttentionAt:100}]);
+  f.emit('child',['read-state-changed']);await flush(t);
+  assert.deepEqual(f.calls,['children:0']);
+  assert.equal(f.snapshots.at(-1).children[0].lastReadAt,100);
+  f.stop();
+});

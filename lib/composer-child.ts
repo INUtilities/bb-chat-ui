@@ -1,7 +1,7 @@
 import { parentEventMatters } from "./composer-parent.ts";
 
 export type ChildState = "run" | "wait" | "done" | "error";
-export interface ChildSummary { id:string; title:string; providerId?:string; state?:ChildState; running?:boolean; }
+export interface ChildSummary { id:string; title:string; providerId?:string; state?:ChildState; running?:boolean; unread?:boolean; }
 
 export function childInitial(title: string): string {
   const words = title.trim().split(/\s+/).filter(Boolean);
@@ -18,6 +18,10 @@ export function childState(status: string, needsInput: boolean): ChildState {
 
 export function childExecutionLabel(options?: {model?:string;reasoningLevel?:string}|null):string {
   return [options?.model,options?.reasoningLevel].filter(Boolean).join(" · ");
+}
+
+export function childUnread(child:{lastReadAt:number|null;latestAttentionAt:number}):boolean {
+  return child.lastReadAt===null || child.lastReadAt<child.latestAttentionAt;
 }
 
 export function childListArgs(parentThreadId: string, offset: number, signal?: AbortSignal) {
@@ -47,6 +51,7 @@ export function childEventRefreshes(
   if (event.changes.some(change => change === "thread-created" || change === "parent-changed")) return true;
   if (scope.parentId && event.id === scope.parentId) return parentEventMatters(event.changes);
   if (event.id !== scope.threadId && (!event.id || !scope.childIds.has(event.id))) return false;
+  if (event.id!==scope.threadId && event.changes.includes("read-state-changed")) return true;
   if (event.changes.some(change => change !== "events-appended" && change !== "read-state-changed" && change !== "tabs-changed" && change !== "terminals-changed")) return true;
   const types = event.metadata?.eventTypes;
   return event.changes.includes("events-appended") && (!types || types.some(type => (timelineEventTypes as readonly string[]).includes(type)));
