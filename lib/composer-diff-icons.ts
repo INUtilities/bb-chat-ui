@@ -20,7 +20,7 @@ export function commitIcon(document:Document):SVGSVGElement {
   return svg;
 }
 
-// BB thread information glyphs: Diff* and Copy / CircleQuestion (Hugeicons).
+// Hugeicons free SVGs at c1b280d3964e115dfdefb58241f6d93ca68f7b6d (MIT); source mapping and full notice: THIRD_PARTY_NOTICES.md.
 const fileGlyphs:Record<string, readonly (readonly [string, Record<string,string>])[]> = {
   DiffModified: [
     ["path", {"d":"M11.9922 12V11.2M12.9922 12C12.9922 11.4477 12.5445 11 11.9922 11C11.4399 11 10.9922 11.4477 10.9922 12C10.9922 12.5523 11.4399 13 11.9922 13C12.5445 13 12.9922 12.5523 12.9922 12Z"}],

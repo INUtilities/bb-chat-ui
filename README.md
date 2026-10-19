@@ -71,7 +71,8 @@ Child Thread는 배경 없는 색상 아바타 스택과 상태 점으로 표시
 
 ## license
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Copied icon sources and their original notices are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The app bundle retains the full notices in its `thirdPartyIconNotices` metadata export.
 
 정보 필·원 버튼·팝오버·상세 버튼은 컴포저와 같은 테마 기반 glass 표면을 쓴다. 채팅·sidebar 배경의 색조와 라이트·다크 투명도를 함께 따르고, 주변 버튼과 같은 블러·부드러운 하이라이트를 적용한다. Diff 상세에는 HEAD 이후 미커밋 파일별 통계와 전체 브랜치명, PR 후보·미푸시 커밋 수 및 비교 대상, 커밋 목록을 표시하며 열린 상태에서도 갱신한다. main/master의 clean pill은 origin 대비 미푸시 수, 작업 브랜치의 clean pill은 PR 후보 수만 표시한다. 브랜치의 미푸시 정보는 팝오버에만 둔다. 이름은 pill에서만 `…` 포함 10자로 제한한다. clean main/master에서 미푸시가 0이면 상단 pill을 숨기고 전체 정보의 상세는 유지한다. 원격 ref가 없으면 숫자를 0으로 가정하지 않는다. 원격 비교는 마지막 확인 상태 기준이며 자동 fetch·push는 하지 않는다.
 
