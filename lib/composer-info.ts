@@ -342,6 +342,9 @@ ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-are
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button { font-size:11px; min-height:28px; border:1px solid var(--border); border-radius:7px; padding:5px 9px; background:var(--bb-chat-ui-info-face); color:var(--foreground); }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:first-child { order:2; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:last-child { order:1; }
+${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] { width:28px; min-width:28px; height:28px; padding:0 !important; gap:0; border-radius:8px; font-size:0 !important; }
+${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] > :not([${MARK}-bulk-icon]) { display:none !important; }
+[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:16px; height:16px; pointer-events:none; }
 ${DETAIL}.agentation-staging-shell > .grid { grid-area:body; width:100%; }
 ${DETAIL}.agentation-staging-shell > .grid,
 ${DETAIL}.agentation-staging-shell > .grid > div { overflow:visible !important; }
@@ -640,6 +643,40 @@ export function injectComposerInfo(document: Document): () => void {
     const goalClearLabels = new Map<HTMLElement, HTMLElement>();
     const planExitLabels = new Map<HTMLElement, HTMLElement>();
     const fallbackDismissLabels = new Map<HTMLElement, HTMLElement>();
+    const bulkActions = new Map<HTMLElement, {ariaLabel:string|null; title:string|null; icon:Element; source:string}>();
+    const restoreBulkAction = (button:HTMLElement) => {
+      const saved=bulkActions.get(button);if(!saved)return;
+      saved.icon.remove();button.removeAttribute(`${MARK}-bulk-action`);
+      for(const [key,value] of [["aria-label",saved.ariaLabel],["title",saved.title]] as const){
+        if(value===null)button.removeAttribute(key);else button.setAttribute(key,value);
+      }
+      bulkActions.delete(button);
+    };
+    const syncBulkActions = (host:HTMLElement|null) => {
+      const current=new Set<HTMLElement>();
+      for(const button of Array.from(host?.querySelectorAll<HTMLElement>(':scope > div:first-child > div:last-child > button')??[])){
+        let saved=bulkActions.get(button);
+        const label=Array.from(button.childNodes).filter(node=>node!==saved?.icon).map(node=>node.textContent).join('').trim();
+        const kind=label==='Discard all'?'discard':label==='Send all'||label==='Sending…'?'send':null;
+        if(!kind)continue;
+        const artwork=kind==='send'
+          ?Array.from(button.querySelectorAll('svg,[data-icon-root]')).find(node=>!node.closest(`[${MARK}-bulk-icon]`))
+          :host?.querySelector('li button[aria-label="Discard annotation"] :is(svg,[data-icon-root])');
+        if(!artwork&&!saved)continue;
+        if(!saved){saved={ariaLabel:button.getAttribute('aria-label'),title:button.getAttribute('title'),icon:artwork!.cloneNode(true) as Element,source:''};bulkActions.set(button,saved);}
+        if(artwork&&saved.source!==artwork.outerHTML){
+          saved.icon.remove();saved.source=artwork.outerHTML;saved.icon=artwork.cloneNode(true) as Element;
+          for(const node of [saved.icon,...Array.from(saved.icon.querySelectorAll('[id]'))])node.removeAttribute('id');
+          saved.icon.setAttribute(`${MARK}-bulk-icon`,'');saved.icon.setAttribute('aria-hidden','true');
+        }
+        if(saved.icon.parentElement!==button)button.append(saved.icon);
+        if(button.getAttribute(`${MARK}-bulk-action`)!==kind)button.setAttribute(`${MARK}-bulk-action`,kind);
+        if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
+        if(button.getAttribute('title')!==label)button.setAttribute('title',label);
+        current.add(button);
+      }
+      for(const button of bulkActions.keys())if(!current.has(button))restoreBulkAction(button);
+    };
     const syncNativeControls = () => {
       const currentRows = new Set<HTMLElement>();
       for (const row of Array.from(stack.querySelectorAll<HTMLElement>(WORKFLOW_COLLAPSE))) {
@@ -733,6 +770,7 @@ export function injectComposerInfo(document: Document): () => void {
       namedAction(goalClearLabels, "goal", '[aria-label="Clear active Goal"]', `${MARK}-goal-clear-label`, button => button.hasAttribute("disabled") ? "해제 중…" : "Goal 해제");
       namedAction(planExitLabels, "plan", '[aria-label="Exit plan mode"]', `${MARK}-plan-exit-label`, button => button.hasAttribute("disabled") ? "종료 중…" : "Plan 종료");
       namedAction(fallbackDismissLabels, "fallback", '[aria-label="Dismiss model fallback"]', `${MARK}-fallback-dismiss-label`, () => "Fallback 해제");
+      syncBulkActions(item?.key === "annotations" && item.node.hasAttribute(OPEN) ? item.node : null);
       if (!item || !item.node.hasAttribute(OPEN) || item.key === "diff" || item.node.matches(".agentation-staging-shell") || item.node.querySelector(`[${MARK}-dismiss]:not([${MARK}-native-dismiss])`)) return;
       let heading:HTMLElement | null = null;
       if (item.key !== "parent") {
@@ -2285,6 +2323,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const heading of panelHeadings) heading.removeAttribute(`${MARK}-panel-heading`);
       for (const heading of generatedHeadings) heading.remove();
       for (const button of nativeDismisses.values()) button.remove();
+      for (const button of bulkActions.keys()) restoreBulkAction(button);
       for (const [host, row] of parentRows) { row.remove(); clearParentMarks(host); }
       for (const row of collapseRows) row.removeAttribute(`${MARK}-collapse`);
       for (const heading of closeHeadings) heading.removeAttribute(`${MARK}-close-heading`);

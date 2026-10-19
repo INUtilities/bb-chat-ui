@@ -1992,8 +1992,8 @@ test("Agentation uses the browser picker icon and count while retaining native c
   const render = (collapsed: boolean) => {
     shell.classList.toggle('agentation-staging-shell--expanded', !collapsed);
     const icon = '<svg data-icon="ChatFeedback" data-feedback-icon><path d="M9 10h6" /></svg>';
-    shell.innerHTML = `<div>${collapsed ? `<button aria-expanded="false" aria-label="Expand 3 staged annotations">${icon}Annotations <span class="tabular-nums">3</span></button>` : `<div>${icon}<p>Annotations</p><button aria-expanded="true" aria-label="Collapse staged annotations"><svg data-chevron /></button></div><div><button data-discard-all>Discard all</button><button data-send-all>Send all</button></div>`}</div>
-      <div class="grid overflow-hidden"><div class="min-h-0 overflow-hidden"><div><ul>${[1,2,3].map(id => `<li><span class="sr-only">Description ${id}</span><span aria-hidden="true"><span>Composer</span><span>button</span><span>→</span><span>Feedback ${id}</span></span><button aria-label="Mention annotation">Mention</button><button aria-label="Send annotation to this thread">Send</button><button aria-label="Discard annotation">Discard</button></li>`).join('')}</ul></div></div></div>`;
+    shell.innerHTML = `<div>${collapsed ? `<button aria-expanded="false" aria-label="Expand 3 staged annotations">${icon}Annotations <span class="tabular-nums">3</span></button>` : `<div>${icon}<p>Annotations</p><button aria-expanded="true" aria-label="Collapse staged annotations"><svg data-chevron /></button></div><div><button data-discard-all title="Original discard hint">Discard all</button><button data-send-all><svg data-native-up><path d="M12 19V5m-7 7 7-7 7 7" /></svg>Send all</button></div>`}</div>
+      <div class="grid overflow-hidden"><div class="min-h-0 overflow-hidden"><div><ul>${[1,2,3].map(id => `<li><span class="sr-only">Description ${id}</span><span aria-hidden="true"><span>Composer</span><span>button</span><span>→</span><span>Feedback ${id}</span></span><button aria-label="Mention annotation">Mention</button><button aria-label="Send annotation to this thread">Send</button><button aria-label="Discard annotation"><svg data-native-trash><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14" /></svg>Discard</button></li>`).join('')}</ul></div></div></div>`;
     shell.querySelector('button[aria-expanded]')!.addEventListener('click', () => render(!collapsed));
     shell.querySelector('[data-send-all]')?.addEventListener('click', () => sent++);
   };
@@ -2025,6 +2025,32 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(pill.querySelector('[data-chevron]'), null);
   const send = shell.querySelector('[data-send-all]')!;
   const sendParent = send.parentElement;
+  const discard=shell.querySelector<HTMLButtonElement>('[data-discard-all]')!;
+  const discardParent=discard.parentElement;
+  assert.equal(send.getAttribute('data-bb-chat-ui-info-bulk-action'),'send');
+  assert.equal(discard.getAttribute('data-bb-chat-ui-info-bulk-action'),'discard');
+  assert.equal(send.getAttribute('aria-label'),'Send all');
+  assert.equal(discard.getAttribute('aria-label'),'Discard all');
+  assert.equal(send.getAttribute('title'),'Send all');
+  assert.equal(discard.getAttribute('title'),'Discard all');
+  assert.ok(send.querySelector('[data-bb-chat-ui-info-bulk-icon] [data-native-up], [data-native-up][data-bb-chat-ui-info-bulk-icon]'));
+  assert.ok(discard.querySelector('[data-native-trash][data-bb-chat-ui-info-bulk-icon]'));
+  for(const button of [send,discard]){
+    const css=f.dom.window.getComputedStyle(button);
+    assert.equal(css.width,'28px');assert.equal(css.height,'28px');assert.equal(css.fontSize,'0px');assert.equal(css.padding,'0px');
+  }
+  send.innerHTML='Retry';await f.tick();
+  assert.equal(send.getAttribute('data-bb-chat-ui-info-bulk-action'),null,'error recovery stays a readable native button');
+  assert.equal(send.getAttribute('aria-label'),null);assert.equal(send.getAttribute('title'),null);
+  send.innerHTML='<svg data-native-up><path d="M12 19V5m-7 7 7-7 7 7" /></svg>Sending…';
+  (send as HTMLButtonElement).disabled=true;await f.tick();
+  assert.equal(send.getAttribute('aria-label'),'Sending…');
+  assert.equal(send.querySelectorAll('[data-bb-chat-ui-info-bulk-icon]').length,1);
+  (send as HTMLButtonElement).click();assert.equal(sent,0,'native disabled state still blocks sending');
+  (send as HTMLButtonElement).disabled=false;
+  Array.from(send.childNodes).find(node=>node.nodeType===3)!.textContent='Send all';await f.tick();
+  assert.equal(send.getAttribute('aria-label'),'Send all');
+  assert.equal(discard.parentElement,discardParent);
   const header=sendParent!.previousElementSibling!;
   const paint=(node:Element)=>f.dom.window.getComputedStyle(node);
   const collapse=header.querySelector('[aria-label="Collapse staged annotations"]')!;
@@ -2047,6 +2073,10 @@ test("Agentation uses the browser picker icon and count while retaining native c
   await f.tick();
   assert.equal(shell.hasAttribute('data-bb-chat-ui-info-open'), false);
   stop();
+  assert.equal(send.getAttribute('data-bb-chat-ui-info-bulk-action'),null);
+  assert.equal(send.querySelector('[data-bb-chat-ui-info-bulk-icon]'),null);
+  assert.equal(send.getAttribute('aria-label'),null);
+  assert.equal(discard.getAttribute('title'),'Original discard hint');
   for (const wrapper of shell.querySelectorAll('.overflow-hidden')) {
     assert.equal(f.dom.window.getComputedStyle(wrapper).overflow, 'hidden', 'unloading restores native body clipping');
   }
