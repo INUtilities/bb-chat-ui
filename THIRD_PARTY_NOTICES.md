@@ -61,7 +61,8 @@ were replaced directly from this release on 2026-10-19.
 
 Adaptations: activity uses React and currentColor; quote and file use a black stroke
 as a CSS alpha mask, omit fixed SVG dimensions, and inherit the surrounding text
-color through CSS. Quote is rotated 180 degrees to display an opening quote.
+color through CSS. Quote is rotated 180 degrees to display an opening quote and scaled to 85%
+around its center. The CSS icon box dimensions remain unchanged.
 
 ISC License
 

@@ -16,9 +16,9 @@ const COMPACT_QUOTE_MENTION_LINE = `[data-promptbox-compact-content][data-bb-cha
 const SENT_MENTION_PILL =
   "[data-message-column] [data-markdown-preview] .prompt-mention-pill";
 
-// Lucide 0.300.0 icons/quote.svg (ISC), rotated for an opening quote; see THIRD_PARTY_NOTICES.md.
+// Lucide 0.300.0 icons/quote.svg (ISC), rotated and centered at 85% for an opening quote; see THIRD_PARTY_NOTICES.md.
 const QUOTE_ICON = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(180 12 12)"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(1.8 1.8) scale(.85) rotate(180 12 12)"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></g></svg>`,
 );
 export const QUOTE_MARK_MASK = `url("data:image/svg+xml,${QUOTE_ICON}") center / contain no-repeat`;
 
