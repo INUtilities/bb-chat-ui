@@ -20,7 +20,7 @@ test('visibility supports top, catalog-only and off while retaining legacy check
     assert.equal(descriptor.default, '상단 표시');
     assert.deepEqual(descriptor.options, ['상단 표시','목록에만 표시','끄기']);
   }
-  assert.equal(Object.hasOwn(composerInfoSettings,'showEmptyIcons'),false,'inactive icons always live in the stack');
+  assert.equal(Object.hasOwn(composerInfoSettings,'showEmptyIcons'),false,'the obsolete empty-icon setting stays removed');
 });
 
 test('chat ui settings omit the latest layout choice and ignore a stored value', () => {
@@ -46,4 +46,11 @@ test('read gates stop only explicit off and share the timeline across Plan, Goal
     assert.equal(composerInfoReads({...off,showParent:value}).parent,true);
     assert.equal(listedInfo({...off,showDiff:value}).includes('diff'),true);
   }
+});
+
+test('inactive information has an explicit opt-in setting with a hidden default',()=>{
+ assert.equal(composerInfoSettings.showInactiveInfo.type,'boolean');
+ assert.equal(composerInfoSettings.showInactiveInfo.default,false);
+ assert.match(composerInfoSettings.showInactiveInfo.label,/비활성/);
+ assert.deepEqual(composerInfoReads({showInactiveInfo:true}),composerInfoReads({showInactiveInfo:false}),'the display option does not change SDK reads');
 });

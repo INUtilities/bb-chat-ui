@@ -13,9 +13,10 @@ afterEach(() => {
   else Reflect.deleteProperty(globalThis, "document");
 });
 
+// Existing all-family UI scenarios opt in; the default-hidden behavior has its own empty/overflow fixture.
 function fixture() {
   const dom = new JSDOM(`<html><head></head><body><div data-scroll-footer><div class="chat-prompt-box"><div data-promptbox-shell><div class="grid">
-    <div style="display:contents"><span hidden data-bb-chat-ui-info-settings='{}'></span></div>
+    <div style="display:contents"><span hidden data-bb-chat-ui-info-settings='{"showInactiveInfo":true}'></span></div>
     <div class="space-y-2"><section aria-label="Child threads"><button id="thread-prompt-banner-child-threads-toggle" aria-expanded="false" aria-label="Active child thread: Review" aria-controls="children">Review</button><div id="children" hidden><a href="/review">Review</a></div></section>
     <section aria-label="Thread context before sending"><button id="thread-prompt-banner-git-toggle">+12 −4 · 3 files</button><a aria-label="Pull request 12: Open" href="https://example.com/pr/12">#12</a></section></div>
     <section aria-label="Goal"><button aria-expanded="false" aria-controls="goal">Goal</button><div id="goal" hidden>Ship composer</div><button aria-label="Clear active Goal">Clear</button></section>
@@ -1555,7 +1556,7 @@ test("overflow reserves the all-information button and prefers Diff and children
 test("pills use a sequential droplet entrance once, preserving avatar motion and cancelling on unload", async () => {
   const f = fixture();
   const source = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
-  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showGoal:'상단 표시', showQueue:'상단 표시' }));
+  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showInactiveInfo:true, showGoal:'상단 표시', showQueue:'상단 표시' }));
   source.setAttribute('data-bb-chat-ui-info-children', JSON.stringify([1,2,3].map(id => ({ id:String(id),title:`Child ${id}`,state:'run' }))));
   const entries: { key:string; frames:Keyframe[]; options:KeyframeAnimationOptions; cancelled:boolean }[] = [];
   f.dom.window.HTMLElement.prototype.animate = function(frames, options) {
@@ -1591,9 +1592,9 @@ test("pills use a sequential droplet entrance once, preserving avatar motion and
   f.document.querySelector('#thread-prompt-banner-git-toggle')!.textContent = '+14 −4 · 3 files';
   await f.tick();
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-avatar][data-new]'),firstAvatar,'unrelated Diff arrival keeps the in-progress avatar bubble alive');
-  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showGoal:'끄기', showQueue:'상단 표시' }));
+  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showInactiveInfo:true, showGoal:'끄기', showQueue:'상단 표시' }));
   await f.tick();
-  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showGoal:'상단 표시', showQueue:'상단 표시' }));
+  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showInactiveInfo:true, showGoal:'상단 표시', showQueue:'상단 표시' }));
   await f.tick();
   f.dom.window.dispatchEvent(new f.dom.window.Event('resize')); await f.tick();
   assert.deepEqual(pills().map(entry => entry.key), visible, 'refresh, re-enable and resize do not replay entry motion');
@@ -1777,7 +1778,7 @@ test("custom Status icon wrappers use the same centered size as builtin icons", 
   const f = fixture();
   f.document.head.insertAdjacentHTML('beforeend', '<style>.size-6 { width:24px; height:24px; }</style>');
   const source = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
-  source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify(Object.fromEntries(infoKinds.map(k=>[k.setting,['machine','fallback','status','other'].includes(k.key)?'목록에만 표시':'끄기']))));
+  source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showInactiveInfo:true,...Object.fromEntries(infoKinds.map(k=>[k.setting,['machine','fallback','status','other'].includes(k.key)?'목록에만 표시':'끄기']))}));
   source.insertAdjacentHTML('beforeend', '<span data-bb-chat-ui-info-icon="status"><span class="inline-flex size-6 shrink-0" data-icon-root data-icon="bb-chat-ui-status"><svg class="size-full" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></span></span>');
   f.document.querySelector(".plugin-banner")!.remove();
   const stop = injectComposerInfo(f.document);
@@ -2233,13 +2234,13 @@ test("Agentation replaces its native glyph when the SDK picker icon finishes loa
   } finally { stop(); f.dom.window.close(); }
 });
 
-test("inactive icons stay collapsed regardless of a legacy empty-icon choice and honor disabled families", async () => {
+test("opted-in inactive icons honor disabled families and ignore the obsolete empty-icon choice", async () => {
   const f = fixture();
   const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
   const source = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
   for (const node of [...stack.children]) if (!node.contains(source)) node.remove();
   for (const kind of infoKinds) source.insertAdjacentHTML('beforeend', `<span data-bb-chat-ui-info-icon="${kind.key}"><svg data-placeholder-icon="${kind.key}" /></span>`);
-  const settings = { showEmptyIcons:false, showAnnotations:'상단 표시', showGoal:'끄기', showPlan:'목록에만 표시' };
+  const settings = { showInactiveInfo:true, showEmptyIcons:false, showAnnotations:'상단 표시', showGoal:'끄기', showPlan:'목록에만 표시' };
   const publish = () => source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify(settings));
   publish();
   const stop = injectComposerInfo(f.document);
@@ -2575,7 +2576,7 @@ test("visibility settings remove disabled live and empty families from the row a
   const source = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
   f.click('[aria-label^="전체 정보"]');
   f.click('[data-bb-chat-ui-info-choice="goal"]');
-  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showGoal:'끄기', showDiff:'끄기', showWorkflow:'끄기', showChildren:'목록에만 표시' }));
+  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showInactiveInfo:true, showGoal:'끄기', showDiff:'끄기', showWorkflow:'끄기', showChildren:'목록에만 표시' }));
   await f.tick();
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-open]'), null);
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-trigger="diff"]'), null);
@@ -2584,12 +2585,12 @@ test("visibility settings remove disabled live and empty families from the row a
   for (const key of ['diff','goal','workflow']) assert.equal(f.document.querySelector(`[data-bb-chat-ui-info-choice="${key}"]`), null, key);
   assert.ok(f.document.querySelector('[data-bb-chat-ui-info-choice="children"]'));
   assert.equal(f.document.querySelectorAll('[data-bb-chat-ui-info-choice]').length, infoKinds.length - 3);
-  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showGoal:'상단 표시', showWorkflow:'목록에만 표시' }));
+  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showInactiveInfo:true, showGoal:'상단 표시', showWorkflow:'목록에만 표시' }));
   await f.tick();
   assert.ok(f.document.querySelector('[data-bb-chat-ui-info-trigger="goal"]'));
   assert.ok(f.document.querySelector('[data-bb-chat-ui-info-choice="workflow"]')?.textContent?.includes('현재 없음'));
   f.click('[data-bb-chat-ui-info-choice="workflow"]');
-  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showWorkflow:'끄기' }));
+  source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({ showInactiveInfo:true, showWorkflow:'끄기' }));
   await f.tick();
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-empty]'), null);
   source.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify(Object.fromEntries(infoKinds.map(kind => [kind.setting,'끄기']))));
@@ -3844,11 +3845,11 @@ test("SDK restoration capability overrides a stale native action and archive tak
 });
 
 test("restoring returns to normal pills before the SDK read-only snapshot catches up", async () => {
-  for (const showEmptyIcons of [false,true]) for (const [nativeLabel,sdkLabel] of [['Thread is archived','Archived thread'],['Environment unavailable','Environment unavailable']]) {
+  for (const showInactiveInfo of [false,true]) for (const [nativeLabel,sdkLabel] of [['Thread is archived','Archived thread'],['Environment unavailable','Environment unavailable']]) {
     const f=fixture();
     const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
     const source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
-    source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showEmptyIcons}));
+    source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showInactiveInfo}));
     source.setAttribute('data-bb-chat-ui-info-read-only-label',sdkLabel);
     source.insertAdjacentHTML('beforeend','<span data-bb-chat-ui-info-icon="status"><svg data-placeholder-icon="status" /></span>');
     const status=f.document.createElement('section'); status.setAttribute('aria-label','Thread history');
@@ -3861,14 +3862,16 @@ test("restoring returns to normal pills before the SDK read-only snapshot catche
       f.click('[data-bb-chat-ui-info-trigger="status"]');
       status.remove(); await f.tick();
       assert.equal(bar.hasAttribute('data-bb-chat-ui-info-archived'),false,'a delayed SDK snapshot cannot leave a full-width empty status pill after restore');
-      assert.equal(f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-all]')!.hidden,false);
+      assert.equal(f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-all]')!.hidden,!showInactiveInfo);
       assert.ok(f.document.querySelector('[data-bb-chat-ui-info-trigger="goal"]'));
       assert.equal(f.document.querySelector('[data-bb-chat-ui-info-archived-detail]'),null);
       const pill=f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-trigger="status"]');
       assert.equal(pill,null,'restored empty status belongs to the stack or its +N catalog, never a full pill');
-      f.click('[data-bb-chat-ui-info-all]');
-      assert.ok(f.document.querySelector('[data-bb-chat-ui-info-choice="status"]'),'inactive status remains reachable');
-      f.click('[data-bb-chat-ui-info-close]');
+      if(showInactiveInfo){
+        f.click('[data-bb-chat-ui-info-all]');
+        assert.ok(f.document.querySelector('[data-bb-chat-ui-info-choice="status"]'),'opted-in inactive status remains reachable');
+        f.click('[data-bb-chat-ui-info-close]');
+      }else assert.equal(f.document.querySelector('[data-bb-chat-ui-info-stack-kind="status"]'),null,'restored empty status is hidden by default');
       source.removeAttribute('data-bb-chat-ui-info-read-only-label'); await f.tick();
       assert.equal(bar.hasAttribute('data-bb-chat-ui-info-archived'),false);
     } finally { stop(); f.dom.window.close(); }
@@ -4086,7 +4089,7 @@ test("Diff loading widens into its result once and respects reduced motion and u
   for (const reduced of [false,true]) {
     const f = fixture();
     Object.defineProperty(f.dom.window,'matchMedia',{value:()=>({matches:reduced})});
-    f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings','{"showEmptyIcons":true}');
+    f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings','{"showInactiveInfo":true,"showEmptyIcons":true}');
     const source = f.document.createElement('span'); source.setAttribute('data-bb-chat-ui-head-diff','');
     f.document.querySelector('[data-promptbox-shell] > .grid')!.append(source);
     const entries:{key:string|null;frames:Keyframe[];options:KeyframeAnimationOptions;cancelled:boolean}[]=[];
@@ -4161,7 +4164,7 @@ test("entering another thread replays the sequence even when the composer DOM is
 
 test("clean main hides the pill even with empty icons enabled but remains in the catalog", async () => {
   const f = fixture();
-  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings', '{"showEmptyIcons":true}');
+  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings', '{"showInactiveInfo":true,"showEmptyIcons":true}');
   const source = f.document.createElement('span');
   const snapshot = {
     insertions:0, deletions:0, files:0, branch:null,
@@ -4186,7 +4189,7 @@ test("clean main hides the pill even with empty icons enabled but remains in the
 
 test("missing remote base is visible in the Diff catalog popover while clean main stays hidden", async () => {
   const f = fixture();
-  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings','{"showEmptyIcons":true}');
+  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings','{"showInactiveInfo":true,"showEmptyIcons":true}');
   const source = f.document.createElement('span');
   source.setAttribute('data-bb-chat-ui-head-diff',JSON.stringify({ insertions:0,deletions:0,files:0,
     presentation:{ mode:'unpushed',visible:false,branch:'main',label:'main' },
@@ -4820,7 +4823,7 @@ function markDevice(document: Document, device: "desktop" | "phone", extra: { vi
 
 function jumpFixture(settings: Record<string, unknown> = {}) {
   const f = fixture();
-  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify(settings));
+  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings', JSON.stringify({showInactiveInfo:true,...settings}));
   const jump = f.document.createElement('button');
   jump.setAttribute('aria-label', 'Scroll to latest event'); jump.className = 'invisible';
   let jumps = 0; jump.addEventListener('click', () => jumps++);
@@ -5282,7 +5285,7 @@ test("Parent popover hides the native sentence, person icon, and Diff without mo
 
 test('information circles open their own details and disabled families disappear from the stack',async()=>{
  const f=fixture();const source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
- source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify(Object.fromEntries(infoKinds.map(k=>['show'+k.key[0].toUpperCase()+k.key.slice(1),'목록에만 표시']))));
+ source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showInactiveInfo:true,...Object.fromEntries(infoKinds.map(k=>['show'+k.key[0].toUpperCase()+k.key.slice(1),'목록에만 표시']))}));
  const stop=injectComposerInfo(f.document);
  try {
   const circles=()=>[...f.document.querySelectorAll('[data-bb-chat-ui-info-stack-kind]')];
@@ -5315,7 +5318,7 @@ test('information circles open their own details and disabled families disappear
  for(const reduced of [false,true]) for(const more of [false,true]){
   const f=fixture();
   Object.defineProperty(f.dom.window,'matchMedia',{value:()=>({matches:reduced})});
-  if(!more) f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify(Object.fromEntries(infoKinds.map(k=>[k.setting,['goal','plan','machine'].includes(k.key)?'상단 표시':'끄기']))));
+  if(!more) f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showInactiveInfo:true,...Object.fromEntries(infoKinds.map(k=>[k.setting,['goal','plan','machine'].includes(k.key)?'상단 표시':'끄기']))}));
   Object.defineProperty(f.dom.window.HTMLElement.prototype,'offsetLeft',{get(){return this.parentElement?.hasAttribute('data-bb-chat-ui-info-stack-icons') ? Array.from(this.parentElement.children).indexOf(this)*18 : 0;}});
   const records:ReturnType<ReturnType<typeof stubAnimations>>[]=[];const animate=stubAnimations(f.dom.window);
   f.dom.window.HTMLElement.prototype.animate=function(frames,options){const r=animate.call(this,frames,options);records.push(r);return r.animation;};
@@ -5357,7 +5360,7 @@ test('information circles open their own details and disabled families disappear
 
 test('the initial +N count includes icons until each one starts unfolding',async()=>{
  const f=fixture(),source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
- source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify(Object.fromEntries(infoKinds.map(k=>[k.setting,['diff','children'].includes(k.key)?'상단 표시':'목록에만 표시']))));
+ source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showInactiveInfo:true,...Object.fromEntries(infoKinds.map(k=>[k.setting,['diff','children'].includes(k.key)?'상단 표시':'목록에만 표시']))}));
  const records:ReturnType<ReturnType<typeof stubAnimations>>[]=[];const animate=stubAnimations(f.dom.window);
  f.dom.window.HTMLElement.prototype.animate=function(frames,options){const r=animate.call(this,frames,options);records.push(r);return r.animation;};
  const timers=new Map<number,{fn:()=>void;delay:number}>();let serial=0;
@@ -5405,7 +5408,7 @@ test('unfinished stack count steps stop on unload and reduced motion',async()=>{
 
 test('late cancellation of a previous thread fan cannot finish the new count steps',async()=>{
  const f=fixture(),source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
- source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify(Object.fromEntries(infoKinds.map(k=>[k.setting,['diff','children'].includes(k.key)?'상단 표시':'목록에만 표시']))));
+ source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify({showInactiveInfo:true,...Object.fromEntries(infoKinds.map(k=>[k.setting,['diff','children'].includes(k.key)?'상단 표시':'목록에만 표시']))}));
  const late:(()=>void)[]=[];const animate=stubAnimations(f.dom.window);
  f.dom.window.HTMLElement.prototype.animate=function(frames,options){const r=animate.call(this,frames,options);r.animation.cancel=()=>{r.cancelled=true;const handler=r.animation.oncancel;if(handler)late.push(()=>handler.call(r.animation,new f.dom.window.Event('cancel') as AnimationPlaybackEvent));};return r.animation;};
  const timers=new Map<number,()=>void>();let serial=0;
@@ -5698,4 +5701,40 @@ test("Workflow header keeps its title above live metadata without moving native 
   assert.notEqual(paint(header).display,'grid');assert.notEqual(paint(summary).display,'contents');
   assert.equal(title.parentElement,summary);assert.equal(progress.parentElement,header);
   f.dom.window.close();
+});
+
+test('inactive info is hidden by default while active overflow, counts and the opt-in update live',async()=>{
+ const f=fixture(),stack=f.document.querySelector<HTMLElement>('[data-promptbox-shell] > .grid')!,source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+ for(const node of Array.from(stack.children))if(!node.contains(source))node.remove();
+ const settings:Record<string,unknown>={};const publish=()=>source.setAttribute('data-bb-chat-ui-info-settings',JSON.stringify(settings));publish();
+ let width=1000;stack.getBoundingClientRect=()=>({width,left:0,right:width,top:0,bottom:32,height:32,x:0,y:0,toJSON(){}});
+ Object.defineProperty(f.dom.window.HTMLElement.prototype,'offsetWidth',{configurable:true,get(){return this.hasAttribute('data-bb-chat-ui-info-trigger')?60:32;}});
+ const jump=f.document.createElement('button');jump.setAttribute('aria-label','Scroll to latest event');jump.className='invisible';stack.closest('[data-scroll-footer]')!.append(jump);
+ const stop=injectComposerInfo(f.document),group=()=>f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-stack-icons]')!,more=()=>f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-all]')!,count=()=>f.document.querySelector('[data-bb-chat-ui-info-count]')!.textContent;
+ try{
+  assert.equal(group().hidden,true);assert.equal(more().hidden,true);assert.equal(f.document.querySelector('[data-bb-chat-ui-info-stack-kind]'),null);
+  const bar=f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-bar]')!;assert.equal(bar.hidden,true,'empty information does not leave an empty row');
+  jump.classList.remove('invisible');await f.tick();assert.equal(bar.hidden,false,'Latest remains reachable even when no information is active');
+  jump.classList.add('invisible');await f.tick();assert.equal(bar.hidden,true);
+  for(const[key,label]of [['goal','Goal'],['plan','Plan'],['todos','To-do list'],['workflow','Workflow'],['background','Background commands']]){
+   const card=f.document.createElement('section');card.setAttribute('data-bb-chat-ui-info-kind',key);card.setAttribute('aria-label',label);card.innerHTML=`<h3>${label}</h3><p>Active information</p>`;stack.append(card);
+  }
+  await f.tick();assert.equal(group().hidden,true,'all active pills fit without reserving an empty stack');
+  width=80;f.dom.window.dispatchEvent(new f.dom.window.Event('resize'));await f.tick();
+  assert.equal(group().hidden,false);assert.equal(count(),'+2','five folded active families become three icons plus two');
+  assert.equal(more().hasAttribute('data-bb-chat-ui-info-active'),true);
+  assert.deepEqual([...group().querySelectorAll('[data-bb-chat-ui-info-stack-kind]')].map(n=>n.getAttribute('data-bb-chat-ui-info-stack-kind')),['plan','goal','todos']);
+  more().click();assert.equal(f.document.querySelectorAll('[data-bb-chat-ui-info-choice]').length,5,'default catalog does not invent empty entries');
+  settings.showInactiveInfo=true;publish();await f.tick();
+  assert.equal(count(),'+12','opt-in includes every listed family');
+  assert.equal(f.document.querySelectorAll('[data-bb-chat-ui-info-choice]').length,15);
+  settings.showGoal='끄기';publish();await f.tick();assert.equal(count(),'+11');assert.equal(f.document.querySelector('[data-bb-chat-ui-info-choice="goal"]'),null);
+  settings.showInactiveInfo=false;publish();await f.tick();assert.equal(count(),'+1','disabled and empty families do not inflate the active count');
+  f.click('[data-bb-chat-ui-info-menu] header button');
+  width=1000;f.dom.window.dispatchEvent(new f.dom.window.Event('resize'));await f.tick();assert.equal(group().hidden,true);assert.equal(more().hidden,true);
+  settings.showPlan='목록에만 표시';publish();await f.tick();assert.equal(group().hidden,false,'active catalog-only info remains reachable');assert.equal(group().querySelector('[data-bb-chat-ui-info-stack-kind]')?.getAttribute('data-bb-chat-ui-info-stack-kind'),'plan');assert.equal(more().hidden,true);
+  settings.showInactiveInfo=true;publish();await f.tick();more().click();
+  for(const card of stack.querySelectorAll('section[data-bb-chat-ui-info-kind]'))card.remove();await f.tick();
+  settings.showInactiveInfo=false;publish();await f.tick();assert.equal(bar.hidden,true);assert.equal(f.document.querySelector('[data-bb-chat-ui-info-menu]'),null,'an all-info menu closes when its last active information disappears');
+ }finally{stop();f.dom.window.close();}
 });

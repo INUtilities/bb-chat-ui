@@ -37,7 +37,7 @@ const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${DETAIL}[${OPEN}="
 const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"])`;
 const WORKFLOW_HEADING = `${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] > button[${MARK}-close-heading][${MARK}-readonly-title][aria-label^="Workflow:"]`;
 
-// The all-information button is always reachable. Fit measured pills into one row, with essentials first.
+// Fit measured pills into one row, with essentials first. The folded stack reserves its own width.
 export function fitComposerInfo(items: readonly { key: string; width: number }[], width: number): string[] {
   let used = 0;
   const result: string[] = [];
@@ -503,6 +503,7 @@ export function injectComposerInfo(document: Document): () => void {
     let items: InfoItem[] = [];
     let readOnlyLabel: string | null = null;
     let listed = listedInfo();
+    let showInactive = false;
     const owned = new Set<HTMLElement>();
     const wrappers = new Set<HTMLElement>();
     const buttons = new Map<InfoKind, HTMLButtonElement>();
@@ -1301,6 +1302,7 @@ export function injectComposerInfo(document: Document): () => void {
     };
     const catalog = () => infoKinds.filter(kind => listed.includes(kind.key)).flatMap<InfoItem | { key:InfoKind; label:string }>(kind => {
       const available = items.filter(item => item.key === kind.key);
+      if (!showInactive && !available.some(item => item.key !== "diff" || readDiff()?.presentation?.visible !== false)) return [];
       return available.length ? available : [{ key:kind.key, label:kind.label }];
     });
     const describe = (item: InfoItem) => {
@@ -1782,7 +1784,7 @@ export function injectComposerInfo(document: Document): () => void {
         if (readOnlyLabel) return new Set<InfoKind>(["status"]);
         let shown:Set<string> = new Set(widths.map(item=>item.key));
         for (let attempt=0; attempt<=listed.length; attempt++) {
-          const folded=infoStack(listed,activeKinds,new Set([...shown].filter(key=>buttons.has(key as InfoKind))));
+          const folded=infoStack(listed,activeKinds,new Set([...shown].filter(key=>buttons.has(key as InfoKind))),showInactive);
           const available=width>0 ? width - (jumpVisible ? 40 : 0) - (folded.width ? folded.width + 8 : 0) : Number.POSITIVE_INFINITY;
           const next=new Set(fitComposerInfo(widths,available+40));
           if (next.size===shown.size && [...next].every(key=>shown.has(key))) break;
@@ -1805,7 +1807,7 @@ export function injectComposerInfo(document: Document): () => void {
         if (cap !== avatarCap) { avatarCap = cap; decorate(buttons.get("children")!, childItem, true); }
       }
       const visible = new Set([...place()].filter(key=>buttons.has(key as InfoKind)));
-      const folded = infoStack(readOnlyLabel ? [] : listed,activeKinds,visible);
+      const folded = infoStack(readOnlyLabel ? [] : listed,activeKinds,visible,showInactive);
       const keep=new Set(folded.icons);
       for (const [key, node] of stackIcons) if (!keep.has(key)) {node.remove();stackIcons.delete(key);}
       folded.icons.forEach((key,index)=>{
@@ -2174,11 +2176,15 @@ export function injectComposerInfo(document: Document): () => void {
       const data = readInfoData(source);
       const settings = data?.value.settings ?? {};
       listed = listedInfo(settings);
+      showInactive = settings.showInactiveInfo === true;
       if (readOnlyLabel && !listed.includes("status")) listed.push("status");
       if (active && active !== "all" && !listed.includes(active)) close();
+      if (active && active !== "all" && !showInactive && !items.some(item => item.key === active && (item.key !== "diff" || readDiff()?.presentation?.visible !== false))) close();
+      if (active === "all" && !showInactive && !catalog().length) close();
       if (!listed.length) close();
       bar.hidden = request || !listed.length && !editing();
       syncJump();
+      if (!showInactive && !jumpVisible && !editing() && !items.some(item => listed.includes(item.key) && (item.key !== "diff" || readDiff()?.presentation?.visible !== false))) bar.hidden = true;
       const diff = readDiff();
       const unavailableDiff = diffData()?.value.state === "unavailable";
       const exposed: InfoKind[] = readOnlyLabel ? ["status"] : exposedInfo(settings).filter(key => key !== "diff" || !unavailableDiff && diff?.presentation?.visible !== false);
