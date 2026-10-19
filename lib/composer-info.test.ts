@@ -1994,7 +1994,8 @@ test("children use a bare latest-three avatar stack and prefer the designed SDK 
   assert.deepEqual(Array.from(avatars, node => node.getAttribute('data-child')), ['ui','qa','diff']);
   assert.deepEqual(Array.from(avatars, node => node.getAttribute('data-state')), ['run','wait','done']);
   assert.equal(avatars[0].firstChild?.textContent, 'UI');
-  assert.ok(avatars[2].querySelector('svg'));
+  assert.ok(avatars[2].querySelector('[data-bb-chat-ui-info-avatar-dot]'));
+  assert.equal(avatars[2].querySelector('[data-bb-chat-ui-info-avatar-dot] svg'),null);
   assert.equal(pill.querySelector('[data-bb-chat-ui-info-avatar-more]')!.textContent, '+1');
   assert.equal(f.dom.window.getComputedStyle(pill).backgroundColor, 'rgba(0, 0, 0, 0)');
   f.click('[data-bb-chat-ui-info-trigger="children"]');
@@ -2004,6 +2005,24 @@ test("children use a bare latest-three avatar stack and prefer the designed SDK 
   f.click('[data-bb-chat-ui-info-dismiss="children"]');
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-open]'), null);
   stop(); f.dom.window.close();
+});
+
+test("Child Thread rows do not receive the shared button glass face", () => {
+  const f=fixture();
+  f.document.querySelector('[data-promptbox-shell] > .grid')!.insertAdjacentHTML('beforeend', '<section data-bb-chat-ui-info-kind="children" aria-label="Child Threads"><h3>Child Threads <button data-bb-chat-ui-info-dismiss="children">×</button></h3><div><button data-bb-chat-ui-info-child-row>Running child</button><button data-bb-chat-ui-info-child-row>Completed child</button></div></section>');
+  const stop=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="children"]');
+    for(const row of f.document.querySelectorAll('[data-bb-chat-ui-info-child-row]')) {
+      assert.equal(glassRule(f.document,row),undefined,'each child row stays on the popover face');
+      const css=f.dom.window.getComputedStyle(row);
+      assert.ok(css.backgroundColor==='transparent'||css.backgroundColor==='rgba(0, 0, 0, 0)');
+      assert.equal(css.boxShadow,'none');
+      assert.equal(css.borderTopWidth,'0px','child rows have no raised upper edge');
+      assert.equal(css.getPropertyValue('backdrop-filter'),'none');
+    }
+    assert.ok(glassRule(f.document,f.document.querySelector('[data-bb-chat-ui-info-kind="children"] [data-bb-chat-ui-info-dismiss]')!),'the close control retains its shared button surface');
+  } finally {stop();f.dom.window.close();}
 });
 
 test("Child Thread and other popover closes have the same button and glyph size", () => {
@@ -2088,7 +2107,7 @@ test("child avatars use host provider artwork, including late and updated logos,
       assert.ok(avatar.getAttribute('title')?.includes(id));
     }
     assert.ok(avatars()[0].querySelector('[data-provider]')?.getAttribute('style')?.includes('/codex.svg'));
-    assert.ok(avatars()[1].querySelector('[data-bb-chat-ui-info-avatar-dot] svg'),'completion check stays separate from the provider mark');
+    assert.equal(avatars()[1].querySelector('[data-bb-chat-ui-info-avatar-dot] svg'),null,'completion uses a dot without a check');
     source.querySelector('[data-bb-chat-ui-info-child-icon="codex-child"] span')!.setAttribute('style','mask-image:url(/codex-updated.svg)');
     source.setAttribute('data-bb-chat-ui-info-child-providers','updated'); await f.tick();
     assert.ok(avatars()[0].querySelector('[data-provider]')?.getAttribute('style')?.includes('/codex-updated.svg'),'provider metadata refresh updates a same-id avatar');
@@ -2111,7 +2130,7 @@ test("provider artwork style changes are observed as source input without a cont
   } finally {stop();f.dom.window.close();}
 });
 
-test("child status dots sit on the left of each avatar, including the done check", () => {
+test("child status dots share the same size and completion uses the thread theme accent", () => {
   const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>");
   const style = dom.window.document.createElement("style");
   style.textContent = composerInfoCss;
@@ -2124,17 +2143,13 @@ test("child status dots sit on the left of each avatar, including the done check
     avatar.setAttribute("data-state", state);
     const dot = dom.window.document.createElement("span");
     dot.setAttribute("data-bb-chat-ui-info-avatar-dot", "");
-    if (state === "done") {
-      const check = dom.window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      dot.append(check);
-    }
     avatar.append(dot);
     stack.append(avatar);
   }
   dom.window.document.body.append(stack);
   const dotOf = (state: string) => dom.window.getComputedStyle(stack.querySelector(`[data-state="${state}"] [data-bb-chat-ui-info-avatar-dot]`)!);
   try {
-    for (const state of ["run", "wait", "error"]) {
+    for (const state of ["run", "wait", "error", "done"]) {
       const css = dotOf(state);
       assert.equal(css.left, "0px", state);
       assert.equal(css.right, "auto", state);
@@ -2142,15 +2157,8 @@ test("child status dots sit on the left of each avatar, including the done check
       assert.equal(css.width, "6px", state);
       assert.equal(css.height, "6px", state);
     }
-    const done = dotOf("done");
-    assert.equal(done.left, "-2px");
-    assert.equal(done.right, "auto");
-    assert.equal(done.bottom, "-2px");
-    assert.equal(done.width, "11px");
-    assert.equal(done.height, "11px");
-    const check = dom.window.getComputedStyle(stack.querySelector('[data-state="done"] svg')!);
-    assert.equal(check.width, "8px");
-    assert.equal(check.height, "8px");
+    const doneRule=[...style.sheet!.cssRules].find(rule=>"selectorText" in rule && rule.selectorText==='[data-bb-chat-ui-info-avatar][data-state="done"] [data-bb-chat-ui-info-avatar-dot]') as CSSStyleRule;
+    assert.equal(doneRule.style.background, "var(--timeline-accent)");
   } finally {
     dom.window.close();
   }

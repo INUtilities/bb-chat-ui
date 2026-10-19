@@ -13,6 +13,8 @@ function deferred<T>() {
 }
 function fixture(reads:Record<string,boolean> = {}) {
   const calls:string[]=[];
+  const executionCalls:string[]=[];
+  let loadExecution=async()=>({model:"gpt-6.1-sol",reasoningLevel:"high"});
   const handlers=new Map<string,(event:any)=>void>();
   const snapshots:any[]=[];
   const errors:boolean[]=[];
@@ -28,6 +30,7 @@ function fixture(reads:Record<string,boolean> = {}) {
     environment:{hostLifecycle:'ready',status:'ready'}, canRestoreEnvironment:true });
   const sdk={
     threads:{
+      defaultExecutionOptions:async(args:{threadId:string})=>{executionCalls.push(args.threadId);return loadExecution();},
       timeline:async()=>{calls.push('timeline');return loadTimeline();},
       get:async(args:{threadId:string})=>{calls.push(`get:${args.threadId}`);return args.threadId==='thread'?loadThread():loadParent(args.threadId);},
       list:async(args:{offset?:number;archived?:boolean})=>{calls.push(`children:${args.offset}`);assert.equal(args.archived,false);return loadChildren(args);},
@@ -37,7 +40,8 @@ function fixture(reads:Record<string,boolean> = {}) {
     subscribe:(args:{event:string;callback:(event:any)=>void})=>{handlers.set(args.event,args.callback);return()=>{handlers.delete(args.event);};},
   };
   const controller=startComposerInfoRefresh(sdk,'thread',snapshot=>snapshots.push(snapshot),error=>errors.push(error),reads);
-  return {...controller,calls,snapshots,errors,handlers,
+  return {...controller,calls,executionCalls,snapshots,errors,handlers,
+    setExecutionRead:(read:typeof loadExecution)=>{loadExecution=read;},
     emit:(id:string|undefined,changes:string[],eventTypes?:string[])=>handlers.get('thread:changed')?.({id,changes,...(eventTypes?{metadata:{eventTypes}}:{})}),
     reconnect:()=>handlers.get('realtime:connection')?.({state:'connected',reconnected:true}),
     setParent:(id:string|null)=>{parentId=id;}, setTitle:(next:string)=>{title=next;},
@@ -47,7 +51,7 @@ function fixture(reads:Record<string,boolean> = {}) {
   };
 }
 function child(id:string, archivedAt:number|null=null) {
-  return {id,title:id,providerId:'codex',archivedAt,runtime:{displayStatus:'idle'},hasPendingInteraction:false};
+  return {id,title:id,providerId:'codex',archivedAt,updatedAt:0,runtime:{displayStatus:'idle'},hasPendingInteraction:false};
 }
 async function ready() { const f=fixture(); await tick(); f.calls.length=0; return f; }
 
@@ -222,4 +226,31 @@ test('stopping an in-flight readonly context prevents follow-up queue and PR que
   const before=f.snapshots.length;f.stop();
   gate.resolve({id:'thread',parentThreadId:'parent',environmentId:'env',archivedAt:1,environment:null,canRestoreEnvironment:false});
   await tick();assert.deepEqual(f.calls,['get:thread']);assert.equal(f.snapshots.length,before);
+});
+
+
+test('child execution metadata is cached until that child changes',async t=>{
+  const f=await ready();
+  assert.deepEqual(f.snapshots.at(-1).children[0].executionOptions,{model:'gpt-6.1-sol',reasoningLevel:'high'});
+  assert.deepEqual(f.executionCalls,['child']);
+  f.refresh();await flush(t);
+  assert.deepEqual(f.executionCalls,['child']);
+  f.setExecutionRead(async()=>({model:'gpt-6-astra',reasoningLevel:'medium'}));
+  f.setChildren([{...child('child'),updatedAt:1},child('new'),child('archived',10)]);
+  f.emit('new',['thread-created']);await flush(t);
+  assert.deepEqual(f.executionCalls,['child','child','new']);
+  assert.equal(f.snapshots.at(-1).children[0].executionOptions.model,'gpt-6-astra');
+  f.stop();
+});
+
+test('child execution lookup failure keeps known metadata and retries on refresh',async t=>{
+  const f=await ready();
+  f.setChildren([{...child('child'),updatedAt:1}]);
+  f.setExecutionRead(async()=>{throw new Error('offline');});
+  f.emit('child',['status-changed']);await flush(t);
+  assert.equal(f.snapshots.at(-1).children[0].executionOptions.model,'gpt-6.1-sol');
+  f.setExecutionRead(async()=>({model:'gpt-6-astra',reasoningLevel:'medium'}));
+  f.refresh();await flush(t);
+  assert.equal(f.snapshots.at(-1).children[0].executionOptions.model,'gpt-6-astra');
+  f.stop();
 });

@@ -5,7 +5,9 @@ import { loadParent, parentEventMatters, type ParentSummary } from "./composer-p
 
 type Sdk = Pick<ReturnType<typeof useSdk>, "threads" | "environments" | "subscribe">;
 type Timeline = Awaited<ReturnType<Sdk["threads"]["timeline"]>>;
-type Children = Awaited<ReturnType<Sdk["threads"]["list"]>>;
+type ChildRows = Awaited<ReturnType<Sdk["threads"]["list"]>>;
+type ChildExecution = Awaited<ReturnType<Sdk["threads"]["defaultExecutionOptions"]>>;
+type Children = (ChildRows[number] & {executionOptions?:ChildExecution})[];
 type Queue = Awaited<ReturnType<Sdk["threads"]["queuedMessages"]["list"]>>;
 type PullRequest = Awaited<ReturnType<Sdk["environments"]["pullRequest"]>>;
 export interface ComposerInfoSnapshot {
@@ -60,6 +62,7 @@ export function startComposerInfoRefresh(
     for (const part of targets) pending.add(part);
     if (!timer) timer = setTimeout(() => { timer=undefined; void run(); },250);
   };
+  const childExecution=new Map<string,{updatedAt:number;value:ChildExecution}>();
   const readChildren = async () => {
     const children:Children=[];
     for (let offset=0; !signal.aborted; offset+=100) {
@@ -67,7 +70,22 @@ export function startComposerInfoRefresh(
       children.push(...page);
       if (page.length<100) break;
     }
-    return visibleChildren(children);
+    if (signal.aborted) throw new Error("Composer info refresh stopped");
+    const visible=visibleChildren(children);
+    const ids=new Set(visible.map(child=>child.id));
+    for (const id of childExecution.keys()) if (!ids.has(id)) childExecution.delete(id);
+    return Promise.all(visible.map(async child=>{
+      const cached=childExecution.get(child.id);
+      if (cached?.updatedAt===child.updatedAt) return {...child,executionOptions:cached.value};
+      try {
+        const value=await sdk.threads.defaultExecutionOptions({threadId:child.id,signal});
+        if (signal.aborted) throw new Error("Composer info refresh stopped");
+        childExecution.set(child.id,{updatedAt:child.updatedAt,value});
+        return {...child,executionOptions:value};
+      } catch {
+        return {...child,executionOptions:cached?.value};
+      }
+    }));
   };
   const readContext = async () => {
     const thread=await sdk.threads.get({threadId,include:"environment",signal});

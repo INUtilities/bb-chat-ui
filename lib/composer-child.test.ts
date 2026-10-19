@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { childEventRefreshes, childInitial, childListArgs, childState, visibleChildren } from './composer-child.ts';
+import { childExecutionLabel, childEventRefreshes, childInitial, childListArgs, childState, visibleChildren } from './composer-child.ts';
 
 test('child avatars abbreviate actual titles and reflect pending input before activity', () => {
   assert.equal(childInitial('UI review'), 'UI');
@@ -50,4 +50,11 @@ test('archived-changed refreshes before the child id gate, including a child nev
   assert.equal(childEventRefreshes({ id: 'live', changes: ['events-appended'], metadata: { eventTypes: ['turn/completed'] } }, scope), true);
   assert.equal(childEventRefreshes({ id: 'live', changes: ['events-appended'], metadata: { eventTypes: ['item/backgroundTask/progress'] } }, scope), true);
   assert.equal(childEventRefreshes({ id: 'live', changes: ['events-appended'], metadata: { eventTypes: ['item/completed'] } }, scope), false);
+});
+
+
+test('child metadata shows only model and effort without inventing missing values',()=>{
+  assert.equal(childExecutionLabel({model:'gpt-6.1-sol',reasoningLevel:'high'}),'gpt-6.1-sol · high');
+  assert.equal(childExecutionLabel({model:'gpt-6.1-sol'}),'gpt-6.1-sol');
+  assert.equal(childExecutionLabel(null),'');
 });

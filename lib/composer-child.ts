@@ -16,6 +16,10 @@ export function childState(status: string, needsInput: boolean): ChildState {
   return status === "idle" ? "done" : "run";
 }
 
+export function childExecutionLabel(options?: {model?:string;reasoningLevel?:string}|null):string {
+  return [options?.model,options?.reasoningLevel].filter(Boolean).join(" · ");
+}
+
 export function childListArgs(parentThreadId: string, offset: number, signal?: AbortSignal) {
   return { parentThreadId, limit: 100, offset, archived: false as const, signal };
 }

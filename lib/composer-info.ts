@@ -85,7 +85,7 @@ ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD}
 [${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border:0; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; background:var(--bb-chat-ui-info-face); backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent); transition:transform 260ms cubic-bezier(.2,.9,.22,1.25); }
 [${MARK}-trigger] { width:auto; min-width:0; }
 /* Queue ellipsis owns its bordered face in queued-messages.ts. */
-[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-choice], [${MARK}-menu] button, ${DETAIL} button:not([aria-label^="Queued message"][aria-label$=" actions"]) { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge); }
+[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-choice], [${MARK}-menu] button, ${DETAIL} button:not([aria-label^="Queued message"][aria-label$=" actions"]):not([${MARK}-child-row]) { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge); }
 [${MARK}-menu] header button { width:24px; height:24px; padding:0; border-radius:50%; }
 [${MARK}-panel-source] { display:none !important; }
 [${MARK}-panel-heading] { display:flex; align-items:center; gap:6px; }
@@ -293,8 +293,7 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-state="run"] [${MARK}-avatar-dot] { animation:bb-info-breathe 2.6s ease-in-out infinite; }
 [${MARK}-avatar][data-state="wait"] [${MARK}-avatar-dot] { background:var(--warning-text,#cfb577); }
 [${MARK}-avatar][data-state="error"] [${MARK}-avatar-dot] { background:var(--destructive-text,#d99090); }
-[${MARK}-avatar][data-state="done"] [${MARK}-avatar-dot] { display:flex; align-items:center; justify-content:center; width:11px; height:11px; left:-2px; right:auto; bottom:-2px; }
-[${MARK}-avatar-dot] svg { width:8px; height:8px; color:var(--bb-chat-ui-glass-base,var(--background)); }
+[${MARK}-avatar][data-state="done"] [${MARK}-avatar-dot] { background:var(--timeline-accent); }
 [${MARK}-avatar] [${MARK}-provider-icon], [${MARK}-avatar] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
 [${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; padding:16px 24px !important; order:0 !important; border:0 !important; border-radius:18px !important; background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); color:var(--foreground); box-shadow:0 12px 32px -14px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
@@ -384,18 +383,18 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-kind="children"] h3 { display:flex; align-items:center; gap:7px; min-height:28px; margin:0 0 8px; }
 [${MARK}-kind="children"] h3 [data-icon-root] { width:14px; height:14px; }
 [${MARK}-kind="children"] [${MARK}-dismiss] { margin-left:auto; border:0; background:transparent; color:var(--subtle-foreground); }
-${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row] { display:flex; align-items:center; gap:8px; width:calc(100% + 16px); box-sizing:border-box; margin:0 -8px; padding:8px; min-width:0; border-radius:10px; text-align:left; cursor:pointer; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; transition:background-color 150ms ease-out; }
+${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row] { display:flex; align-items:center; gap:8px; width:calc(100% + 16px); box-sizing:border-box; margin:0 -8px; padding:8px; min-width:0; border:0; border-radius:10px; text-align:left; cursor:pointer; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; transition:background-color 150ms ease-out; }
 ${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row]:hover, ${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row]:focus-visible { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
 ${DETAIL} [${MARK}-parent-row] { display:flex; align-items:center; gap:8px; width:calc(100% + 16px); box-sizing:border-box; margin:-8px; padding:8px 40px 8px 8px; min-height:40px; min-width:0; border-radius:10px; text-align:left; cursor:pointer; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; transition:background-color 150ms ease-out; }
 ${DETAIL} [${MARK}-parent-row]:hover, ${DETAIL} [${MARK}-parent-row]:focus-visible { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
 [${MARK}-parent-row] [${MARK}-provider-icon], [${MARK}-parent-row] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-parent-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
-[${MARK}-child-row] + [${MARK}-child-row] { border-top:1px solid var(--border-hairline,var(--border)); }
 [${MARK}-child-row] [${MARK}-avatar] { width:27px; height:27px; margin-left:0; }
 [${MARK}-child-main] { flex:1; min-width:0; }
 [${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
 [${MARK}-child-meta], [${MARK}-child-status] { font-size:10px; color:var(--subtle-foreground); }
-[${MARK}-child-status] { white-space:nowrap; }
+[${MARK}-child-meta] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+[${MARK}-child-status] { flex:none; white-space:nowrap; }
 ${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; border:0 !important; border-radius:18px !important; gap:8px; }
 ${DETAIL}.agentation-staging-shell > div:first-child { display:contents !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { display:contents !important; }
@@ -1539,11 +1538,6 @@ export function injectComposerInfo(document: Document): () => void {
           avatar.setAttribute("data-state", stateOf(child));
           avatar.style.zIndex = String(index + 1);
           const dot = document.createElement("span"); dot.setAttribute(`${MARK}-avatar-dot`, "");
-          if (stateOf(child) === "done") {
-            const check = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            check.setAttribute("viewBox", "0 0 24 24"); check.setAttribute("fill", "none"); check.setAttribute("stroke", "currentColor"); check.setAttribute("stroke-width", "1.5"); check.setAttribute("stroke-linecap", "round"); check.setAttribute("stroke-linejoin", "round");
-            const path = document.createElementNS(check.namespaceURI, "path"); path.setAttribute("d", "M5 14L8.5 17.5L19 6.5"); check.append(path); dot.append(check);
-          }
           avatar.append(dot);
           if (!childStates.has(child.id)) {
             avatar.setAttribute("data-new", "");

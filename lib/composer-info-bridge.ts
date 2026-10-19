@@ -3,7 +3,7 @@ import { experimental_Icon, experimental_ProviderIcon, experimental_useProviders
 import { backgroundActivities } from "./background-activity.ts";
 import { publishInfoData, clearComposerData } from "./composer-data.ts";
 import { composerInfoReads, infoKinds, listedInfo } from "./composer-info-settings.ts";
-import { childState } from "./composer-child.ts";
+import { childExecutionLabel, childState } from "./composer-child.ts";
 import { startComposerInfoRefresh, type ComposerInfoSnapshot } from "./composer-info-refresh.ts";
 import { createThreadRestorer, type RestoreState } from "./composer-restore.ts";
 
@@ -82,14 +82,15 @@ export function ComposerInfoBridge() {
       children.length ? section("children", "Child Threads", "UserRound", createElement("div", null, ...children.map(child => {
         const title = child.title ?? child.titleFallback ?? "Child Thread";
         const state = childState(child.runtime.displayStatus, child.hasPendingInteraction);
+        const metadata = childExecutionLabel(child.executionOptions);
         return createElement("button", { key:child.id, type:"button", [`${mark}-child-row`]:"", onClick:() => navigate.toThread(child.id) },
           createElement("span", { [`${mark}-avatar`]:"", "data-state":state, "aria-hidden":true },
             createElement("span", { [`${mark}-provider-icon`]:"" }, providerIcon(child.providerId)),
-            createElement("span", { [`${mark}-avatar-dot`]:"" }, state === "done" ? createElement(experimental_Icon, { name:"Check" }) : null)),
+            createElement("span", { [`${mark}-avatar-dot`]:"" })),
           createElement("span", { [`${mark}-child-main`]:"" },
             createElement("span", { [`${mark}-child-title`]:"" }, title),
-            createElement("span", { [`${mark}-child-meta`]:"" }, `${child.providerId} · ${child.runtime.displayStatus}`)),
-          createElement("span", { [`${mark}-child-status`]:"" }, state === "run" ? "실행 중" : state === "wait" ? child.hasPendingInteraction ? "입력 대기" : "호스트 대기" : state === "error" ? "오류" : "완료"));
+            metadata ? createElement("span", { [`${mark}-child-meta`]:"", title:metadata }, metadata) : null),
+          createElement("span", { [`${mark}-child-status`]:"" }, child.runtime.displayStatus));
       }))) : null,
       reads.queue && data?.queue.length ? section("queue", "대기 메시지", "ListTodo", createElement("div", null, ...data.queue.map(row => createElement("div", { key:row.id },
         createElement("p", null, row.content.filter(part => part.visibility !== "agent-only").map(part => part.type === "text" ? part.text : part.type === "localFile" ? part.name ?? part.path : part.type === "localImage" ? part.path : "Image").join("\n")),
