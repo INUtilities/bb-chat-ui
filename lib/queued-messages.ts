@@ -331,6 +331,72 @@ ${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-
   transition:background-color 150ms ease-out;
 }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-actions] button:is(:hover,:focus-visible) { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
+/* Keep the native rich editor mounted, but replace the queue list surface while editing. */
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] > :is([data-bb-chat-ui-info-close-heading],[data-bb-chat-ui-info-dismiss]),
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-queued-message-row],[data-queued-message-group-divider]) { display:none !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-message-inline-editor] {
+  display:flex; flex-direction:column; flex:0 1 auto; min-height:0;
+  margin:0; padding:0 !important; border:0 !important; list-style:none;
+}
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-bb-chat-ui-queue-editor-pass] { display:contents !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-bb-chat-ui-queue-editor-flow] {
+  display:flex !important; flex-direction:column; flex:0 1 auto; min-height:0 !important; height:auto !important; max-height:none !important;
+  border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+}
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-bb-chat-ui-queue-editor-pass],[data-bb-chat-ui-queue-editor-flow])::before,
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-bb-chat-ui-queue-editor-pass],[data-bb-chat-ui-queue-editor-flow])::after { display:none !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-messages-scroll] > :not(ul),
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-messages-scroll-frame] > :not([data-queued-messages-scroll]),
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-message-inline-editor] > [data-overflow-fade] { display:none !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-inline-message-editor-frame] > div:first-child {
+  display:flex; align-items:center; flex:none; min-height:28px; padding:0; margin-bottom:12px; font-size:12px;
+}
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-inline-message-editor-frame] > div:first-child button { margin-inline-start:auto; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-inline-message-editor-frame] > div:first-child > span { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox] {
+  background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+}
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-layout] { display:contents !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-main] { display:flex !important; flex-direction:column; flex:0 1 auto; min-height:0; overflow:hidden; opacity:1 !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-input-region] { flex:0 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-input-region] > [data-promptbox-standard-actions],
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] button[aria-label="Collapse prompt box"] { display:none !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-editor-scroll] { height:auto !important; min-height:68px !important; max-height:none !important; padding:0 !important; overflow:visible !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-editor-content],
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [contenteditable="true"] { height:auto !important; min-height:68px !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-promptbox-action-row] { position:relative; flex-shrink:0; margin-top:12px; padding:0 !important; gap:8px; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-promptbox-action-row],[data-follow-up-composer-footer]) button {
+  border:0 !important; box-shadow:none !important; background:transparent !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+}
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-promptbox-action-row],[data-follow-up-composer-footer]) button:is(:hover,:focus-visible) { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
+/* Preserve the native editor layout while hiding settings that cannot be changed here. */
+${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-bb-chat-ui-queue-editor-toolbar] {
+  display:grid !important; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:minmax(0,1fr) minmax(12px,auto) auto; column-gap:4px; container-type:inline-size;
+}
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox] {
+  display:grid !important; grid-column:1 / -1; grid-row:1 / 4; grid-template-columns:subgrid; grid-template-rows:subgrid; container-type:normal !important;
+}
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-main] { display:contents !important; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-input-region] { grid-column:1 / -1; grid-row:1; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-main] > [data-promptbox-expanded-only] { grid-column:1 / -1; grid-row:2; padding-bottom:12px; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] { display:grid; grid-column:1 / -1; grid-row:3; grid-template-columns:subgrid; column-gap:4px; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] > [data-promptbox-standard-actions]:first-of-type { grid-column:1; min-width:0 !important; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] > [data-promptbox-standard-actions]:last-child { grid-column:2; flex-wrap:nowrap; }
+${OPEN_QUEUE} [data-queued-message-inline-editor] [data-follow-up-composer-footer],
+${OPEN_QUEUE} [data-queued-message-inline-editor] [data-promptbox-action-row] button[aria-label^="Provider, model and reasoning"] { display:none !important; }
+${OPEN_QUEUE} [data-promptbox-action-row] button[aria-label="Prompt actions"] { display:inline-flex !important; flex-shrink:0; margin-left:0 !important; min-width:32px; opacity:1; }
+${SMALL_HIT_TARGET} ${OPEN_QUEUE} [data-promptbox-action-row] button[aria-label="Prompt actions"] { min-width:24px; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] { align-items:center; min-height:32px; margin-top:0 !important; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] > [data-promptbox-standard-actions] { height:32px; min-height:32px; align-self:center; align-items:center; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] button { display:inline-flex; align-items:center; justify-content:center; height:32px !important; min-height:32px; min-width:32px; padding:0 !important; line-height:1; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-action-row] button svg { display:block; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-edit-save] { min-width:32px; min-height:32px; height:32px !important; flex-shrink:0; opacity:1 !important; color:var(--foreground) !important; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-edit-save] > :not([data-bb-chat-ui-queue-save-icon]) { display:none !important; }
+${OPEN_QUEUE} [data-bb-chat-ui-queue-save-icon] { display:block; width:16px; height:16px; }
+
 [data-bb-chat-ui-queue-menu] {
   position:fixed;
   z-index:56;

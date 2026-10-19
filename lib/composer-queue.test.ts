@@ -471,6 +471,77 @@ test('queue reorder handle stays within the clipped row and roomy desktop uses n
   } finally {stopInfo();stopQueue();f.cleanup();}
 });
 
+test('queue editing replaces the list with a native editor dialog and explicit save/cancel', async () => {
+  const f=fixture();
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  let value='original',saves=0;
+  const edit=f.queue.querySelector<HTMLButtonElement>('[data-edit]')!;
+  edit.addEventListener('click',()=>{
+    const editor=f.queue.querySelector<HTMLElement>('[data-queued-message-inline-editor]')!;
+    editor.innerHTML='<div data-inline-message-editor-frame><div><span>Editing queued message 1</span><button aria-label="Stop editing queued message">×</button></div><form data-promptbox><textarea></textarea><button data-promptbox-submit-action type="button">Native save</button></form></div>';
+    editor.querySelector('textarea')!.value=value;
+    editor.querySelector('button')!.addEventListener('click',()=>editor.remove());
+    editor.querySelector('[data-promptbox-submit-action]')!.addEventListener('click',()=>{saves++;value=editor.querySelector('textarea')!.value;editor.remove();});
+  });
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    f.click('[data-edit]');await f.tick();
+    const editor=f.queue.querySelector<HTMLElement>('[data-queued-message-inline-editor]')!;
+    const input=editor.querySelector('textarea')!;
+    assert.equal(editor.getAttribute('role'),'dialog');
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-editing'),'true');
+    assert.equal(f.dom.window.getComputedStyle(f.queue.querySelector('[data-queued-message-row]')!).display,'none');
+    assert.equal(f.dom.window.getComputedStyle(f.queue.querySelector('[data-bb-chat-ui-info-close-heading]')!).display,'none');
+    const mention=f.document.createElement('div');mention.className='@container/mention-menu';editor.append(mention);
+    f.document.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));await f.tick();
+    assert.equal(editor.isConnected,true,'mention menu handles Escape before editor cancellation');mention.remove();
+    f.document.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true,isComposing:true}));await f.tick();
+    assert.equal(editor.isConnected,true,'Escape during composition does not discard the draft');
+    input.value='changed';input.dispatchEvent(new f.dom.window.Event('input',{bubbles:true}));await f.tick();
+    assert.equal(value,'original','typing alone does not save');
+    f.click('[data-bb-chat-ui-queue-edit-cancel]');await f.tick();
+    assert.equal(value,'original');assert.equal(saves,0);
+    assert.ok(f.queue.hasAttribute('data-bb-chat-ui-info-open'),'cancel returns to the still-open queue');
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-editing'),'false');
+    f.click('[data-edit]');await f.tick();
+    f.queue.querySelector('textarea')!.value='saved';
+    const native=f.queue.querySelector<HTMLButtonElement>('[data-promptbox-submit-action]')!;
+    native.disabled=true;await f.tick();
+    assert.equal(f.queue.querySelector<HTMLButtonElement>('[data-bb-chat-ui-queue-edit-save]')!.disabled,true);
+    native.disabled=false;await f.tick();
+    f.click('[data-bb-chat-ui-queue-edit-save]');await f.tick();
+    assert.equal(value,'saved');assert.equal(saves,1);
+    assert.ok(f.queue.hasAttribute('data-bb-chat-ui-info-open'),'save returns to the queue');
+    f.click('[data-edit]');await f.tick();
+    f.document.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));await f.tick();
+    assert.equal(f.queue.querySelector('[data-queued-message-inline-editor]'),null);
+    assert.ok(f.queue.hasAttribute('data-bb-chat-ui-info-open'),'Escape cancels editing before closing the queue');
+    f.click('[data-edit]');await f.tick();
+    const originalInput=f.queue.querySelector('textarea');
+    stopInfo();
+    assert.equal(f.queue.querySelector('[data-bb-chat-ui-queue-edit-footer]'),null);
+    assert.equal(f.queue.hasAttribute('data-bb-chat-ui-queue-editing'),false);
+    assert.equal(f.queue.querySelector('[data-queued-message-inline-editor]')!.hasAttribute('role'),false);
+    assert.equal(f.queue.querySelector('textarea'),originalInput,'unload leaves the native draft mounted');
+  } finally {stopInfo();stopQueue();f.cleanup();}
+});
+
+test('failed native queue save keeps the draft, error and editor visible', async () => {
+  const f=fixture();
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();f.click('[data-edit]');
+    const editor=f.queue.querySelector('[data-queued-message-inline-editor]')!;
+    editor.insertAdjacentHTML('beforeend','<button type="button" data-promptbox-submit-action>Native save</button>');
+    editor.querySelector('[data-promptbox-submit-action]')!.addEventListener('click',()=>editor.insertAdjacentHTML('beforeend','<p role="alert">Save failed</p>'));
+    await f.tick();f.click('[data-bb-chat-ui-queue-edit-save]');await f.tick();
+    assert.equal(editor.isConnected,true);
+    assert.equal(editor.querySelector('textarea')!.value,'unsaved queue draft');
+    assert.equal(editor.querySelector('[role="alert"]')!.textContent,'Save failed');
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-editing'),'true');
+  } finally {stopInfo();stopQueue();f.cleanup();}
+});
+
 test('queue row activators use the entire row vertical center on both hit targets', async () => {
   for(const small of [false,true]){
     const f=fixture();f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target',small?'small':'large');
@@ -489,3 +560,118 @@ test('queue row activators use the entire row vertical center on both hit target
   }
 });
 
+test('queue edit has one surface, one body scroller and the original fixed action row',async()=>{
+  const f=fixture();const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();f.click('[data-edit]');
+    const editor=f.queue.querySelector<HTMLElement>('[data-queued-message-inline-editor]')!;
+    editor.innerHTML='<div data-inline-message-editor-frame><div><span>Editing queued message 1</span><button aria-label="Stop editing queued message">×</button></div><div data-queued-editor-typeahead-reservation><div class="native-composer"><form data-promptbox><div data-promptbox-layout><div data-promptbox-main><div data-promptbox-input-region><div data-promptbox-standard-actions><button aria-label="Collapse prompt box"></button></div><div data-promptbox-editor-scroll><div data-promptbox-editor-content><div contenteditable="true">Long draft</div></div></div></div><div data-promptbox-action-row><button data-attach>Attach</button><button data-model>Model</button><button data-voice>Voice</button><div data-promptbox-submit-group><button type="button" data-promptbox-submit-action aria-label="Send message"><svg data-native-save></svg></button></div></div></div></div></form></div></div></div>';
+    editor.insertAdjacentHTML('beforeend','<div data-overflow-fade="below"></div>');
+    const form=editor.querySelector('form')!,save=form.querySelector<HTMLButtonElement>('[data-promptbox-submit-action]')!,nativeButtons=Array.from(form.querySelectorAll('button'));
+    await f.tick();const css=(e:Element)=>f.dom.window.getComputedStyle(e);
+    assert.equal(f.queue.querySelector('[data-bb-chat-ui-queue-edit-footer]'),null,'no extra action box under the native composer');
+    assert.equal(form.querySelector('[data-bb-chat-ui-queue-edit-save]'),save,'the original submit button is the save icon');
+    assert.equal(save.getAttribute('aria-label'),'대기 메시지 저장');
+    assert.ok(save.querySelector('[data-bb-chat-ui-queue-save-icon]'));
+    assert.equal(css(form).display,'flex','the native composer keeps a measurable layout box');
+    assert.equal(css(form).borderRadius,'0px');
+    assert.equal(css(form).boxShadow,'none');
+    assert.equal(css(editor.querySelector('[data-overflow-fade]')!).display,'none','standalone queue fade must not paint another band under the editor toolbar');
+    assert.equal(css(editor.parentElement!).display,'contents','queue list does not remain an outer scroller');
+    assert.equal(css(form.querySelector('[data-promptbox-input-region]')!).overflowY,'auto');
+    assert.equal(css(form.querySelector('[data-promptbox-editor-scroll]')!).overflowY,'visible','only body scrolls, no nested editor scroll');
+    assert.equal(css(form.querySelector('[data-promptbox-action-row]')!).flexShrink,'0');
+    assert.notEqual(css(form.querySelector('[data-promptbox-submit-group]')!).display,'none');
+    assert.equal(css(form.querySelector('[aria-label="Collapse prompt box"]')!).display,'none');
+    assert.deepEqual(Array.from(form.querySelectorAll('button')),nativeButtons,'attachment, model, voice and submit nodes keep their native handlers');
+    stopInfo();assert.equal(save.hasAttribute('data-bb-chat-ui-queue-edit-save'),false);
+    assert.equal(save.getAttribute('aria-label'),'Send message');
+    assert.equal(save.querySelector('[data-bb-chat-ui-queue-save-icon]'),null);
+    assert.ok(save.querySelector('[data-native-save]'));
+    assert.equal(form.hasAttribute('data-bb-chat-ui-queue-editor-flow'),false);
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
+
+test('queue editor hides the settings footer while attachment keeps its original handler',async()=>{
+  const f=fixture();const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();f.click('[data-edit]');
+    const editor=f.queue.querySelector<HTMLElement>('[data-queued-message-inline-editor]')!;
+    editor.innerHTML='<div data-inline-message-editor-frame><div>Editing<button aria-label="Stop editing queued message"></button></div><div data-follow-up-composer class="relative"><form data-promptbox><div data-promptbox-layout><div data-promptbox-main><div data-promptbox-input-region><div data-promptbox-editor-scroll><div contenteditable="true">Draft</div></div></div><div data-promptbox-expanded-only></div><div data-promptbox-action-row><div data-promptbox-expanded-only data-promptbox-standard-actions><button type="button" aria-label="Prompt actions" style="margin-left:-6px">+</button><button data-model disabled>Model</button></div><div data-promptbox-standard-actions><button data-voice>Voice</button><div data-promptbox-submit-group><button data-promptbox-submit-action>Save</button></div></div></div></div></div></form><div data-follow-up-composer-footer class="mt-1"><div></div><div><button data-permission disabled>Approve for me</button><button data-auto>Auto</button></div></div></div></div>';
+    const composer=editor.querySelector<HTMLElement>('[data-follow-up-composer]')!,footer=composer.querySelector('[data-follow-up-composer-footer]')!,attach=composer.querySelector<HTMLButtonElement>('[aria-label="Prompt actions"]')!;
+    const originalParent=attach.parentElement;let clicks=0;attach.addEventListener('click',()=>clicks++);
+    await f.tick();const css=(e:Element)=>f.dom.window.getComputedStyle(e);
+    assert.equal(composer.hasAttribute('data-bb-chat-ui-queue-editor-toolbar'),true);
+    assert.equal(css(composer).display,'grid');assert.equal(css(composer.querySelector('form')!).display,'grid');
+    assert.equal(css(composer).containerType,'inline-size');assert.equal(css(composer.querySelector('form')!).containerType,'normal');
+    assert.equal(css(footer).display,'none');
+    assert.equal(css(attach).marginLeft,'0px');assert.equal(css(attach).flexShrink,'0');assert.equal(css(attach).minWidth,'32px');
+    assert.equal(attach.disabled,false,'styling does not disable a supported native attachment action');attach.click();assert.equal(clicks,1);
+    Object.defineProperty(f.queue,'offsetWidth',{configurable:true,value:358});
+    f.document.documentElement.setAttribute('data-bb-chat-ui-root-device','desktop');await f.tick();
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-inline-actions'),'true');
+    assert.equal(css(attach).display,'inline-flex','desktop hides only queue ellipsis, never Prompt actions');
+    attach.click();assert.equal(clicks,2,'desktop attachment clicks still reach the original handler');
+    assert.equal(attach.parentElement,originalParent,'native toolbar nodes stay in React-owned parents');
+    assert.equal(composer.querySelector<HTMLButtonElement>('[data-permission]')!.disabled,true,'read-only permission stays read-only');
+    stopInfo();assert.equal(composer.hasAttribute('data-bb-chat-ui-queue-editor-toolbar'),false);
+    assert.equal(attach.parentElement,originalParent);
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
+
+function toolbarEditor(document:Document) {
+  const editor=document.querySelector<HTMLElement>('[data-queued-message-inline-editor]')!;
+  editor.innerHTML='<div data-inline-message-editor-frame><div>Editing<button type="button" aria-label="Stop editing queued message">×</button></div><div data-follow-up-composer><form data-promptbox><div data-promptbox-layout><div data-promptbox-main><div data-promptbox-input-region><div contenteditable="true">Draft</div></div><div data-promptbox-action-row><div data-promptbox-standard-actions><button type="button" aria-label="Prompt actions">+</button><button type="button" aria-label="Provider, model and reasoning" disabled><span>Long provider model</span></button></div><div data-promptbox-standard-actions><button type="submit" data-promptbox-submit-action disabled style="opacity:.5">Save</button></div></div></div></div></form><div data-follow-up-composer-footer style="pointer-events:none"><div></div><div><button type="button" aria-label="Permission mode" disabled><span>Approve for me</span></button></div></div></div></div>';
+  const root=editor.querySelector<HTMLElement>('[data-follow-up-composer]')!;
+  return {editor,root};
+}
+
+test('queue save check stays readable while preserving disabled and enabled behavior',async()=>{
+  const f=fixture(),stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();f.click('[data-edit]');
+    const {root}=toolbarEditor(f.document);await f.tick();
+    const save=root.querySelector<HTMLButtonElement>('[data-bb-chat-ui-queue-edit-save]')!,style=()=>f.dom.window.getComputedStyle(save);
+    assert.equal(save.disabled,true);assert.equal(style().opacity,'1');
+    assert.equal(style().minWidth,'32px');assert.equal(style().flexShrink,'0');
+    save.disabled=false;assert.equal(style().opacity,'1');
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
+
+test('queue editor tools keep a common centered height against native coarse-pointer button sizing',async()=>{
+  const f=fixture(),stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();f.click('[data-edit]');
+    const {root}=toolbarEditor(f.document),last=root.querySelector('[data-promptbox-action-row]')!.lastElementChild!;
+    const style=f.document.createElement('style');style.textContent='.native-touch-voice { height:40px; padding:8px 12px; }';f.document.head.append(style);
+    last.insertAdjacentHTML('afterbegin','<span><button type="button" class="native-touch-voice" aria-label="Start voice input"><svg></svg></button></span>');
+    await f.tick();const css=(n:Element)=>f.dom.window.getComputedStyle(n);
+    for(const button of Array.from(root.querySelectorAll('[aria-label="Start voice input"],[aria-label="Prompt actions"],[data-bb-chat-ui-queue-edit-save]'))){assert.equal(css(button).height,'32px');assert.equal(css(button).padding,'0px');}
+    assert.equal(css(last).alignSelf,'center');assert.equal(css(last).height,'32px');
+    assert.equal(css(root.querySelector('[data-promptbox-action-row]')!).marginTop,'0px','body-to-toolbar spacing belongs to the shared grid row, not only the form controls');
+    assert.equal(css(root.querySelector('[data-follow-up-composer-footer]')!).display,'none');
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
+
+test('queue edit hides model and execution settings without affecting the normal composer',async()=>{
+  const f=fixture(),stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();f.click('[data-edit]');
+    const {editor,root}=toolbarEditor(f.document);
+    const source=root.querySelector<HTMLButtonElement>('[aria-label^="Provider"]')!,footer=root.querySelector('[data-follow-up-composer-footer]')!;
+    const parent=source.parentElement;
+    const normal=root.cloneNode(true) as HTMLElement;editor.after(normal);
+    await f.tick();const css=(n:Element)=>f.dom.window.getComputedStyle(n);
+    assert.equal(css(source).display,'none');assert.equal(css(footer).display,'none');
+    assert.equal(root.querySelector('[data-bb-chat-ui-queue-setting-proxy],[data-bb-chat-ui-queue-setting-visual]'),null);
+    assert.equal(f.document.querySelector('[data-bb-chat-ui-queue-setting-detail]'),null);
+    assert.notEqual(css(normal.querySelector('[aria-label^="Provider"]')!).display,'none','the normal composer keeps its settings');
+    assert.equal(source.disabled,true);assert.equal(source.parentElement,parent);
+    for(const hit of ['small','large']){
+      f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target',hit);await f.tick();
+      assert.notEqual(css(root.querySelector('[aria-label="Prompt actions"]')!).display,'none');
+      assert.notEqual(css(root.querySelector('[data-bb-chat-ui-queue-edit-save]')!).display,'none');
+    }
+    stopQueue();assert.notEqual(css(source).display,'none','unload restores the native controls');
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
