@@ -5610,7 +5610,7 @@ test("all static list statuses share padded rounded hover rows and Goal control 
     for(const [key,root,selector] of [['todos',card,'li'],['workflow',workflow,'div.min-h-7']] as const){
       f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();
       for(const row of root.querySelectorAll(selector)){
-        const s=f.dom.window.getComputedStyle(row);assert.equal(s.padding,'8px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,'10px');assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
+        const s=f.dom.window.getComputedStyle(row);assert.equal(s.padding,key==='workflow'?'6px 8px':'8px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,'10px');assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
       }
     }
   }finally{stop();f.dom.window.close();}
@@ -5697,7 +5697,7 @@ test("compact information lists share the background row density without native 
       const card=stack.querySelector(`[data-bb-chat-ui-info-open="${kind}"]`)!;
       assert.equal(paint(stack).getPropertyValue('--bb-chat-ui-info-row-gap'),'2px','the background row gap is the shared reference');
       for(const row of card.querySelectorAll(rowSelector)){
-        const css=paint(row);assert.equal(css.minHeight,'32px');assert.equal(css.padding,'8px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'16px');
+        const css=paint(row);assert.equal(css.minHeight,kind==='workflow'?'28px':'32px');assert.equal(css.padding,kind==='workflow'?'6px 8px':'8px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'16px');
         assert.equal(css.marginTop,'0px');assert.equal(css.marginBottom,'0px','native space-y margins do not add another gap');
       }
       for(const selector of groups)assert.equal(paint(card.querySelector(selector)!).rowGap,'var(--bb-chat-ui-info-row-gap)',`${kind}: peers use one gap`);
@@ -5734,7 +5734,7 @@ test("Workflow header keeps its title above live metadata without moving native 
     assert.equal(paint(count).gridRow,'2');assert.equal(paint(time).gridRow,'2');assert.equal(paint(progress).gridRow,'2');
     assert.equal(paint(header.querySelector('[data-bb-chat-ui-info-title-icon]')!).gridRow,'1');
     assert.equal(paint(header.querySelector('.ml-auto')!).display,'none');
-    assert.equal(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,'18px','close is centered on the 28px first row, not both rows');
+    assert.match(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,/bb-chat-ui-info-title-height/,'close follows the full controls row height');
     assert.equal(title.parentElement,summary);assert.equal(count.parentElement,summary);assert.equal(progress.parentElement,header);
     header.click();assert.equal(header.getAttribute('aria-expanded'),'true','title remains read-only');
     count.textContent='2/3 agents';time.textContent='1m';await f.tick();
@@ -5746,6 +5746,150 @@ test("Workflow header keeps its title above live metadata without moving native 
   } finally {stop();}
   assert.notEqual(paint(header).display,'grid');assert.notEqual(paint(summary).display,'contents');
   assert.equal(title.parentElement,summary);assert.equal(progress.parentElement,header);
+  f.dom.window.close();
+});
+
+test("a grouped workflow card keeps native controls, graph rows and split metadata", async () => {
+  const f=fixture();
+  const utilities=f.document.createElement('style');
+  utilities.textContent='.overflow-hidden{overflow:hidden}.bg-popover{background-color:rgb(255,255,255)}.bg-surface-raised-solid{background-color:rgb(20,20,20)}.bg-background\\/70{background-color:rgba(250,250,250,.7)}.border{border:1px solid rgb(9,9,9)}';
+  f.document.head.append(utilities);
+  const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const card=f.document.createElement('section');
+  card.setAttribute('aria-label','Active workflows');
+  card.innerHTML=`<div class="flex flex-col gap-1"><div class="flex flex-col gap-2">
+    <section aria-label="Workflow" data-run="open" class="overflow-hidden rounded-lg border bg-surface-raised-solid">
+      <div role="group" aria-label="Workflow controls: chat-ui-screen-check" class="flex w-full items-stretch">
+        <button type="button" aria-expanded="false" aria-controls="wf-open" aria-label="Workflow: chat-ui-screen-check" class="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 px-3 py-1.5">
+          <svg data-icon-root></svg>
+          <span class="flex min-w-0 flex-1 items-center gap-1.5">
+            <span class="min-w-0 truncate font-medium" title="chat-ui-screen-check">chat-ui-screen-check</span>
+            <span class="shrink-0 text-2xs">0/1 agents</span>
+            <span class="shrink-0 text-2xs">30s</span>
+          </span>
+          <div role="presentation" aria-hidden="true" class="flex w-16 shrink-0 gap-1"><span></span></div>
+          <span class="ml-auto w-6"></span>
+        </button>
+        <button type="button" aria-label="Open workflow chat-ui-screen-check in side panel"></button>
+      </div>
+      <section id="wf-open" role="region" aria-hidden="true" class="overflow-hidden">
+        <div class="overflow-hidden bg-popover">
+          <div data-detail-scroll-area class="overflow-hidden">
+            <div class="flex flex-col gap-1.5">
+              <div>
+                <button type="button" aria-expanded="true" data-phase class="flex w-full items-center bg-background/70">화면 열기</button>
+                <div class="mt-1 flex flex-col"><div class="flex min-h-7 w-full items-center bg-background/70" data-agent><span class="min-w-0 flex-1 truncate" data-agent-label>an-extremely-long-agent-name-that-must-not-run-past-the-card-edge</span></div><button type="button" class="flex min-h-7 w-full items-center bg-background/70" data-agent-action>열기</button></div>
+              </div>
+              <div class="flex items-center gap-1.5" data-idle><span class="size-3"></span><span>기기 전환</span></div>
+            </div>
+          </div>
+          <div class="px-1 pb-1"><button type="button" aria-expanded="true" aria-controls="wf-open" aria-label="Collapse workflow chat-ui-screen-check">collapse</button></div>
+        </div>
+      </section>
+    </section>
+    <section aria-label="Workflow" data-run="closed" class="overflow-hidden border bg-surface-raised-solid">
+      <div role="group" aria-label="Workflow controls: other"><button type="button" aria-expanded="false" aria-controls="wf-closed" aria-label="Workflow: other"><span class="flex flex-1"><span>other</span></span></button></div>
+      <section id="wf-closed" role="region" aria-hidden="true" class="overflow-hidden"><div class="overflow-hidden bg-popover">closed</div></section>
+    </section>
+  </div></div>`;
+  stack.append(card);
+  const run=card.querySelector<HTMLElement>('[data-run="open"]')!;
+  const header=run.querySelector<HTMLButtonElement>('button[aria-label^="Workflow:"]')!;
+  const summary=header.querySelector<HTMLElement>('.flex-1')!;
+  const [title,count,time]=Array.from(summary.children) as HTMLElement[];
+  const progress=header.querySelector<HTMLElement>('[role="presentation"]')!;
+  const region=card.querySelector<HTMLElement>('#wf-open')!;
+  const slab=region.querySelector<HTMLElement>('.bg-popover')!;
+  const collapse=run.querySelector<HTMLButtonElement>('[aria-label^="Collapse workflow"]')!;
+  header.addEventListener('click',()=>{
+    const expanded=header.getAttribute('aria-expanded')!=='true';
+    header.setAttribute('aria-expanded',String(expanded));
+    region.setAttribute('aria-hidden',String(!expanded));
+  });
+  const stop=injectComposerInfo(f.document),paint=(n:Element)=>f.dom.window.getComputedStyle(n);
+  const flat=(value:string)=>value==='rgba(0, 0, 0, 0)'||value==='transparent';
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();
+    assert.equal(header.getAttribute('aria-expanded'),'true','opening the popover expands the workflow body');
+    const controls=header.parentElement as HTMLElement;
+    assert.equal(paint(controls).display,'grid');
+    assert.equal(paint(controls).gridTemplateRows,'28px auto 12px');
+    assert.equal(paint(header).display,'grid');
+    assert.equal(paint(header).gridColumn,'2 / -1');
+    assert.equal(paint(header).gridRow,'1 / span 3');
+    assert.equal(paint(header).alignSelf,'stretch');
+    assert.equal(paint(header).position,'static');
+    assert.equal(paint(header).justifyItems,'start');
+    assert.equal(paint(header).columnGap,'4px');
+    assert.equal(paint(summary).display,'contents');
+    assert.equal(paint(title).gridRow,'1');
+    assert.equal(paint(title).gridColumn,'1 / -1');
+    assert.equal(paint(count).gridRow,'2');assert.equal(paint(count).gridColumn,'1','agent count stays at the list edge');
+    assert.equal(paint(time).gridRow,'2');assert.equal(paint(time).gridColumn,'3');assert.equal(paint(time).justifySelf,'end');
+    assert.equal(paint(progress).position,'absolute');
+    assert.equal(paint(progress).left,'0px');assert.equal(paint(progress).right,'0px');assert.equal(paint(progress).bottom,'0px');
+    assert.equal(paint(progress).width,'100%');assert.equal(paint(progress).height,'3px');
+    assert.equal(paint(header.querySelector('.ml-auto')!).display,'none','the native chevron yields to the popover close');
+    assert.equal(title.parentElement,summary);assert.equal(progress.parentElement,header);
+    assert.equal(paint(header).paddingLeft,'0px','metadata starts at the title edge');
+    const side=run.querySelector<HTMLButtonElement>('[aria-label^="Open workflow"]')!;
+    assert.equal(side.parentElement,header.parentElement,'the native side-panel control keeps its parent');
+    assert.equal(paint(side).display,'none','the rectangular side-panel button is not the visible control');
+    const sideIcon=header.parentElement?.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-panel-action]')!;
+    assert.equal(sideIcon.getAttribute('aria-label'),side.getAttribute('aria-label'));
+    assert.equal(paint(sideIcon).borderRadius,'50%');
+    assert.equal(paint(sideIcon).width,'24px');
+    assert.equal(paint(sideIcon).alignSelf,'center');
+    assert.equal(paint(sideIcon).gridColumn,'3');
+    assert.equal(paint(sideIcon).gridRow,'1');
+    const titleIcon=controls.querySelector<HTMLElement>('[data-bb-chat-ui-info-title-icon="workflow"]')!;
+    assert.equal(paint(titleIcon).gridColumn,'1');
+    assert.equal(paint(titleIcon).gridRow,'1');
+    const dismiss=header.parentElement?.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-native-dismiss]')!;
+    assert.equal(dismiss.parentElement,sideIcon.parentElement,'the close and side-panel action share the controls row');
+    assert.equal(paint(dismiss).position,'static');
+    assert.equal(paint(dismiss).width,paint(sideIcon).width);
+    assert.equal(paint(dismiss).height,paint(sideIcon).height);
+    assert.equal(paint(dismiss).alignSelf,paint(sideIcon).alignSelf);
+    assert.equal(paint(dismiss).gridColumn,'4');
+    assert.equal(paint(dismiss).gridRow,'1');
+    const agentRow=run.querySelector<HTMLElement>('[data-agent]')!;
+    const agentLabel=agentRow.querySelector<HTMLElement>('[data-agent-label]')!;
+    assert.equal(paint(agentRow).minWidth,'0px');
+    assert.equal(paint(agentLabel).overflow,'hidden');
+    assert.equal(paint(agentLabel).textOverflow,'ellipsis');
+    assert.equal(paint(agentLabel).whiteSpace,'nowrap');
+    header.click();assert.equal(header.getAttribute('aria-expanded'),'true','the title does not collapse the list');
+    const hidden=collapse.closest('[data-bb-chat-ui-info-collapse]')??collapse;
+    assert.equal(paint(hidden).display,'none','the bottom collapse is the popover close, not a second list row');
+    assert.equal(flat(paint(slab).backgroundColor),true,'the list drops the opaque popover slab');
+    assert.equal(paint(slab).overflow,'visible','row hover is not clipped by the reveal wrapper');
+    assert.equal(paint(region).overflow,'visible');
+    const workflowList=region.querySelector<HTMLElement>('[data-detail-scroll-area]')!;
+    assert.equal(paint(workflowList).marginTop,'0px','the progress bar replaces the divider at the list boundary');
+    assert.equal(paint(workflowList).paddingTop,'8px','the list content clears the divider');
+    assert.equal(paint(workflowList).borderTopWidth,'0px');
+    const composerCss=f.document.querySelector<HTMLStyleElement>('#bb-chat-ui-composer-info')!.textContent!;
+    assert.doesNotMatch(composerCss,/content:"·"/,'split metadata has no separator');
+    assert.doesNotMatch(composerCss,/counter\(workflow-step/,'graph nodes have no phase numbers');
+    assert.equal(paint(run).overflow,'visible');
+    assert.equal(flat(paint(run).backgroundColor),true);
+    const phase=run.querySelector<HTMLElement>('[data-phase]')!;
+    const idle=run.querySelector<HTMLElement>('[data-idle]')!;
+    assert.equal(paint(idle).minHeight,paint(phase).minHeight,'an inactive phase uses the expandable row height');
+    assert.equal(paint(idle).padding,paint(phase).padding);
+    assert.equal(paint(idle).marginLeft,paint(phase).marginLeft,'an inactive phase shares the expandable row indent');
+    const agent=run.querySelector<HTMLElement>('[data-agent]')!;
+    const action=run.querySelector<HTMLElement>('[data-agent-action]')!;
+    for (const row of [phase,agent,action]) {
+      assert.equal(paint(row).minHeight,'28px');
+      assert.equal(paint(row).padding,'6px 8px');
+      assert.equal(flat(paint(row).backgroundColor),true,`${row.getAttribute('data-phase')??row.getAttribute('data-agent')??'action'} drops the native wash`);
+      assert.equal(paint(row).boxShadow,'none');
+    }
+    const closed=card.querySelector<HTMLElement>('#wf-closed')!;
+    assert.equal(paint(closed).overflow,'hidden','a collapsed sibling workflow stays clipped');
+  } finally {stop();}
   f.dom.window.close();
 });
 

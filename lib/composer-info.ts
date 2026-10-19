@@ -34,7 +34,11 @@ const NATIVE_DETAIL = `${DETAIL}:is(${["Thread context before sending", "Child t
 const PROTECTED_SURFACE = "input, textarea, select, pre, code, [contenteditable='true'], .cm-editor, .cm-content, .monaco-editor";
 const PROTECTED_EXCLUDE = `:not(${PROTECTED_SURFACE}):not(${PROTECTED_SURFACE.split(", ").map(selector => `${selector} *`).join(", ")})`;
 const LEGACY_ROW = `:is([class~="bg-background/70"], [class~="bg-destructive/5"]):not(${PROTECTED_SURFACE}):not(${PROTECTED_SURFACE.split(", ").map(selector => `${selector} *`).join(", ")})`;
-const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${DETAIL}[${OPEN}="workflow"] section[role="region"] div[class~="min-h-7"], ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded], ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
+const WORKFLOW_LIST_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[class~="min-h-7"], button[aria-expanded], div[class~="items-center"][class~="gap-1.5"])`;
+const WORKFLOW_PHASES = `${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area] > div[class~="flex-col"][class~="gap-1.5"]`;
+const WORKFLOW_PHASE_ROW = `${WORKFLOW_PHASES} > div > button[aria-expanded], ${WORKFLOW_PHASES} > div[class~="items-center"]`;
+const WORKFLOW_AGENT_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="min-h-7"]:has(> span[class~="truncate"])`;
+const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${WORKFLOW_LIST_ROW}, ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
 const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"])`;
 const WORKFLOW_HEADING = `${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] > button[${MARK}-close-heading][${MARK}-readonly-title][aria-label^="Workflow:"]`;
 
@@ -116,8 +120,27 @@ ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(2) { grid-column:1 
 ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(3) { grid-column:3; grid-row:2; }
 ${WORKFLOW_HEADING} > [role="presentation"] { grid-column:4; grid-row:2; width:64px; max-width:100%; }
 ${WORKFLOW_HEADING} > span[class~="ml-auto"] { display:none; }
-${DETAIL}[${OPEN}="workflow"] > [${MARK}-native-dismiss] { top:18px; }
-${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area] { padding-top:0 !important; }
+/* Current runs put the title button inside the controls group, under an Active workflows host. */
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { position:relative; display:grid !important; grid-template-columns:14px minmax(0,1fr) 24px 24px; grid-template-rows:28px auto 12px; align-items:center; column-gap:6px; row-gap:2px; padding:0 !important; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-native-dismiss] { position:static; top:auto; right:auto; grid-column:4; grid-row:1; align-self:center; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-panel-action] { grid-column:3; grid-row:1; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] { display:grid !important; position:static !important; align-self:stretch; grid-column:2 / -1; grid-row:1 / span 3; grid-template-columns:auto minmax(0,1fr) auto; grid-template-rows:28px auto; align-items:center; justify-items:start; column-gap:4px; row-gap:2px; width:100%; max-width:100%; min-width:0; padding:0 0 12px !important; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] { display:contents; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:first-child { grid-column:1 / -1; grid-row:1; width:100%; box-sizing:border-box; padding-right:60px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(2) { grid-column:1; grid-row:2; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(3) { grid-column:3; grid-row:2; justify-self:end; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > :is([role="presentation"], div[class~="w-16"]) { position:absolute; left:0; right:0; bottom:0; grid-column:1 / -1; grid-row:3; width:100%; max-width:none; height:3px; min-height:3px; overflow:hidden; border-radius:999px; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="ml-auto"] { display:none; }
+${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[class~="min-h-7"], button[aria-expanded], div[class~="items-center"][class~="gap-1.5"]) { min-width:0; }
+${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[class~="min-h-7"], button[aria-expanded], div[class~="items-center"][class~="gap-1.5"]) :is([class~="truncate"], [class~="min-w-0"], [class~="flex-1"]) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] section[role="region"] { grid-template-columns:minmax(0,1fr); }
+${DETAIL}[${OPEN}="workflow"] section[role="region"] > div { min-width:0; }
+${WORKFLOW_LIST_ROW} > span[class~="font-medium"] { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${WORKFLOW_LIST_ROW} > span[class~="ml-auto"] { min-width:0; max-width:40%; flex-shrink:1; }
+${WORKFLOW_LIST_ROW} > span[class~="ml-auto"] > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area] { margin-top:0; padding-top:8px !important; border-top:0; }
+${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] [data-detail-scroll-area] { padding-top:0 !important; }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] [${MARK}-native-dismiss] { top:8px; right:8px; }
 ${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] { grid-area:actions; display:flex; align-items:center; justify-content:flex-end; margin-top:0; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > button[aria-expanded][aria-controls],
@@ -174,7 +197,29 @@ ${LIST_DETAIL} > section[role="region"], ${LIST_DETAIL} > section[role="region"]
 ${LIST_DETAIL} ul[class~="px-2.5"], ${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
 /* Main popovers own the common height cap; native list caps must not shorten it. */
 ${DETAIL}[${OPEN}="todos"] ul, ${DETAIL} [data-detail-scroll-area] { max-height:none !important; overflow:visible !important; }
-${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[aria-expanded]) { width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; }
+${DETAIL}[${OPEN}="workflow"] section[aria-label="Workflow"] { overflow:visible !important; background-color:transparent !important; border-color:transparent !important; box-shadow:none !important; }
+${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) { overflow:visible !important; border-top-width:0 !important; border-top-color:transparent !important; background:transparent !important; box-shadow:none !important; }
+${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) > div[class~="bg-popover"] { overflow:visible !important; background-color:transparent !important; box-shadow:none !important; }
+${WORKFLOW_LIST_ROW} { width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; min-height:28px !important; padding:6px 8px !important; }
+/* A compact step timeline; native phase controls and agent nodes retain their parents. */
+${WORKFLOW_PHASES} > div { position:relative; min-width:0; }
+${WORKFLOW_PHASE_ROW} { gap:8px; opacity:1; }
+${WORKFLOW_PHASE_ROW.split(", ").map(selector => `${selector}::before`).join(", ")} { content:""; position:relative; z-index:1; display:inline-block; flex:none; width:18px; height:18px; border:0; border-radius:999px; background:radial-gradient(circle,var(--subtle-foreground) 0 4px,transparent 4.5px); }
+${WORKFLOW_PHASES} > div:not(:last-child)::after { content:""; position:absolute; top:19px; bottom:-13px; left:8px; width:2px; background:color-mix(in oklab,var(--foreground) 22%,transparent); pointer-events:none; }
+${WORKFLOW_PHASES} > div[class~="items-center"]:not(:last-child)::after { left:16px; }
+${WORKFLOW_PHASES} > div > button[aria-expanded] > svg { order:3; margin-left:auto; flex:none; color:var(--subtle-foreground); }
+${WORKFLOW_PHASES} > div > button[aria-expanded] > span[class~="font-medium"] { flex:1; }
+${WORKFLOW_PHASES} > div[class~="items-center"] > span[aria-hidden="true"] { display:none; }
+${WORKFLOW_PHASES} > div[class~="items-center"] > span[class~="tabular-nums"] { margin-left:auto; font-size:10px; white-space:nowrap; }
+${WORKFLOW_PHASES} > div > button[aria-expanded][class~="bg-background/70"]::before,
+${WORKFLOW_PHASES} > div > button[aria-expanded]:has(> [data-icon="CircleCheck"])::before,
+${WORKFLOW_PHASES} > div[class~="items-center"][class~="bg-background/70"]::before,
+${WORKFLOW_PHASES} > div[class~="items-center"]:has(> [data-icon="CircleCheck"])::before { background:radial-gradient(circle,var(--foreground) 0 4px,transparent 4.5px); }
+${WORKFLOW_PHASES} > div > button[aria-expanded] + div[class~="flex-col"] { margin-left:9px !important; padding-left:18px; border-left:0; }
+${WORKFLOW_AGENT_ROW} { display:grid; grid-template-columns:14px minmax(0,1fr); column-gap:8px; row-gap:2px; }
+${WORKFLOW_AGENT_ROW} > svg[data-icon-root] { grid-column:1; grid-row:1; align-self:center; }
+${WORKFLOW_AGENT_ROW} > span[class~="truncate"] { grid-column:2; grid-row:1; font-weight:400; }
+${WORKFLOW_AGENT_ROW} > span[class~="ml-auto"] { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
 ${DETAIL} button[aria-expanded][aria-controls] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL} button[aria-expanded][aria-controls]:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
 ${DETAIL}[${OPEN}="workflow"] button[aria-expanded] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
@@ -182,7 +227,7 @@ ${DETAIL}[${OPEN}="workflow"] button[aria-expanded]:is(:hover, :focus-visible) {
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 16px); margin:0 -8px; }
 [${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); font-size:12px; line-height:16px; }
-[${MARK}-panel-action], [${MARK}-action="diff"] { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:24px; height:24px; padding:0 !important; border-radius:50% !important; color:var(--subtle-foreground); }
+[${MARK}-panel-action], [${MARK}-action="diff"] { display:inline-flex; align-items:center; justify-content:center; align-self:center; flex:none; width:24px; height:24px; min-height:24px; padding:0 !important; border-radius:50% !important; color:var(--subtle-foreground); }
 [${MARK}-panel-action] svg, [${MARK}-action="diff"] svg { width:14px; height:14px; }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
 [${MARK}-trigger]:active, [${MARK}-stack-kind]:active, [${MARK}-all]:active { transform:scale(.95); }
@@ -856,7 +901,8 @@ export function injectComposerInfo(document: Document): () => void {
         dismiss.setAttribute("aria-label", `${item.label} 닫기`); dismiss.title = `${item.label} 닫기`;
         nativeDismisses.set(item.node, dismiss);
       }
-      if (dismiss.parentElement !== item.node) item.node.append(dismiss);
+      const dismissParent = item.key === "workflow" && heading?.matches('[role="group"]') && !heading.closest("button, a") ? heading : item.node;
+      if (dismiss.parentElement !== dismissParent) dismissParent.append(dismiss);
       trackCloseHeading(heading ? item.node : null,heading);
     };
     const panelAction = (label:string, run:() => void) => {
@@ -882,13 +928,17 @@ export function injectComposerInfo(document: Document): () => void {
         for (const source of Array.from(item.node.querySelectorAll<HTMLElement>(`button:not([${MARK}-panel-action]), a[href]`))) {
           const label = [source.getAttribute("aria-label"), source.getAttribute("title"), source.textContent]
             .map(text => text?.trim().replace(/\s+/g, " ") ?? "")
-            .find(text => /^(?:(?:사이드|사이드바|측면|옆)\s*패널(?:에서)?\s*열기|플러그인\s*페이지(?:에서)?\s*열기|open (?:in )?(?:the )?(?:side ?panel|sidebar|plugin page))$/i.test(text));
+            .find(text => /^(?:(?:사이드|사이드바|측면|옆)\s*패널(?:에서)?\s*열기|플러그인\s*페이지(?:에서)?\s*열기|open (?:in )?(?:the )?(?:side ?panel|sidebar|plugin page)|open workflow .+ in side panel)$/i.test(text));
           if (!label) continue;
           current.add(source);
-          let heading = item.node.querySelector<HTMLElement>("h3, h4, header");
+          let heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading], [${MARK}-title-heading], h3, h4, header`);
           if (!heading || heading.closest("button, a")) {
-            heading = document.createElement("h3"); heading.textContent = item.label;
-            item.node.prepend(heading); generatedHeadings.add(heading);
+            const group = source.closest<HTMLElement>('[role="group"]');
+            heading = group && item.node.contains(group) ? group : null;
+            if (!heading) {
+              heading = document.createElement("h3"); heading.textContent = item.label;
+              item.node.prepend(heading); generatedHeadings.add(heading);
+            }
           }
           if (!heading.hasAttribute(`${MARK}-panel-heading`)) {
             heading.setAttribute(`${MARK}-panel-heading`, ""); panelHeadings.add(heading);
