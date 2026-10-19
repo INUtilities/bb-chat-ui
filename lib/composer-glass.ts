@@ -130,13 +130,13 @@ ${FOOTER_MARK} [data-promptbox-shell] .agentation-staging-shell--expanded {
     inset 0 1px 3px ${LIGHT_EDGE};
 }
 ${FOOTER_MARK} [data-follow-up-composer-anchor] [data-promptbox]:not([data-promptbox-compact]) [data-promptbox-editor-scroll] {
-  min-height: 68px !important;
+  min-height: min(68px,var(--bb-chat-ui-editor-max-height,68px)) !important;
 }
 /* Container collapse can omit data-promptbox-compact. Keep its native
    48px viewport rather than applying the expanded minimum. */
 @container follow-up-composer style(--follow-up-composer-container-compact: true) {
   ${FOOTER_MARK} [data-follow-up-composer]:not([data-follow-up-composer-expanded]) [data-promptbox]:not([data-promptbox-voice-active]) [data-promptbox-editor-scroll] {
-    min-height:48px !important;
+    min-height:min(48px,var(--bb-chat-ui-editor-max-height,48px)) !important;
   }
 }
 ${FOOTER_MARK} [data-promptbox] {

@@ -3,6 +3,7 @@ import { Fragment, createElement } from "react";
 
 import { DeviceChromeBridge } from "./lib/device-chrome";
 import { QuoteMentionBridge } from "./lib/quote-bridge";
+import { injectComposerViewport } from "./lib/composer-viewport";
 import { injectComposerGlass } from "./lib/composer-glass";
 import { injectQuoteMentions } from "./lib/quote-mention";
 import { injectQuotePill } from "./lib/quote-pill";
@@ -67,7 +68,9 @@ export default definePluginApp((app) => {
   app.contentScripts.register({
     id: "composer-glass",
     mount() {
-      return injectComposerGlass(document);
+      const stopGlass=injectComposerGlass(document);
+      const stopViewport=injectComposerViewport(document);
+      return ()=>{stopViewport();stopGlass();};
     },
   });
   app.contentScripts.register({

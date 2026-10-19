@@ -52,14 +52,14 @@ test("spreads a translucent footer fade above the composer without moving it", (
 test("keeps the expanded editor minimum height independent of banners", () => {
   assert.match(
     composerGlassCss,
-    /\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-follow-up-composer-anchor\] \[data-promptbox\]:not\(\[data-promptbox-compact\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:\s*68px !important;\s*\}/,
+    /\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-follow-up-composer-anchor\] \[data-promptbox\]:not\(\[data-promptbox-compact\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:\s*min\(68px,var\(--bb-chat-ui-editor-max-height,68px\)\) !important;\s*\}/,
   );
 });
 
 test("container-collapsed follow-up editors keep the native 48px line box", () => {
   // BB can collapse through a style container without data-promptbox-compact.
   assert.match(composerGlassCss,
-    /@container follow-up-composer style\(--follow-up-composer-container-compact: true\)\s*\{\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-follow-up-composer\]:not\(\[data-follow-up-composer-expanded\]\) \[data-promptbox\]:not\(\[data-promptbox-voice-active\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:48px !important;\s*\}/);
+    /@container follow-up-composer style\(--follow-up-composer-container-compact: true\)\s*\{\s*\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-follow-up-composer\]:not\(\[data-follow-up-composer-expanded\]\) \[data-promptbox\]:not\(\[data-promptbox-voice-active\]\) \[data-promptbox-editor-scroll\]\s*\{\s*min-height:min\(48px,var\(--bb-chat-ui-editor-max-height,48px\)\) !important;\s*\}/);
 });
 
 test("keeps the host canvas and uses each thread surface tone for the fade", () => {
