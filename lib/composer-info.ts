@@ -8,6 +8,7 @@ import { eventHop, pressPop, stickyDrop } from "./motion.ts";
 import { isDesktopChrome } from "./device-chrome.ts";
 import { infoStack } from "./composer-info-stack.ts";
 import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
+import { attachQueueControls } from "./composer-queue-controls.ts";
 import { interceptPrMerge } from "./composer-pr-merge.ts";
 
 const STACK = "[data-promptbox-shell] > .grid";
@@ -78,7 +79,8 @@ ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD}
 [${MARK}-bar] button:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 [${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border:0; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; background:var(--bb-chat-ui-info-face); backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent); transition:transform 260ms cubic-bezier(.2,.9,.22,1.25); }
 [${MARK}-trigger] { width:auto; min-width:0; }
-[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-choice], [${MARK}-menu] button, ${DETAIL} button { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge); }
+/* Queue ellipsis owns its bordered face in queued-messages.ts. */
+[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-choice], [${MARK}-menu] button, ${DETAIL} button:not([aria-label^="Queued message"][aria-label$=" actions"]) { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge); }
 [${MARK}-menu] header button { width:24px; height:24px; padding:0; border-radius:50%; }
 [${MARK}-panel-source] { display:none !important; }
 [${MARK}-panel-heading] { display:flex; align-items:center; gap:6px; }
@@ -148,7 +150,7 @@ ${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge me
 [data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
 [data-bb-chat-ui-pr-menu] { border:0 !important; border-radius:18px; background:${LIGHT_GLASS_FACE} !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent); }
 .dark [data-bb-chat-ui-pr-menu] { background:${DARK_GLASS_FACE} !important; box-shadow:0 6px 18px -12px color-mix(in oklab,black 60%,transparent),inset 0 1px 3px color-mix(in oklab,var(--foreground) 8%,transparent); }
-${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
+${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria-label^="Queued message"][aria-label$=" actions"]) { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL}[${OPEN}="other"] h3[class~="px-3"][${MARK}-close-heading] { padding-left:0 !important; padding-right:34px !important; }
@@ -441,6 +443,7 @@ export function injectComposerInfo(document: Document): () => void {
   function mount(stack: HTMLElement) {
     stack.setAttribute(`${MARK}-stack`, "");
     const prMerge = interceptPrMerge(stack);
+    const queueControls = attachQueueControls(stack);
     const bar = document.createElement("div");
     bar.setAttribute(`${MARK}-bar`, "");
     const pills = document.createElement("div");
@@ -1558,6 +1561,7 @@ export function injectComposerInfo(document: Document): () => void {
       }
     };
     const close = (restoreFocus = false, force = false) => {
+      queueControls.close();
       cancelHover();
       if (!force && editing()) return false;
       clearTitleIcon();
@@ -2325,9 +2329,11 @@ export function injectComposerInfo(document: Document): () => void {
       trackSecrets();
       guardShell(stack.closest("[data-promptbox-shell]"));
       prMerge.sync();
+      queueControls.sync();
     };
     return { sync, bar, close, editing, resize, cleanup() {
       prMerge.cleanup();
+      queueControls.cleanup();
       document.removeEventListener("pointerup", releasePress);
       document.removeEventListener("pointercancel", cancelPress);
       view!.removeEventListener("blur", cancelPress);
@@ -2494,7 +2500,10 @@ export function injectComposerInfo(document: Document): () => void {
   observer.observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:["data-bb-chat-ui-device"] });
   watchShells();
   const onKey = (event: KeyboardEvent) => {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || event.defaultPrevented) return;
+    // The native keyboard sensor consumes Escape after our document listener.
+    const target = event.target instanceof view.Element ? event.target : null;
+    if (target?.closest('section[aria-label="Queued messages"] :is([data-queued-message-group-divider], [data-queued-message-row]) button[aria-pressed="true"]')) return;
     for (const [stack, state] of states) if (stack.contains(event.target as Node) || event.target === document) state.close(true);
   };
   const onDismiss = (event: MouseEvent) => {

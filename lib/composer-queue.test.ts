@@ -92,7 +92,7 @@ test("managed queue uses plain list rows and leaves standalone message bubbles i
     assert.equal(style(row.querySelector('.flex')!).flexDirection, 'row', 'text precedes the actions');
     assert.equal(style(text).flex, '1 1 0%');
     assert.equal(style(text).maxWidth, 'none', 'message text uses the available row width');
-    assert.equal(style(text).padding, '7px 0px');
+    assert.equal(style(text).padding, '8px 0px');
     assert.equal(style(text).borderWidth, '0px');
     assert.equal(style(text).backgroundColor, 'rgba(0, 0, 0, 0)');
     assert.equal(style(actions).backgroundColor, 'rgba(0, 0, 0, 0)');
@@ -111,7 +111,7 @@ test("managed queue uses plain list rows and leaves standalone message bubbles i
   } finally { stopInfo(); stopQueue(); f.cleanup(); }
 });
 
-test("queue actions stay beside the first line in compact rows with appropriate hit targets", async () => {
+test("queue actions stay vertically centered in compact rows with appropriate hit targets", async () => {
   for (const small of [true,false]) {
     const f=fixture();
     f.document.body.insertAdjacentHTML('beforeend',`<span hidden data-bb-chat-ui-hit-target="${small?'small':'large'}"></span>`);
@@ -126,10 +126,10 @@ test("queue actions stay beside the first line in compact rows with appropriate 
       f.click('[data-bb-chat-ui-info-trigger="queue"]'); await f.tick();
       const style=(node:Element)=>f.dom.window.getComputedStyle(node);
       assert.equal(style(row).padding,'4px 0px','rows no longer carry eight pixels above and below');
-      assert.equal(style(row.querySelector('.flex')!).alignItems,'flex-start','actions are aligned to the first line, not the entire message');
-      assert.equal(style(actions).alignSelf,'flex-start');
+      assert.equal(style(row.querySelector('.flex')!).alignItems,'center','controls follow the entire message row, including wrapped text');
+      assert.equal(style(actions).alignSelf,'center');
       assert.equal(style(actions.querySelector('button')!).height,small?'24px':'32px','mobile retains a larger touch target');
-      assert.equal(style(text).padding,small?'3px 0px':'7px 0px','the first 18px text line is centered beside the action');
+      assert.equal(style(text).padding,small?'4px 0px':'8px 0px','existing message body padding is preserved');
       assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'4px 0px','the list has compact vertical spacing');
       assert.equal(style(f.queue).maxHeight,'var(--bb-chat-ui-info-max-height)');
       assert.equal(actions.parentElement,original,'native action controls retain their parent');
@@ -261,3 +261,231 @@ test("managed queue confines overflow to the native message list without replaci
     assert.equal(f.queue.querySelector('textarea')!.value, 'unsaved queue draft');
   } finally { stopInfo(); stopQueue(); f.cleanup(); }
 });
+
+
+test("managed queue preserves native reorder and grouping controls and reveals actions only through ellipsis", async () => {
+  const f=fixture();
+  const row=f.queue.querySelector<HTMLElement>('[data-queued-message-row]')!;
+  const line=row.querySelector('.flex')!;
+  line.insertAdjacentHTML('afterbegin','<button aria-label="Reorder queued message 1"><svg></svg></button>');
+  line.insertAdjacentHTML('beforeend','<button aria-label="Queued message 1 actions" aria-expanded="false">…</button>');
+  row.insertAdjacentHTML('afterend','<li data-queued-message-group-divider><button aria-label="Messages above send together">Group</button></li>');
+  const more=line.querySelector<HTMLButtonElement>('[aria-label$=" actions"]')!;
+  const reorder=line.querySelector('[aria-label^="Reorder"]')!;
+  const divider=f.queue.querySelector('[data-queued-message-group-divider]')!;
+  const actions=line.querySelector('[data-queued-message-actions]')!;
+  more.addEventListener('click',()=>more.setAttribute('aria-expanded','true'));
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    const style=(node:Element)=>f.dom.window.getComputedStyle(node);
+    assert.notEqual(style(reorder).display,'none','native drag activator remains available');
+    assert.equal(style(reorder).borderWidth,'0px','drag activator has no decorative box');
+    assert.equal(style(reorder).boxShadow,'none');
+    assert.notEqual(style(divider).display,'none','native grouping boundary remains available');
+    assert.notEqual(style(more).display,'none','ellipsis is available on every device');
+    assert.equal(style(actions).display,'none','send/edit/delete are not always visible');
+    more.click();await f.tick();
+    assert.equal(style(actions).display,'none','inline actions remain hidden behind the separate menu');
+    assert.ok(f.document.querySelector('[data-bb-chat-ui-queue-menu]'));
+    assert.notEqual(style(more).display,'none','ellipsis remains a toggle while the popup is open');
+    f.click('[data-send]');assert.equal(f.sent(),1,'original send handler still runs');
+    more.setAttribute('aria-expanded','false');await f.tick();
+    assert.equal(style(actions).display,'none','closing native actions restores ellipsis');
+    assert.notEqual(style(more).display,'none');
+    assert.equal(line.querySelector('[aria-label^="Reorder"]'),reorder,'native drag node is not replaced');
+  } finally {stopInfo();stopQueue();f.cleanup();}
+});
+
+test("queue ellipsis opens a separate action popover without a glass drag handle", async () => {
+  const f=fixture();
+  const row=f.queue.querySelector<HTMLElement>('[data-queued-message-row]')!;
+  const line=row.querySelector('.flex')!;
+  line.insertAdjacentHTML('afterbegin','<button aria-label="Reorder queued message 1"><svg></svg></button>');
+  line.insertAdjacentHTML('beforeend','<button aria-label="Queued message 1 actions" aria-expanded="false">…</button>');
+  const nativeSend=line.querySelector<HTMLButtonElement>('[data-send]')!;
+  nativeSend.setAttribute('aria-label','Send queued message 1 now');
+  line.querySelector('[data-edit]')!.setAttribute('aria-label','Edit queued message 1');
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    const drag=line.querySelector('[aria-label^="Reorder"]')!;
+    assert.equal(f.dom.window.getComputedStyle(drag).backdropFilter,'none','common glass buttons must not repaint the drag handle');
+    f.click('[aria-label="Queued message 1 actions"]');await f.tick();
+    const menu=f.document.querySelector<HTMLElement>('[data-bb-chat-ui-queue-menu]');
+    assert.ok(menu,'actions live in their own popup');
+    assert.equal(menu.getAttribute('role'),'menu');
+    assert.equal(menu.querySelectorAll('button').length,2,'only native actions actually available are included');
+    assert.equal(f.dom.window.getComputedStyle(menu.querySelector('button')!).borderRadius,'10px','inner action corners follow the popover gutter');
+    assert.equal(f.dom.window.getComputedStyle(line.querySelector('[data-queued-message-actions]')!).display,'none','native inline toolbar stays hidden');
+    menu.querySelector<HTMLButtonElement>('[aria-label="Send queued message 1 now"]')!.click();
+    assert.equal(f.sent(),1,'a menu action calls the original native button');
+    assert.equal(f.document.querySelector('[data-bb-chat-ui-queue-menu]'),null);
+    assert.ok(f.queue.hasAttribute('data-bb-chat-ui-info-open'),'action does not dismiss the queue');
+    f.click('[aria-label="Queued message 1 actions"]');await f.tick();
+    f.document.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    assert.equal(f.document.querySelector('[data-bb-chat-ui-queue-menu]'),null);
+    assert.ok(f.queue.hasAttribute('data-bb-chat-ui-info-open'),'Escape closes the nested menu first');
+  } finally {stopInfo();stopQueue();f.cleanup();}
+});
+
+test("queue ellipsis is a bordered button in its row, without a displaced pseudo background", async () => {
+  for (const small of [false,true]) {
+    const f=fixture();
+    f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target',small?'small':'large');
+    const style=f.document.createElement('style');
+    style.textContent='.native-more { right:10px; top:50%; border:0; background-image:linear-gradient(transparent,red); }';
+    f.document.head.append(style);
+    f.queue.querySelector('[data-queued-message-row] > .flex')!.insertAdjacentHTML('beforeend','<button class="native-more bg-surface-raised-solid" aria-label="Queued message 1 actions">…</button>');
+    const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+    try {
+      f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+      const more=f.queue.querySelector('[aria-label$=" actions"]')!;
+      for (const dark of [false,true]) {
+        f.document.documentElement.classList.toggle('dark',dark);
+        const s=f.dom.window.getComputedStyle(more);
+        assert.equal(s.right,'auto','native absolute positioning must not displace the button');
+        assert.equal(s.top,'auto');
+        assert.equal(s.borderTopWidth,'1px');
+        assert.equal(s.borderTopStyle,'solid');
+        assert.equal(s.borderRadius,'6px');
+        assert.equal(s.backgroundImage,'none');
+        assert.equal(s.width,'24px','ellipsis box stays compact on both devices');
+        assert.equal(s.height,'24px');
+        assert.equal(s.marginTop,'0px','the row centers the action button without first-line offsets');
+      }
+      for (const sheet of Array.from(f.document.styleSheets)) for (const rule of Array.from(sheet.cssRules)) {
+        const r=rule as CSSStyleRule;
+        if(r.selectorText?.includes('[class~="bg-surface-raised-solid"]')&&r.style.borderColor==='transparent')assert.equal(more.matches(r.selectorText),false,'common surface flattening must not erase the button face or border color');
+      }
+      const css=Array.from(f.document.querySelectorAll('style')).map(s=>s.textContent).join('\n');
+      assert.match(css,/button\[aria-label\^="Queued message "\]\[aria-label\$=" actions"\]::before\s*\{\s*content:\s*none\s*!important/,'the real button owns its entire face');
+    }finally{stopInfo();stopQueue();f.cleanup();}
+  }
+});
+
+
+test("queue boundary clicks and drag keys reach native handlers without a custom pair toggle", async () => {
+  const f=fixture();
+  const row=f.queue.querySelector('[data-queued-message-row]')!;
+  row.insertAdjacentHTML('afterend','<li data-queued-message-group-divider><button aria-label="Messages above send together" aria-disabled="false" aria-describedby="native-drag-instructions"><svg></svg></button></li><li data-queued-message-row></li>');
+  const group=f.queue.querySelector<HTMLButtonElement>('[aria-label="Messages above send together"]')!;
+  const keys:string[]=[],pointers:number[]=[];let clicks=0;
+  group.addEventListener('keydown',event=>{assert.equal(event.defaultPrevented,false);keys.push(event.key);});
+  group.addEventListener('pointerdown',()=>pointers.push(1));
+  group.addEventListener('click',()=>clicks++);
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    assert.equal(group.getAttribute('aria-disabled'),'false','no plugin SDK registration is required for the native handle');
+    assert.equal(group.getAttribute('aria-describedby'),'native-drag-instructions');
+    assert.equal(group.hasAttribute('aria-pressed'),false,'a draggable boundary is not a toggle button');
+    assert.equal(f.dom.window.getComputedStyle(group).cursor,'grab');
+    for(const key of [' ','ArrowDown',' ','ArrowUp','Enter','Escape'])group.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));
+    group.dispatchEvent(new f.dom.window.Event('pointerdown',{bubbles:true,cancelable:true}));
+    group.click();await f.tick();
+    assert.deepEqual(keys,[' ','ArrowDown',' ','ArrowUp','Enter','Escape']);
+    assert.deepEqual(pointers,[1]);assert.equal(clicks,1,'keyboard events do not synthesize a grouping click');
+    assert.equal(f.queue.querySelector('[aria-busy]'),null);
+    assert.equal(group.closest('li')!.previousElementSibling,row,'clicking does not move the divider to a hardcoded pair');
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
+
+test("Escape cancels the native queue boundary drag before closing its popover", async () => {
+  const f=fixture();
+  f.queue.querySelector('[data-queued-message-row]')!.insertAdjacentHTML('afterend','<li data-queued-message-group-divider><button aria-label="Messages above send together"></button></li>');
+  const group=f.queue.querySelector<HTMLButtonElement>('[aria-label="Messages above send together"]')!;
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  let cancellations=0;
+  const nativeCancel=(event:KeyboardEvent)=>{if(event.key==='Escape'&&group.getAttribute('aria-pressed')==='true'){cancellations++;event.preventDefault();group.removeAttribute('aria-pressed');}};
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    // dnd-kit installs its document listener after the keyboard sensor activates.
+    f.document.addEventListener('keydown',nativeCancel);
+    group.setAttribute('aria-pressed','true');group.focus();
+    group.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    assert.equal(cancellations,1);
+    assert.ok(f.queue.hasAttribute('data-bb-chat-ui-info-open'),'the first Escape belongs to the active native drag');
+    group.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    assert.equal(f.queue.hasAttribute('data-bb-chat-ui-info-open'),false,'another Escape still closes the popover');
+  }finally{f.document.removeEventListener('keydown',nativeCancel);stopInfo();stopQueue();f.cleanup();}
+});
+
+test("queue boundary appearance follows native one-to-four message ranges and restores on unload", async () => {
+  const f=fixture(),row=f.queue.querySelector('[data-queued-message-row]')!;
+  row.insertAdjacentHTML('afterend','<li data-queued-message-group-divider><button aria-label="Messages above send together" title="Native boundary"><svg class="native-group-icon"></svg></button></li><li data-queued-message-row></li><li data-queued-message-row></li><li data-queued-message-row></li>');
+  const style=f.document.createElement('style');style.textContent='.native-group-icon {opacity:.55}';f.document.head.append(style);
+  const divider=f.queue.querySelector('[data-queued-message-group-divider]')!,group=divider.querySelector<HTMLButtonElement>('button')!,nativeIcon=group.querySelector('svg')!;
+  const rows=Array.from(f.queue.querySelectorAll('[data-queued-message-row]'));
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    for(const count of [1,2,3,4,1]){
+      rows[count-1].after(divider);await f.tick();
+      assert.equal(group.getAttribute('data-bb-chat-ui-queue-grouped'),String(count>1));
+      assert.equal(f.dom.window.getComputedStyle(group).opacity,count>1?'1':'0.4');
+      assert.equal(group.getAttribute('title'),'Native boundary');
+      assert.equal(group.hasAttribute('aria-pressed'),false);
+      assert.equal(group.querySelector('svg'),nativeIcon);
+      assert.notEqual(f.dom.window.getComputedStyle(nativeIcon).display,'none');
+      assert.equal(f.dom.window.getComputedStyle(nativeIcon).opacity,'1');
+      if(count===rows.length)assert.equal(f.dom.window.getComputedStyle(divider.parentElement!).paddingBottom,'12px','a final boundary keeps its lower half inside the scroller');
+    }
+    const editor=f.document.createElement('li');editor.setAttribute('data-queued-message-inline-editor','');rows[0].replaceWith(editor);rows[1].after(divider);await f.tick();
+    assert.equal(group.getAttribute('data-bb-chat-ui-queue-grouped'),'true','native inline editing still counts toward the boundary');
+    stopInfo();assert.equal(group.hasAttribute('data-bb-chat-ui-queue-grouped'),false);
+    assert.equal(divider.parentElement!.hasAttribute('data-bb-chat-ui-queue-end-boundary'),false);
+    assert.equal(group.getAttribute('title'),'Native boundary');
+    assert.equal(group.querySelector('svg'),nativeIcon);
+  }finally{stopInfo();stopQueue();f.cleanup();}
+});
+
+test('queue reorder handle stays within the clipped row and roomy desktop uses native inline actions', async () => {
+  const f=fixture();
+  const row=f.queue.querySelector<HTMLElement>('[data-queued-message-row]')!,line=row.querySelector('.flex')!;
+  line.insertAdjacentHTML('afterbegin','<button style="margin-left:-8px" aria-label="Reorder queued message 1"></button>');
+  line.insertAdjacentHTML('beforeend','<button aria-label="Queued message 1 actions">…</button>');
+  let width=358;
+  Object.defineProperty(f.queue,'offsetWidth',{get:()=>width});
+  const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    const css=(node:Element)=>f.dom.window.getComputedStyle(node);
+    assert.equal(css(line.querySelector('[aria-label^="Reorder"]')!).marginLeft,'0px');
+    f.document.documentElement.setAttribute('data-bb-chat-ui-root-device','desktop');
+    // Opening again also synchronizes the width/device state.
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-inline-actions'),'true');
+    assert.equal(css(line.querySelector('[data-queued-message-actions]')!).display,'flex');
+    assert.equal(css(line.querySelector('[aria-label$=" actions"]')!).display,'none');
+    assert.equal(css(line.querySelector('[data-send]')!).borderWidth,'0px');
+    assert.equal(css(line.querySelector('[data-send]')!).backgroundColor,'rgba(0, 0, 0, 0)');
+    f.click('[data-send]');assert.equal(f.sent(),1);
+    width=310;f.dom.window.dispatchEvent(new f.dom.window.Event('resize'));await f.tick();
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-inline-actions'),'false');
+    assert.equal(css(line.querySelector('[data-queued-message-actions]')!).display,'none');
+    f.document.documentElement.setAttribute('data-bb-chat-ui-root-device','phone');width=500;
+    f.click('[data-bb-chat-ui-info-trigger="queue"]');f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+    assert.equal(f.queue.getAttribute('data-bb-chat-ui-queue-inline-actions'),'false','wide phones still use ellipsis');
+    stopInfo();assert.equal(f.queue.hasAttribute('data-bb-chat-ui-queue-inline-actions'),false);
+  } finally {stopInfo();stopQueue();f.cleanup();}
+});
+
+test('queue row activators use the entire row vertical center on both hit targets', async () => {
+  for(const small of [false,true]){
+    const f=fixture();f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target',small?'small':'large');
+    const line=f.queue.querySelector('[data-queued-message-row] > .flex')!;
+    line.insertAdjacentHTML('afterbegin','<button class="h-7" aria-label="Reorder queued message 1"></button>');
+    line.insertAdjacentHTML('beforeend','<button aria-label="Queued message 1 actions">…</button>');
+    const stopQueue=injectQueuedMessages(f.document),stopInfo=injectComposerInfo(f.document);
+    try{
+      f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
+      const drag=f.dom.window.getComputedStyle(line.querySelector('[aria-label^="Reorder"]')!),more=f.dom.window.getComputedStyle(line.querySelector('[aria-label$=" actions"]')!);
+      assert.equal(drag.height,more.height);assert.equal(drag.marginTop,more.marginTop);
+      assert.equal(drag.height,'24px');assert.equal(drag.marginTop,'0px');
+      assert.equal(f.dom.window.getComputedStyle(line).alignItems,'center');
+      assert.equal(more.alignSelf,'center');
+    }finally{stopInfo();stopQueue();f.cleanup();}
+  }
+});
+

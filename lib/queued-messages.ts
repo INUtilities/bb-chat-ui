@@ -1,9 +1,11 @@
+import { LIGHT_GLASS_FACE, DARK_GLASS_FACE } from "./glass-surface.ts";
 import { SMALL_HIT_TARGET } from "./device-chrome.ts";
 
 const STYLE_ID = "bb-chat-ui-queued-messages";
 const QUEUE = 'section[aria-label="Queued messages"]';
 const LEGACY_QUEUE = `${QUEUE}:not([data-bb-chat-ui-info-unit])`;
 const MANAGED_QUEUE = `${QUEUE}[data-bb-chat-ui-info-unit]`;
+const OPEN_QUEUE = `[data-promptbox-shell] > .grid[data-bb-chat-ui-info-stack] ${MANAGED_QUEUE}[data-bb-chat-ui-info-open]:not([hidden])`;
 const LABEL_ATTR = "data-bb-chat-ui-queue-label";
 const COLLAPSE_LABEL = "Collapse queued messages";
 const AGENTATION = ".agentation-staging-shell";
@@ -135,28 +137,28 @@ ${LEGACY_QUEUE} header button[aria-expanded="true"]::after {
   border-bottom: 2px solid currentColor;
   transform: translateY(-2px) rotate(45deg);
 }
-${QUEUE} [data-queued-message-group-divider] {
+${LEGACY_QUEUE} [data-queued-message-group-divider] {
   display: none !important;
 }
-${QUEUE} [data-queued-message-row] button[aria-label^="Reorder"] {
+${LEGACY_QUEUE} [data-queued-message-row] button[aria-label^="Reorder"] {
   display: none !important;
 }
-${QUEUE} [data-queued-message-row] button[aria-label$=" actions"] {
+${LEGACY_QUEUE} [data-queued-message-row] button[aria-label^="Queued message "][aria-label$=" actions"] {
   display: none !important;
 }
-${QUEUE} [data-queued-message-row] {
+${LEGACY_QUEUE} [data-queued-message-row] {
   border: 0 !important;
   background: transparent !important;
   padding: 4px 0 !important;
 }
-${QUEUE} [data-queued-message-row] > .flex {
+${LEGACY_QUEUE} [data-queued-message-row] > .flex {
   width: 100%;
   align-items: center !important;
   justify-content: flex-start;
   flex-direction: row-reverse;
   gap: 8px;
 }
-${QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
+${LEGACY_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   flex: 0 1 auto;
   max-width: 70%;
   overflow: visible !important;
@@ -169,14 +171,14 @@ ${QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   line-height: 1.625;
   opacity: 1;
 }
-${QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .prompt-mention-pill *) {
+${LEGACY_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .prompt-mention-pill *) {
   overflow: visible !important;
   text-overflow: unset !important;
   white-space: normal !important;
   font-size: 0.875rem !important;
   line-height: 1.625 !important;
 }
-${QUEUE} [data-queued-message-actions] {
+${LEGACY_QUEUE} [data-queued-message-actions] {
   position: static !important;
   top: auto !important;
   right: auto !important;
@@ -188,22 +190,22 @@ ${QUEUE} [data-queued-message-actions] {
   display: flex !important;
   background: var(--surface-raised-solid) !important;
 }
-${QUEUE} [data-queued-message-row] > .flex > .min-w-0,
-${QUEUE} [data-queued-message-actions] {
+${LEGACY_QUEUE} [data-queued-message-row] > .flex > .min-w-0,
+${LEGACY_QUEUE} [data-queued-message-actions] {
   box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--ink, var(--foreground)) 20%, transparent) !important;
 }
-.dark ${QUEUE} [data-queued-message-row] > .flex > .min-w-0,
-.dark ${QUEUE} [data-queued-message-actions] {
+.dark ${LEGACY_QUEUE} [data-queued-message-row] > .flex > .min-w-0,
+.dark ${LEGACY_QUEUE} [data-queued-message-actions] {
   box-shadow: 0 4px 12px -4px color-mix(in oklab, black 50%, transparent) !important;
 }
-${QUEUE} [data-queued-message-actions] button[aria-label^="Delete"] {
+${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Delete"] {
   order: 1;
 }
-${QUEUE} [data-queued-message-actions] button[aria-label^="Send"],
-${QUEUE} [data-queued-message-actions] button[aria-label^="Steer"] {
+${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Send"],
+${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Steer"] {
   order: 2;
 }
-${QUEUE} [data-queued-message-actions] button[aria-label^="Edit"] {
+${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Edit"] {
   order: 3;
 }
 ${MANAGED_QUEUE} [data-queued-message-row] {
@@ -213,14 +215,63 @@ ${MANAGED_QUEUE} [data-queued-message-row]:not(:last-child) {
   border-bottom: 1px solid color-mix(in oklab, var(--border-seam) 55%, transparent) !important;
 }
 ${MANAGED_QUEUE} [data-queued-message-row] > .flex {
+  width: 100%;
   flex-direction: row;
-  align-items: flex-start !important;
+  align-items: center !important;
 }
+/* These controls must beat the common glass-button rule, including hover. */
+${OPEN_QUEUE} :is(button[aria-label^="Reorder"], button[aria-label="Messages above send together"]) {
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+${OPEN_QUEUE} button[aria-label="Messages above send together"] {
+  opacity:.4;
+  cursor:grab;
+}
+${OPEN_QUEUE} button[aria-label^="Reorder"] { margin-left:0 !important; margin-top:0; height:24px; min-height:24px; flex-shrink:0; }
+${OPEN_QUEUE} button[aria-label="Messages above send together"][data-bb-chat-ui-queue-grouped="true"] {
+  opacity:1 !important;
+  color:var(--foreground) !important;
+  background:color-mix(in oklab,var(--foreground) 8%,transparent) !important;
+}
+${OPEN_QUEUE} button[aria-label="Messages above send together"] :is(svg,[data-icon-root]) { opacity:1 !important; }
+${OPEN_QUEUE} button[aria-label="Messages above send together"]:active { cursor:grabbing; }
+${OPEN_QUEUE} button[aria-label="Messages above send together"]:disabled { cursor:default; }
+${MANAGED_QUEUE} [data-bb-chat-ui-queue-end-boundary="true"] { padding-bottom:12px; }
+${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] {
+  display:inline-flex !important;
+  position:relative !important;
+  top:auto !important;
+  right:auto !important;
+  bottom:auto !important;
+  left:auto !important;
+  transform:none !important;
+  translate:none !important;
+  flex:none;
+  align-self:center;
+  border-radius:6px !important;
+  border-width:1px !important;
+  border-style:solid !important;
+  border-color:var(--border) !important;
+  background:color-mix(in oklab,var(--foreground) 4%,transparent) !important;
+  background-image:none !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]:is(:hover,:focus-visible,[aria-expanded="true"]) { background:color-mix(in oklab,var(--foreground) 8%,transparent) !important; }
+${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]::before {
+  content:none !important;
+}
+${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] svg { width:14px; height:14px; position:relative; }
 ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   flex: 1 1 0%;
   max-width: none;
   min-width: 0;
-  padding: 7px 0;
+  padding: 8px 0;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -233,23 +284,35 @@ ${MANAGED_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .
   line-height: 1.5 !important;
 }
 ${MANAGED_QUEUE} [data-queued-message-actions] {
+  display: none !important;
+  position: static !important;
+  transform: none !important;
+  translate: none !important;
   flex: none;
-  align-self: flex-start !important;
+  align-self: center !important;
   background: transparent !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
-${MANAGED_QUEUE} [data-queued-message-actions] button {
+${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Queued message "][aria-label$=" actions"]) {
   width: 32px;
   height: 32px;
   min-height: 32px;
   padding: 0 !important;
 }
 ${SMALL_HIT_TARGET} ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
-  padding: 3px 0;
+  padding: 4px 0;
 }
-${SMALL_HIT_TARGET} ${MANAGED_QUEUE} [data-queued-message-actions] button {
+${SMALL_HIT_TARGET} ${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Queued message "][aria-label$=" actions"]) {
   width: 24px;
   height: 24px;
   min-height: 24px;
+}
+${MANAGED_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] {
+  width:24px;
+  height:24px;
+  min-height:24px;
+  margin-top:0;
 }
 ${MANAGED_QUEUE} [data-queued-message-actions]::before {
   content: none !important;
@@ -260,6 +323,43 @@ ${MANAGED_QUEUE} [data-queued-message-actions],
 .dark ${MANAGED_QUEUE} [data-queued-message-actions] {
   box-shadow: none !important;
 }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] button[aria-label^="Queued message "][aria-label$=" actions"] { display:none !important; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-actions] { display:flex !important; gap:4px; }
+${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-actions] button {
+  border:0 !important; border-radius:10px; background:transparent !important;
+  box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  transition:background-color 150ms ease-out;
+}
+${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-actions] button:is(:hover,:focus-visible) { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
+[data-bb-chat-ui-queue-menu] {
+  position:fixed;
+  z-index:56;
+  display:flex;
+  gap:4px;
+  padding:8px;
+  border:0;
+  border-radius:18px;
+  color:var(--foreground);
+  background:${LIGHT_GLASS_FACE};
+  backdrop-filter:blur(14px) saturate(1.25);
+  -webkit-backdrop-filter:blur(14px) saturate(1.25);
+  box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent);
+}
+.dark [data-bb-chat-ui-queue-menu] {
+  background:${DARK_GLASS_FACE};
+  box-shadow:0 6px 18px -12px color-mix(in oklab,black 60%,transparent),inset 0 1px 3px color-mix(in oklab,var(--foreground) 8%,transparent);
+}
+[data-bb-chat-ui-queue-menu] button {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; padding:0; border:0; border-radius:10px;
+  color:inherit; background:transparent; cursor:pointer;
+}
+${SMALL_HIT_TARGET} [data-bb-chat-ui-queue-menu] button { width:24px; height:24px; }
+[data-bb-chat-ui-queue-menu] button:is(:hover,:focus-visible) { background:color-mix(in oklab,var(--foreground) 6%,transparent); }
+[data-bb-chat-ui-queue-menu] button:focus-visible { outline:1px solid var(--ring); }
+[data-bb-chat-ui-queue-menu] button:disabled { opacity:.5; cursor:default; }
+[data-bb-chat-ui-queue-menu] button[aria-label^="Delete"] { color:var(--destructive); }
+[data-bb-chat-ui-queue-menu] button :is(svg,[data-icon-root]) { width:16px; height:16px; }
 `;
 
 export function readQueueCount(text: string | null): string {
