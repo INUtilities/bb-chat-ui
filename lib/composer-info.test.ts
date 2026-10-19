@@ -404,7 +404,7 @@ test("native and custom card titles use one family icon without changing native 
   f.dom.window.close();
 });
 
-test("Goal uses a plain body, one standard title and close button, and a separate native removal action", async () => {
+test("Goal keeps its native removal action beside the title and close without reparenting", async () => {
   const f=fixture();
   const goal=f.document.querySelector<HTMLElement>('section[aria-label="Goal"]')!;
   const source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
@@ -433,8 +433,17 @@ test("Goal uses a plain body, one standard title and close button, and a separat
     assert.equal(style(clearParent!).boxShadow,'none');
     assert.equal(style(body).borderTopWidth,'0px');
     assert.equal(style(body.firstElementChild!).backgroundColor,'rgba(0, 0, 0, 0)');
-    assert.equal(style(clearParent!).order,'2','removal sits after the body instead of beside the title');
-    assert.equal(style(body).order,'1');
+    assert.equal(style(goal).display,'grid');
+    assert.equal(style(goal).gridTemplateAreas,'"heading actions close" "body body body"');
+    assert.equal(style(clearParent!).gridArea,'actions','Goal removal belongs beside the title');
+    assert.equal(style(clearParent!).marginTop,'0px');
+    assert.equal(style(title).gridArea,'heading');
+    assert.equal(style(title).paddingRight,'0px','the close button owns a separate column');
+    assert.equal(style(body).gridArea,'body');
+    const dismiss=goal.querySelector('[aria-label="Goal 닫기"]')!;
+    assert.equal(style(dismiss).gridArea,'close');
+    assert.equal(style(dismiss).position,'static','the close button shares the header row instead of a fixed top offset');
+    assert.equal(style(goal).alignItems,'center');
     assert.equal(clear.textContent,'Goal 해제');
     assert.equal(style(clear.querySelector('svg')!).display,'none','removal no longer looks like another popup close button');
     assert.equal(clear.parentElement,clearParent);
@@ -523,7 +532,10 @@ test("native card layout padding does not add another indent inside managed popo
         if(toggle.parentElement!==card) assert.equal(parseFloat(getStyle(toggle.parentElement!).paddingLeft)||0,0,'header wrapper does not reintroduce an inset');
       }
       const heading=card.querySelector('[data-bb-chat-ui-info-close-heading]');
-      if(heading) assert.equal(getStyle(heading).paddingRight,'34px','the close button retains its reserved header space');
+      if(heading) {
+        assert.equal(getStyle(heading).paddingRight,kind==='goal'?'0px':'34px','the close button keeps either its grid column or reserved header gutter');
+        if(kind==='goal')assert.equal(getStyle(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).gridArea,'close');
+      }
       const nested=card.querySelector('.ml-4');
       if(nested) assert.equal(getStyle(nested).marginLeft,'16px','nested phase indentation remains');
       const action=card.querySelector('button.px-3:not([aria-controls])');
@@ -533,6 +545,68 @@ test("native card layout padding does not add another indent inside managed popo
     assert.equal(getStyle(context.querySelector('.p-1')!).paddingLeft,'4px','unload restores the native context inset');
     assert.equal(getStyle(context.querySelector('.px-2')!).paddingLeft,'8px','unload restores the native segment inset');
   } finally { stop(); f.dom.window.close(); }
+});
+
+test("popover headings stay flat on focus while background rows gain an inset without changing their cursor", () => {
+  const f = fixture();
+  const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const card = f.document.createElement('section');
+  card.setAttribute('aria-label', 'Background commands');
+  card.innerHTML = '<div><button id="thread-background-commands-card-toggle" aria-expanded="false" aria-controls="thread-background-commands-card-body" class="bg-background/70">Running 3 background activities</button></div><section id="thread-background-commands-card-body" role="region" hidden><div><div><div class="flex min-w-0 px-3" style="cursor:text">npm test</div></div></div></section>';
+  const toggle = card.querySelector<HTMLButtonElement>('button')!;
+  const body = card.querySelector<HTMLElement>('section')!;
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(expanded)); body.hidden = !expanded;
+  });
+  stack.append(card);
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="background"]');
+    const paintRule=Array.from(f.document.styleSheets).flatMap(sheet=>Array.from(sheet.cssRules)).find(rule=>'selectorText' in rule && String(rule.selectorText).includes('#thread-background-commands-card-body') && rule.cssText.includes(':hover')) as CSSStyleRule;
+    assert.ok(paintRule);
+    // jsdom drops color-mix declarations; validate the face in the source too.
+    assert.ok(composerInfoCss.includes(`${paintRule.selectorText} { background-color:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }`));
+    assert.equal(toggle.matches(paintRule.selectorText.replaceAll(':hover','')),false,'decorative row paint must exclude the heading subtree');
+    assert.equal(body.querySelector('div.px-3')!.matches(paintRule.selectorText.replaceAll(':hover','')),true,'the complete body row owns the hover paint');
+    toggle.focus();
+    const header = f.dom.window.getComputedStyle(toggle);
+    assert.ok(['transparent', 'rgba(0, 0, 0, 0)'].includes(header.backgroundColor), 'the title focus/hover rule must not paint a second face');
+    const row = f.dom.window.getComputedStyle(body.querySelector('div.px-3')!);
+    assert.equal(row.borderRadius, '10px');
+    assert.equal(row.paddingLeft, '8px');
+    assert.equal(row.paddingRight, '8px');
+    assert.equal(row.marginLeft, '-8px', 'padding and inset keep the text aligned with the heading');
+    assert.equal(row.cursor, 'text', 'a decorative row hover must preserve its existing cursor');
+    assert.equal(row.transition, 'background-color 150ms ease-out');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("popover entrance settles only the outer native disclosure and keeps inner transitions", () => {
+  const f=fixture();
+  const style=f.document.createElement('style');
+  style.textContent='.native-disclosure { transition:grid-template-rows 200ms ease; grid-template-rows:0fr; opacity:0; } .agentation-disclosure { transition:grid-template-rows 500ms ease; grid-template-rows:0fr; }';
+  f.document.head.append(style);
+  const goal=f.document.querySelector('section[aria-label="Goal"]')!;
+  goal.querySelector('#goal')!.outerHTML='<section id="goal" role="region" class="native-disclosure"><div class="native-disclosure" data-inner>Nested disclosure</div></section>';
+  const agent=f.document.createElement('div');
+  agent.className='agentation-staging-shell';
+  agent.innerHTML='<div><button aria-expanded="false" aria-controls="agent-body">Agentation</button></div><div id="agent-body" class="grid agentation-disclosure"><div>Feedback</div></div>';
+  f.document.querySelector('[data-promptbox-shell] > .grid')!.append(agent);
+  const stop=injectComposerInfo(f.document);
+  try {
+    for(const kind of ['goal','annotations']) {
+      f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);
+      const card=f.document.querySelector('[data-bb-chat-ui-info-open]')!;
+      const body=card.querySelector(kind==='goal'?'#goal':'#agent-body')!;
+      assert.equal(f.dom.window.getComputedStyle(body).transition,'none','outer disclosure must not add a second entrance');
+      assert.equal(f.dom.window.getComputedStyle(body).gridTemplateRows,'1fr');
+      assert.ok(f.dom.window.getComputedStyle(card).animation.includes('bb-info-enter'),'shared popup entrance remains');
+      if(kind==='goal')assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-inner]')!).transition,'grid-template-rows 200ms ease','inner disclosure keeps its transition');
+    }
+    stop();
+    assert.equal(f.dom.window.getComputedStyle(goal.querySelector('#goal')!).transition,'grid-template-rows 200ms ease');
+  } finally {stop(); f.dom.window.close();}
 });
 
 test("open info popovers keep one glass face and drop the native body slab, activity wash, and title-button blur", () => {
@@ -722,10 +796,12 @@ test("open info popovers keep one glass face and drop the native body slab, acti
     const backgroundToggle = bodies.get("background")!.toggle;
     f.click('[data-bb-chat-ui-info-trigger="background"]');
     backgroundToggle.click();
-    assert.equal(bodies.get("background")!.body.hidden, true, "the native disclosure still collapses");
+    assert.equal(bodies.get("background")!.body.hidden, false, "the read-only title cannot collapse the popover");
     assert.equal(background.querySelector("p")!.textContent, "running command");
-    backgroundToggle.click();
-    assert.equal(bodies.get("background")!.body.hidden, false, "the native disclosure still expands");
+    (background.querySelector('[data-bb-chat-ui-info-native-dismiss]') as HTMLButtonElement).click();
+    assert.equal(bodies.get("background")!.body.hidden, true, "the close action still collapses the native disclosure");
+    f.click('[data-bb-chat-ui-info-trigger="background"]');
+    assert.equal(bodies.get("background")!.body.hidden, false, "the pill still expands the native disclosure");
     assert.equal(background.hasAttribute("data-bb-chat-ui-info-open"), true);
   } finally { stop(); }
   assert.equal(paint(openCard!.querySelector('section[role="region"] > div.bg-popover')!).backgroundColor, "rgb(255, 255, 255)", "unload restores the disclosure face");
@@ -1949,6 +2025,18 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(pill.querySelector('[data-chevron]'), null);
   const send = shell.querySelector('[data-send-all]')!;
   const sendParent = send.parentElement;
+  const header=sendParent!.previousElementSibling!;
+  const paint=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const collapse=header.querySelector('[aria-label="Collapse staged annotations"]')!;
+  assert.equal(paint(shell).gridTemplateAreas,'"heading actions close" "body body body"');
+  assert.equal(paint(shell).gridTemplateColumns,'minmax(0,1fr) auto 24px');
+  assert.equal(paint(header).display,'contents','native header children share the same grid row');
+  assert.equal(paint(header.querySelector('p')!).gridArea,'heading');
+  assert.equal(paint(sendParent!).gridArea,'actions');
+  assert.equal(paint(sendParent!).marginTop,'0px');
+  assert.equal(paint(collapse).gridArea,'close');
+  assert.equal(paint(shell).alignItems,'center');
+  assert.equal(paint(shell.querySelector('.grid')!).gridArea,'body');
   f.click('[data-send-all]');
   assert.equal(sent, 1);
   assert.equal(send.parentElement, sendParent);
@@ -5244,4 +5332,207 @@ test('a late inline composer inside the timeline is discovered and cleaned up',a
   wrapper.remove();await f.tick();
   assert.equal(shell.querySelector('[data-bb-chat-ui-info-bar]'),null);
  } finally {stop();f.dom.window.close();}
+});
+
+test("open native popover titles are read-only while actions and inner disclosures stay interactive", async () => {
+  const f=fixture();
+  const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const specs=[['plan','Prompt mode','thread-prompt-mode-card-toggle'],['todos','To-do list','thread-todo-card-toggle'],['workflow','Workflow','workflow-title'],['background','Background commands','thread-background-commands-card-toggle'],['machine','Machine status','machine-status-toggle']];
+  let actions=0;
+  for(const [key,label,id] of specs){
+    stack.querySelector(`section[aria-label="${label}"]`)?.remove();
+    const card=f.document.createElement('section');card.setAttribute('aria-label',label);
+    card.innerHTML=`<div class="flex"><button id="${id}" aria-label="${label}" aria-expanded="false" aria-controls="${key}-body" tabindex="0" class="cursor-pointer"><span>${label}</span></button><button data-real-action>Action</button></div><section id="${key}-body" hidden><button data-inner aria-expanded="false" aria-controls="${key}-inner">Phase</button><div id="${key}-inner" hidden>Details</div></section>`;
+    stack.append(card);
+    for(const button of card.querySelectorAll<HTMLButtonElement>('button[aria-expanded]'))button.addEventListener('click',()=>{const expanded=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(expanded));f.document.getElementById(button.getAttribute('aria-controls')!)!.hidden=!expanded;});
+    card.querySelector('[data-real-action]')!.addEventListener('click',()=>actions++);
+  }
+  const stop=injectComposerInfo(f.document);
+  try{
+    for(const [key,label,id] of specs){
+      f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();
+      const title=f.document.getElementById(id)!;const card=title.closest('section[aria-label]')!;
+      assert.equal(title.getAttribute('aria-expanded'),'true',`${key}: pill still opens the native body`);
+      assert.equal(title.getAttribute('tabindex'),'-1',`${key}: title is not an extra tab stop`);
+      assert.equal(f.dom.window.getComputedStyle(title).cursor,'default',`${key}: read-only title has a normal cursor`);
+      title.querySelector('span')!.click();assert.equal(title.getAttribute('aria-expanded'),'true',`${key}: nested title click cannot collapse the body`);
+      const keydown=new f.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true});title.dispatchEvent(keydown);assert.equal(keydown.defaultPrevented,true);
+      (card.querySelector('[data-real-action]') as HTMLButtonElement).click();
+      const inner=card.querySelector<HTMLButtonElement>('[data-inner]')!;inner.click();assert.equal(inner.getAttribute('aria-expanded'),'true',`${key}: internal expansion remains available`);
+      (card.querySelector('[data-bb-chat-ui-info-native-dismiss]') as HTMLButtonElement).click();
+      assert.equal(title.getAttribute('aria-expanded'),'false',`${key}: close still collapses the native body`);
+      assert.equal(title.getAttribute('tabindex'),'0',`${key}: standalone tab order is restored`);
+      assert.equal(title.hasAttribute('aria-disabled'),false);
+    }
+    assert.equal(actions,specs.length);
+  }finally{stop();f.dom.window.close();}
+});
+
+test("native close alignment follows the live header height without moving native controls", async () => {
+  const f=fixture();const card=f.document.querySelector<HTMLElement>('section[aria-label="To-do list"]')!;
+  const title=card.querySelector<HTMLElement>('button')!;let height=36;
+  title.getBoundingClientRect=()=>({x:0,y:0,left:0,top:0,right:300,bottom:height,width:300,height,toJSON(){}});
+  const originalParent=title.parentElement;card.style.setProperty('--bb-chat-ui-info-title-height','52px');
+  const instances:{targets:Set<Element>;callback:ResizeObserverCallback}[]=[];
+  class Observer {targets=new Set<Element>();callback:ResizeObserverCallback;constructor(callback:ResizeObserverCallback){this.callback=callback;instances.push(this);}observe(n:Element){this.targets.add(n);}unobserve(n:Element){this.targets.delete(n);}disconnect(){this.targets.clear();}}
+  Object.defineProperty(f.dom.window,'ResizeObserver',{configurable:true,value:Observer});
+  const stop=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="todos"]');await f.tick();
+    assert.equal(card.style.getPropertyValue('--bb-chat-ui-info-title-height'),'36px');
+    assert.equal(title.parentElement,originalParent);
+    const observer=instances.find(x=>x.targets.has(title));assert.ok(observer,'the active title shares the existing resize observer');
+    height=60;observer.callback([{target:title,borderBoxSize:[{blockSize:60,inlineSize:300}]} as unknown as ResizeObserverEntry],{} as ResizeObserver);
+    assert.equal(card.style.getPropertyValue('--bb-chat-ui-info-title-height'),'60px','wrapping/resizing keeps the close centered');
+    f.click('[data-bb-chat-ui-info-native-dismiss]');
+    assert.equal(card.style.getPropertyValue('--bb-chat-ui-info-title-height'),'52px','closing restores the previous custom property');
+  }finally{stop();f.dom.window.close();}
+});
+
+test("all static list statuses share padded rounded hover rows and Goal control whitespace stays flat", async () => {
+  const f=fixture();const card=f.document.querySelector<HTMLElement>('section[aria-label="To-do list"]')!;
+  card.querySelector('#todos')!.innerHTML='<ul class="px-2.5"><li class="rounded-md bg-background/70 px-2 py-1">Running</li><li class="rounded-md px-2 py-0.5">Pending</li><li class="rounded-md px-2 py-0.5">Completed</li><li class="rounded-md bg-destructive/5 px-2 py-0.5">Failed</li></ul>';
+  const workflow=f.document.createElement('section');workflow.setAttribute('aria-label','Workflow');workflow.innerHTML='<button aria-expanded="false" aria-controls="workflow-list">Workflow</button><section id="workflow-list" role="region" hidden><div class="rounded-md bg-background/70 min-h-7 px-2 py-1">Running</div><div class="rounded-md min-h-7 px-2 py-0.5">Done</div><div class="rounded-md min-h-7 px-2 py-0.5">Queued</div><button aria-expanded="false">Phase</button></section>';card.parentElement!.append(workflow);
+  const stop=injectComposerInfo(f.document);
+  try{
+    for(const [key,root,selector] of [['todos',card,'li'],['workflow',workflow,'div.min-h-7']] as const){
+      f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();
+      for(const row of root.querySelectorAll(selector)){
+        const s=f.dom.window.getComputedStyle(row);assert.equal(s.padding,'8px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,'10px');assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
+      }
+    }
+  }finally{stop();f.dom.window.close();}
+});
+
+test("native list viewports leave room for rounded row backgrounds without clipping their side gutters", async () => {
+  const f=fixture();const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const native=f.document.createElement('style');native.textContent='.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.px-2\\.5{padding-left:10px;padding-right:10px}.max-h-40{max-height:160px}';f.document.head.append(native);
+  const cards=[
+    ['todos','To-do list','<ul class="max-h-40 overflow-y-auto px-2.5"><li class="rounded-md px-2">Todo</li></ul>','ul'],
+    ['workflow','Workflow','<div data-detail-scroll-area="base" class="overflow-y-auto px-2.5"><button aria-expanded="false">Phase</button><div class="min-h-7">Agent</div></div>','[data-detail-scroll-area]'],
+    ['background','Background commands','<div><div class="px-3">Command</div></div>',null]
+  ] as const;
+  for(const [key,label,body] of cards){
+    stack.querySelector(`section[aria-label="${label}"]`)?.remove();const c=f.document.createElement('section');c.setAttribute('aria-label',label);
+    c.innerHTML=`<button aria-expanded="false" aria-controls="${key}-paint-body">${label}</button><section role="region" id="${key}-paint-body" hidden class="overflow-hidden"><div class="overflow-hidden bg-popover">${body}</div></section>`;stack.append(c);
+    const trigger=c.querySelector('button')!;trigger.addEventListener('click',()=>{const open=trigger.getAttribute('aria-expanded')!=='true';trigger.setAttribute('aria-expanded',String(open));c.querySelector('section')!.hidden=!open;});
+  }
+  const stop=injectComposerInfo(f.document),style=(n:Element)=>f.dom.window.getComputedStyle(n);
+  try{
+    for(const [key,label,,selector] of cards){
+      f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();const c=stack.querySelector(`section[aria-label="${label}"]`)!;
+      assert.equal(style(c.querySelector('section[role="region"]')!).overflow,'visible',`${key}: the outer reveal wrapper does not cut off row corners`);
+      assert.equal(style(c.querySelector('section[role="region"] > div')!).overflow,'visible',`${key}: the native body slab does not cut off row corners`);
+      assert.equal(style(c.querySelector('section[role="region"]')!).minWidth,'0px',`${key}: native reveal fits a narrow card`);
+      assert.equal(style(c.querySelector('section[role="region"] > div')!).minWidth,'0px',`${key}: native grid content can shrink without widening the hover rows`);
+      if(selector){const viewport=c.querySelector(selector)!;const s=style(viewport);assert.equal(s.paddingLeft,'8px');assert.equal(s.paddingRight,'8px');assert.equal(s.marginLeft,'-8px');assert.equal(s.marginRight,'-8px');assert.equal(s.width,'calc(100% + 16px)');assert.equal(s.overflow,'visible','the shared popover handles scrolling without clipping row corners');}
+      if(key==='workflow')for(const row of c.querySelectorAll('[data-detail-scroll-area] > *')){const s=style(row);assert.equal(s.width,'calc(100% + 16px)');assert.equal(s.marginLeft,'-8px');assert.equal(s.borderRadius,'10px');}
+      if(key==='todos')assert.equal(style(c.querySelector('ul')!).maxHeight,'none');
+    }
+  }finally{stop();}
+  assert.equal(style(stack.querySelector('section[aria-label="To-do list"] ul')!).paddingLeft,'10px','unload restores native viewport gutters');
+  assert.equal(style(stack.querySelector('section[aria-label="Workflow"] section[role="region"]')!).overflow,'hidden','unload restores native reveal clipping');f.dom.window.close();
+});
+
+test("information popovers share the Diff height cap without smaller native list limits", async () => {
+  const f=fixture(),stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const native=f.document.createElement('style');native.textContent='.native-todo-cap{max-height:160px;overflow-y:auto}[data-detail-scroll-area]{max-height:288px;overflow-y:auto}';f.document.head.append(native);
+  const todo=stack.querySelector('section[aria-label="To-do list"]')!;
+  todo.querySelector('#todos')!.innerHTML='<ul class="native-todo-cap"><li>To-do</li></ul>';
+  const workflow=f.document.createElement('section');workflow.setAttribute('aria-label','Workflow');workflow.innerHTML='<button aria-expanded="false" aria-controls="height-workflow">Workflow</button><section role="region" id="height-workflow"><div data-detail-scroll-area>Agents</div></section>';stack.append(workflow);
+  const stop=injectComposerInfo(f.document),style=(n:Element)=>f.dom.window.getComputedStyle(n);
+  try{
+    for(const kind of ['diff','todos','workflow','queue','children','goal','other']){
+      f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);await f.tick();
+      const popup=f.document.querySelector(`[data-bb-chat-ui-info-open="${kind}"], [data-bb-chat-ui-info-diff]`)!;
+      assert.equal(style(stack).getPropertyValue('--bb-chat-ui-info-max-height'),'min(50dvh,26rem)');
+      assert.equal(style(popup).maxHeight,'var(--bb-chat-ui-info-max-height)',`${kind}: uses the shared Diff cap`);
+      assert.equal(style(popup).height,'auto','short content does not receive a fixed tall box');
+      if(kind==='goal')assert.equal(style(popup.querySelector('#goal')!).flexShrink,'0','a long Goal body must scroll rather than shrink inside its clipping wrapper');
+    }
+    f.click('[data-bb-chat-ui-info-all]');f.click('[data-bb-chat-ui-info-choice="todos"]');await f.tick();
+    assert.equal(style(todo.querySelector('ul')!).maxHeight,'none');assert.equal(style(todo.querySelector('ul')!).overflow,'visible');
+    f.click('[data-bb-chat-ui-info-all]');f.click('[data-bb-chat-ui-info-choice="workflow"]');await f.tick();
+    assert.equal(style(workflow.querySelector('[data-detail-scroll-area]')!).maxHeight,'none');
+  }finally{stop();}
+  assert.equal(style(todo.querySelector('ul')!).maxHeight,'160px','unload restores native list limits');
+  assert.equal(style(workflow.querySelector('[data-detail-scroll-area]')!).maxHeight,'288px');f.dom.window.close();
+});
+
+test("compact information lists share the background row density without native margin stacking", async () => {
+  const f=fixture(),stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const native=f.document.createElement('style');
+  native.textContent='.space-y-1 > li { margin-bottom:4px } .flex-col { display:flex; flex-direction:column } .gap-1\\.5 { row-gap:6px } .gap-0\\.5 { row-gap:2px } .mt-1 { margin-top:4px }';
+  f.document.head.append(native);
+  f.document.querySelector('#todos')!.innerHTML='<ul class="space-y-1 px-2.5"><li class="text-xs bg-background/70">Running</li><li class="text-xs">Pending</li><li class="text-xs">Completed</li></ul>';
+  for(const [kind,label,body,id] of [
+    ['background','Background commands','<div class="flex flex-col gap-0.5 py-1"><div class="px-3 text-xs">Command A</div><div class="px-3 text-xs">Command B</div></div>','thread-background-commands-card-body'],
+    ['workflow','Workflow','<div class="flex flex-col gap-1.5"><div><button aria-expanded="true">Phase A</button><div class="mt-1 flex flex-col"><div class="min-h-7 text-xs">Running agent</div><div class="min-h-7 text-xs">Queued agent</div></div></div><div><button aria-expanded="false">Phase B</button></div></div>','density-workflow']
+  ]){
+    const card=f.document.createElement('section');card.setAttribute('aria-label',label);
+    card.innerHTML=`<button aria-expanded="false" aria-controls="${id}">${kind}</button><section id="${id}" role="region" hidden><div class="bg-popover">${body}</div></section>`;
+    const toggle=card.querySelector('button')!,region=card.querySelector('section')!;
+    toggle.addEventListener('click',()=>{region.hidden=!region.hidden;toggle.setAttribute('aria-expanded',String(!region.hidden));});stack.append(card);
+  }
+  const stop=injectComposerInfo(f.document),paint=(node:Element)=>f.dom.window.getComputedStyle(node);
+  try{
+    for(const [kind,rowSelector,groups] of [
+      ['todos','ul > li',['ul']],
+      ['background','#thread-background-commands-card-body > div > div > div.px-3',['#thread-background-commands-card-body > div > div']],
+      ['workflow','section[role="region"] div.min-h-7, section[role="region"] button[aria-expanded]',['section[role="region"] .gap-1\\.5','section[role="region"] .mt-1']]
+    ] as const){
+      f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);await f.tick();
+      const card=stack.querySelector(`[data-bb-chat-ui-info-open="${kind}"]`)!;
+      assert.equal(paint(stack).getPropertyValue('--bb-chat-ui-info-row-gap'),'2px','the background row gap is the shared reference');
+      for(const row of card.querySelectorAll(rowSelector)){
+        const css=paint(row);assert.equal(css.minHeight,'32px');assert.equal(css.padding,'8px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'16px');
+        assert.equal(css.marginTop,'0px');assert.equal(css.marginBottom,'0px','native space-y margins do not add another gap');
+      }
+      for(const selector of groups)assert.equal(paint(card.querySelector(selector)!).rowGap,'var(--bb-chat-ui-info-row-gap)',`${kind}: peers use one gap`);
+      if(kind==='workflow')assert.equal(paint(card.querySelector('.mt-1')!).marginTop,'var(--bb-chat-ui-info-row-gap)','phase-to-agent spacing follows peer spacing');
+    }
+  }finally{stop();}
+  assert.equal(paint(f.document.querySelector('#todos li')!).marginBottom,'4px','unload restores the native list spacing');
+  assert.equal(paint(f.document.querySelector('#density-workflow .gap-1\\.5')!).rowGap,'6px');
+  f.dom.window.close();
+});
+
+
+test("Workflow header keeps its title above live metadata without moving native nodes", async () => {
+  const f=fixture();
+  const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const card=f.document.createElement('section');card.setAttribute('aria-label','Workflow');
+  card.innerHTML='<button type="button" aria-label="Workflow: Release" aria-controls="workflow-header-body" aria-expanded="false" class="flex min-h-8 w-full min-w-0 items-center px-3 py-1.5"><svg data-icon-root></svg><span class="flex min-w-0 flex-1 items-center"><span class="min-w-0 truncate font-medium" title="Release">Release</span><span class="shrink-0 text-2xs">1/3 agents</span><span class="shrink-0 text-2xs">45s</span></span><div role="presentation" aria-hidden="true" class="flex w-16"><span>progress</span></div><span class="ml-auto w-8"></span></button><section role="region" id="workflow-header-body" hidden><div data-detail-scroll-area class="py-2"><button aria-expanded="false" data-phase>Phase</button></div></section>';
+  stack.append(card);
+  const header=card.querySelector<HTMLButtonElement>('button')!;
+  const summary=header.querySelector<HTMLElement>('.flex-1')!;
+  const [title,count,time]=Array.from(summary.children) as HTMLElement[];
+  const progress=header.querySelector<HTMLElement>('[role="presentation"]')!;
+  header.addEventListener('click',()=>{const expanded=header.getAttribute('aria-expanded')!=='true';header.setAttribute('aria-expanded',String(expanded));card.querySelector<HTMLElement>('#workflow-header-body')!.hidden=!expanded;});
+  const stop=injectComposerInfo(f.document),paint=(n:Element)=>f.dom.window.getComputedStyle(n);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();
+    assert.equal(paint(header).display,'grid');
+    assert.equal(paint(header).paddingRight,'34px','reserve the close column even with native px-3');
+    assert.equal(paint(count).gridColumn,'1 / 3','metadata starts at the same left edge as list rows');
+    assert.equal(paint(header).paddingBottom,'6px','leave a small gap below metadata without restoring both native gutters');
+    assert.equal(paint(card.querySelector('[data-detail-scroll-area]')!).paddingTop,'0px','list starts directly below metadata with only its row padding');
+    assert.equal(paint(summary).display,'contents');
+    assert.equal(paint(title).gridRow,'1');
+    assert.equal(paint(count).gridRow,'2');assert.equal(paint(time).gridRow,'2');assert.equal(paint(progress).gridRow,'2');
+    assert.equal(paint(header.querySelector('[data-bb-chat-ui-info-title-icon]')!).gridRow,'1');
+    assert.equal(paint(header.querySelector('.ml-auto')!).display,'none');
+    assert.equal(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,'18px','close is centered on the 28px first row, not both rows');
+    assert.equal(title.parentElement,summary);assert.equal(count.parentElement,summary);assert.equal(progress.parentElement,header);
+    header.click();assert.equal(header.getAttribute('aria-expanded'),'true','title remains read-only');
+    count.textContent='2/3 agents';time.textContent='1m';await f.tick();
+    assert.equal(count.textContent,'2/3 agents');assert.equal(paint(count).gridRow,'2','native metadata updates stay on the second row');
+    const phase=card.querySelector<HTMLButtonElement>('[data-phase]')!;let clicks=0;phase.addEventListener('click',()=>clicks++);phase.click();assert.equal(clicks,1);
+    f.click('[data-bb-chat-ui-info-native-dismiss]');await f.tick();
+    assert.equal(header.getAttribute('aria-expanded'),'false');assert.notEqual(paint(header).display,'grid','closed native card restores its layout');
+    f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();assert.equal(paint(header).display,'grid');
+  } finally {stop();}
+  assert.notEqual(paint(header).display,'grid');assert.notEqual(paint(summary).display,'contents');
+  assert.equal(title.parentElement,summary);assert.equal(progress.parentElement,header);
+  f.dom.window.close();
 });

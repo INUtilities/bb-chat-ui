@@ -31,6 +31,9 @@ const NATIVE_DETAIL = `${DETAIL}:is(${["Thread context before sending", "Child t
 const PROTECTED_SURFACE = "input, textarea, select, pre, code, [contenteditable='true'], .cm-editor, .cm-content, .monaco-editor";
 const PROTECTED_EXCLUDE = `:not(${PROTECTED_SURFACE}):not(${PROTECTED_SURFACE.split(", ").map(selector => `${selector} *`).join(", ")})`;
 const LEGACY_ROW = `:is([class~="bg-background/70"], [class~="bg-destructive/5"]):not(${PROTECTED_SURFACE}):not(${PROTECTED_SURFACE.split(", ").map(selector => `${selector} *`).join(", ")})`;
+const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${DETAIL}[${OPEN}="workflow"] section[role="region"] div[class~="min-h-7"], ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded], ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
+const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"])`;
+const WORKFLOW_HEADING = `${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] > button[${MARK}-close-heading][${MARK}-readonly-title][aria-label^="Workflow:"]`;
 
 // The all-information button is always reachable. Fit measured pills into one row, with essentials first.
 export function fitComposerInfo(items: readonly { key: string; width: number }[], width: number): string[] {
@@ -55,7 +58,7 @@ export function scrollOverflowEdges(metrics: { scrollTop: number; clientHeight: 
 }
 
 export const composerInfoCss = `
-[${MARK}-stack] { --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
+[${MARK}-stack] { --bb-chat-ui-info-row-gap:2px; --bb-chat-ui-info-max-height:min(50dvh,26rem); --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
 .dark [${MARK}-stack] { --bb-chat-ui-info-face:${DARK_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,black 60%,transparent); }
 [${MARK}-stack]::after { display:none !important; }
 [${WRAP}] { display:contents !important; }
@@ -98,15 +101,26 @@ ${NATIVE_DETAIL} > div[class~="p-1"], ${NATIVE_DETAIL} > div[class~="p-1"] > div
 ${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:-8px; margin-right:-8px; width:calc(100% + 16px); box-sizing:border-box; }
 ${DETAIL} [${MARK}-close-heading] { box-sizing:border-box; padding-right:34px !important; }
 ${NATIVE_DETAIL}[aria-label="Machine status"] > div[class~="p-1"][${MARK}-close-heading] { padding-right:34px !important; }
-${DETAIL} [${MARK}-native-dismiss] { position:absolute; top:18px; right:24px; color:var(--subtle-foreground); cursor:pointer; }
+${DETAIL} [${MARK}-native-dismiss] { position:absolute; top:calc(16px + var(--bb-chat-ui-info-title-height,28px) / 2 - 12px); right:24px; color:var(--subtle-foreground); cursor:pointer; }
+${DETAIL} [${MARK}-readonly-title] { cursor:default !important; background:transparent !important; box-shadow:none !important; }
+/* Keep native title, live counters and phase bars on their original parents. */
+${WORKFLOW_HEADING} { display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 7px; align-items:center; padding:0 34px 6px 0 !important; }
+${WORKFLOW_HEADING} > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
+${WORKFLOW_HEADING} > span[class~="flex-1"] { display:contents; }
+${WORKFLOW_HEADING} > span[class~="flex-1"] > span:first-child { grid-column:2 / -1; grid-row:1; }
+${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(2) { grid-column:1 / 3; grid-row:2; }
+${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(3) { grid-column:3; grid-row:2; }
+${WORKFLOW_HEADING} > [role="presentation"] { grid-column:4; grid-row:2; width:64px; max-width:100%; }
+${WORKFLOW_HEADING} > span[class~="ml-auto"] { display:none; }
+${DETAIL}[${OPEN}="workflow"] > [${MARK}-native-dismiss] { top:18px; }
+${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area] { padding-top:0 !important; }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] [${MARK}-native-dismiss] { top:8px; right:8px; }
-${DETAIL}[aria-label="Goal"] { display:flex !important; flex-direction:column; outline:0 !important; }
-${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] { order:2; display:flex; justify-content:flex-end; margin-top:8px; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
+${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] { grid-area:actions; display:flex; align-items:center; justify-content:flex-end; margin-top:0; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > button[aria-expanded][aria-controls],
 ${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] > button[aria-expanded] { display:none !important; }
-${DETAIL}[aria-label="Goal"] > #thread-goal-card-body { order:1; border:0 !important; background:transparent !important; box-shadow:none !important; }
+${DETAIL}[aria-label="Goal"] > #thread-goal-card-body { grid-area:body; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > #thread-goal-card-body > div { background:transparent !important; box-shadow:none !important; }
-${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] { order:2; flex:none; width:auto; min-height:28px; padding:5px 9px; border-radius:8px; font-size:11px; line-height:18px; }
+${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] { grid-area:actions; flex:none; width:auto; min-height:28px; padding:5px 9px; border-radius:8px; font-size:11px; line-height:18px; white-space:nowrap; }
 ${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] { flex:none; width:auto; min-height:28px; padding:5px 9px; border:0 !important; border-radius:8px; font-size:11px; line-height:18px; }
 ${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] > :is(svg, [data-icon-root]) { display:none !important; }
@@ -120,14 +134,31 @@ ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { backgroun
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL}[${OPEN}="other"] h3[class~="px-3"][${MARK}-close-heading] { padding-left:0 !important; padding-right:34px !important; }
 /* One glass face. Header disclosure sits flat on it; small actions keep the shared face. */
+/* The popup owns its entrance; native outer bodies open without another height reveal. */
+${DETAIL} > section[role="region"], ${DETAIL}.agentation-staging-shell > .grid { transition:none !important; grid-template-rows:1fr !important; opacity:1 !important; }
 ${DETAIL} > section[role="region"] { border-top-width:0 !important; border-top-color:transparent !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL} > section[role="region"] > div[class~="bg-popover"] { background-color:transparent !important; box-shadow:none !important; }
 ${DETAIL} ${LEGACY_ROW} { background-color:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-${DETAIL} ${LEGACY_ROW}:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
+${LIST_ROW} { box-sizing:border-box; min-height:32px; margin-top:0 !important; margin-bottom:0 !important; padding:8px !important; border-radius:10px; font-size:12px; line-height:16px; background:transparent !important; box-shadow:none !important; cursor:default; transition:background-color 150ms ease-out; }
+${LIST_ROW.split(", ").map(selector => `${selector}:hover`).join(", ")} { background-color:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
+/* Match the background activity's row rhythm; native space-y margins must not stack with the gap. */
+${DETAIL}[${OPEN}="todos"] ul { display:flex; flex-direction:column; row-gap:var(--bb-chat-ui-info-row-gap); }
+${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div[class~="flex-col"],
+${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="flex-col"][class~="gap-1.5"],
+${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [class~="flex-col"] { row-gap:var(--bb-chat-ui-info-row-gap); }
+${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [class~="flex-col"] { margin-top:var(--bb-chat-ui-info-row-gap) !important; }
+/* Leave the corner gutter inside the real scroller, not outside a clipped reveal wrapper. */
+${LIST_DETAIL} > section[role="region"], ${LIST_DETAIL} > section[role="region"] > div[class~="bg-popover"] { min-width:0; overflow:visible !important; }
+${LIST_DETAIL} ul[class~="px-2.5"], ${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
+/* Main popovers own the common height cap; native list caps must not shorten it. */
+${DETAIL}[${OPEN}="todos"] ul, ${DETAIL} [data-detail-scroll-area] { max-height:none !important; overflow:visible !important; }
+${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[aria-expanded]) { width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; }
 ${DETAIL} button[aria-expanded][aria-controls] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL} button[aria-expanded][aria-controls]:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
 ${DETAIL}[${OPEN}="workflow"] button[aria-expanded] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="workflow"] button[aria-expanded]:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
+${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
+${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 16px); margin:0 -8px; }
 [${MARK}-panel-action], [${MARK}-action="diff"] { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:24px; height:24px; padding:0 !important; border-radius:50% !important; color:var(--subtle-foreground); }
 [${MARK}-panel-action] svg, [${MARK}-action="diff"] svg { width:14px; height:14px; }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
@@ -198,8 +229,13 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar-dot] svg { width:8px; height:8px; color:var(--bb-chat-ui-glass-base,var(--background)); }
 [${MARK}-avatar] [${MARK}-provider-icon], [${MARK}-avatar] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
-[${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:min(50dvh,26rem) !important; overflow:auto !important; margin:0 !important; padding:16px 24px !important; order:0 !important; border:0 !important; border-radius:18px !important; background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); color:var(--foreground); box-shadow:0 12px 32px -14px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
+[${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; padding:16px 24px !important; order:0 !important; border:0 !important; border-radius:18px !important; background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); color:var(--foreground); box-shadow:0 12px 32px -14px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] { padding:8px !important; }
+/* Keep native actions on their original parents while sharing one title row. */
+${DETAIL}[aria-label="Goal"] { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; gap:8px; outline:0 !important; }
+${DETAIL}[aria-label="Goal"] > * { min-width:0; flex-shrink:0; }
+${DETAIL}[aria-label="Goal"] > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
+${DETAIL}[aria-label="Goal"] > [${MARK}-native-dismiss] { grid-area:close; position:static; top:auto; right:auto; }
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
 [${MARK}-menu] header { display:flex; align-items:center; gap:6px; font-size:12px; padding-bottom:8px; }
 [${MARK}-menu] header button:last-child { margin-left:auto; }
@@ -238,11 +274,11 @@ ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }
 [${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:11px !important; color:var(--subtle-foreground); }
 [${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
-${DETAIL}[aria-label="Queued messages"] { --bb-chat-ui-queue-height:min(30dvh,12rem); display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-queue-height) !important; overflow:hidden !important; gap:0 !important; }
+${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
 ${DETAIL}[aria-label="Queued messages"] > * { min-height:0; }
-${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { margin-bottom:12px; }
-${DETAIL} [data-queued-messages-scroll-frame] { position:static !important; display:grid !important; grid-template-rows:minmax(0,1fr); flex:0 1 auto !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:var(--bb-chat-ui-queue-height); overflow:hidden !important; }
-${DETAIL} [data-queued-messages-scroll] { height:auto !important; min-height:0 !important; max-height:var(--bb-chat-ui-queue-height); padding:4px 0; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
+${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:12px; }
+${DETAIL} [data-queued-messages-scroll-frame] { position:static !important; display:grid !important; grid-template-rows:minmax(0,1fr); flex:0 1 auto !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; overflow:hidden !important; }
+${DETAIL} [data-queued-messages-scroll] { height:auto !important; min-height:0 !important; max-height:none !important; padding:4px 0; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
 ${DETAIL} header[data-queued-messages-mode] { display:none !important; }
 ${DETAIL}[aria-label="Queued messages"] > [${MARK}-queue-collapse-wrap] { display:none !important; }
 ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] { display:none !important; }
@@ -292,16 +328,17 @@ ${DETAIL} [${MARK}-parent-row]:hover, ${DETAIL} [${MARK}-parent-row]:focus-visib
 [${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
 [${MARK}-child-meta], [${MARK}-child-status] { font-size:10px; color:var(--subtle-foreground); }
 [${MARK}-child-status] { white-space:nowrap; }
-${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-areas:"heading" "body" "actions"; border:0 !important; border-radius:18px !important; gap:0; }
+${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; border:0 !important; border-radius:18px !important; gap:8px; }
 ${DETAIL}.agentation-staging-shell > div:first-child { display:contents !important; }
-${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { grid-area:heading; display:flex; align-items:center; gap:7px; width:100%; min-height:28px; padding-bottom:8px; }
+${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { display:contents !important; }
+${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [${MARK}-title-icon] { grid-area:heading; justify-self:start; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [data-icon="ChatFeedback"] { display:none !important; }
-${DETAIL}.agentation-staging-shell > div:first-child > div:first-child p { flex:1; margin:0; font-size:12px; font-weight:600; }
-${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] { width:24px; height:24px; margin-left:auto; background:transparent; border-radius:50%; }
+${DETAIL}.agentation-staging-shell > div:first-child > div:first-child p { grid-area:heading; min-width:0; margin:0; padding-left:21px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; }
+${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] { grid-area:close; width:24px; height:24px; margin:0; background:transparent; border-radius:50%; }
 ${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] svg,
 ${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] [data-icon-root] { display:none; }
 ${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"]::after { content:"×"; font:inherit; color:var(--subtle-foreground); }
-${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-area:actions; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; margin-top:8px; }
+${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-area:actions; display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:6px; margin-top:0; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button { font-size:11px; min-height:28px; border:1px solid var(--border); border-radius:7px; padding:5px 9px; background:var(--bb-chat-ui-info-face); color:var(--foreground); }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:first-child { order:2; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:last-child { order:1; }
@@ -534,6 +571,51 @@ export function injectComposerInfo(document: Document): () => void {
     const panelHeadings = new Set<HTMLElement>();
     const generatedHeadings = new Set<HTMLElement>();
     const nativeDismisses = new Map<HTMLElement, HTMLButtonElement>();
+    const readOnlyTitles = new Map<HTMLElement, { tabIndex:string | null; ariaDisabled:string | null }>();
+    let forwardingTitle = false;
+    const clickNativeTitle = (button:HTMLElement) => {
+      forwardingTitle = true;
+      try { button.click(); } finally { forwardingTitle = false; }
+    };
+    const blockTitleActivation = (event:Event) => {
+      if (forwardingTitle || !(event.target instanceof view!.Element)) return;
+      const title = event.target.closest<HTMLElement>(`[${MARK}-readonly-title]`);
+      if (!title || !activeNode?.contains(title) || !activeNode.hasAttribute(OPEN)) return;
+      if (event instanceof view!.KeyboardEvent && event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault(); event.stopImmediatePropagation();
+    };
+    stack.addEventListener("click", blockTitleActivation, true);
+    stack.addEventListener("keydown", blockTitleActivation, true);
+    const restoreTitle = (title:HTMLElement) => {
+      const saved = readOnlyTitles.get(title);
+      if (!saved) return;
+      for (const [name,value] of [["tabindex",saved.tabIndex],["aria-disabled",saved.ariaDisabled]] as const) {
+        if (value === null) title.removeAttribute(name); else title.setAttribute(name,value);
+      }
+      title.removeAttribute(`${MARK}-readonly-title`); readOnlyTitles.delete(title);
+    };
+    let nativeCloseHeading:HTMLElement | null = null, nativeCloseCard:HTMLElement | null = null;
+    let previousTitleHeight = "", previousTitlePriority = "";
+    const titleHeightProperty = "--bb-chat-ui-info-title-height";
+    const setTitleHeight = (height:number) => {
+      if (!nativeCloseCard || height <= 0) return;
+      const value = `${height}px`;
+      if (nativeCloseCard.style.getPropertyValue(titleHeightProperty) !== value) nativeCloseCard.style.setProperty(titleHeightProperty,value);
+    };
+    const trackCloseHeading = (card:HTMLElement | null, heading:HTMLElement | null) => {
+      if (card === nativeCloseCard && heading === nativeCloseHeading) return;
+      if (nativeCloseHeading) edgeResize?.unobserve(nativeCloseHeading);
+      if (nativeCloseCard) {
+        if (previousTitleHeight) nativeCloseCard.style.setProperty(titleHeightProperty,previousTitleHeight,previousTitlePriority);
+        else nativeCloseCard.style.removeProperty(titleHeightProperty);
+      }
+      nativeCloseCard = card; nativeCloseHeading = heading;
+      if (!card || !heading) return;
+      previousTitleHeight = card.style.getPropertyValue(titleHeightProperty);
+      previousTitlePriority = card.style.getPropertyPriority(titleHeightProperty);
+      setTitleHeight(heading.getBoundingClientRect().height);
+      edgeResize?.observe(heading);
+    };
     const parentRows = new Map<HTMLElement, HTMLButtonElement>();
     // Markers the CSS reads instead of :has() (a generic-subject :has() restyles the app on every row insertion).
     const setMark = (node: Element, name: string, on: boolean) => { if (node.hasAttribute(name) !== on) node.toggleAttribute(name, on); };
@@ -583,6 +665,8 @@ export function injectComposerInfo(document: Document): () => void {
         if (generatedCloseHeadings.delete(heading)) heading.remove();
       }
       const item = items.find(item => item.node === activeNode && item.key === active);
+      for (const title of readOnlyTitles.keys()) if (title !== item?.trigger || !item.node.hasAttribute(OPEN)) restoreTitle(title);
+      if (!item || !item.node.hasAttribute(OPEN)) trackCloseHeading(null,null);
       const escapeAttr = (value: string) => view?.CSS?.escape(value) ?? value.replace(/["\\]/g, "\\$&");
       const readParent = () => readInfoData(stack.querySelector(`[${SOURCE}]`))?.value.parent ?? null;
       const parentHost = item?.key === "parent" && item.node.hasAttribute(OPEN) ? item.node : null;
@@ -650,8 +734,9 @@ export function injectComposerInfo(document: Document): () => void {
       namedAction(planExitLabels, "plan", '[aria-label="Exit plan mode"]', `${MARK}-plan-exit-label`, button => button.hasAttribute("disabled") ? "종료 중…" : "Plan 종료");
       namedAction(fallbackDismissLabels, "fallback", '[aria-label="Dismiss model fallback"]', `${MARK}-fallback-dismiss-label`, () => "Fallback 해제");
       if (!item || !item.node.hasAttribute(OPEN) || item.key === "diff" || item.node.matches(".agentation-staging-shell") || item.node.querySelector(`[${MARK}-dismiss]:not([${MARK}-native-dismiss])`)) return;
+      let heading:HTMLElement | null = null;
       if (item.key !== "parent") {
-        let heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading]`);
+        heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading]`);
         if (!heading || heading.closest("button, a")) {
           const parent = item.trigger?.parentElement;
           heading = parent && parent !== item.node && !parent.closest("button, a") && !parent.hasAttribute("data-queued-messages-mode") ? parent : item.trigger;
@@ -663,6 +748,13 @@ export function injectComposerInfo(document: Document): () => void {
           item.node.prepend(heading); generatedCloseHeadings.add(heading);
         }
         heading.setAttribute(`${MARK}-close-heading`, ""); closeHeadings.add(heading);
+        const title = item.trigger;
+        if (title?.matches('button[aria-expanded][aria-controls]') && heading.contains(title) && item.key !== "pullRequest") {
+          if (!readOnlyTitles.has(title)) readOnlyTitles.set(title,{tabIndex:title.getAttribute("tabindex"),ariaDisabled:title.getAttribute("aria-disabled")});
+          if (!title.hasAttribute(`${MARK}-readonly-title`)) title.setAttribute(`${MARK}-readonly-title`,"");
+          if (title.getAttribute("tabindex") !== "-1") title.setAttribute("tabindex","-1");
+          if (title.getAttribute("aria-disabled") !== "true") title.setAttribute("aria-disabled","true");
+        }
       }
       let dismiss = nativeDismisses.get(item.node);
       if (!dismiss) {
@@ -672,6 +764,7 @@ export function injectComposerInfo(document: Document): () => void {
         nativeDismisses.set(item.node, dismiss);
       }
       if (dismiss.parentElement !== item.node) item.node.append(dismiss);
+      trackCloseHeading(heading ? item.node : null,heading);
     };
     const panelAction = (label:string, run:() => void) => {
       const button = document.createElement("button");
@@ -822,6 +915,7 @@ export function injectComposerInfo(document: Document): () => void {
         }
         for (const body of bodyFades.keys()) edgeResize?.observe(body);
         for (const clip of clipNodes) edgeResize?.observe(clip);
+        if (nativeCloseHeading) edgeResize?.observe(nativeCloseHeading);
       }
       scrollHints.forEach(hint => { hint.hidden = true; });
       // Hints are siblings of the card and do not share its entrance opacity or
@@ -840,7 +934,12 @@ export function injectComposerInfo(document: Document): () => void {
         hint.hidden = index ? scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1 : scroller.scrollTop <= 1;
       });
     };
-    const edgeResize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(updateScrollHints) : null;
+    const edgeResize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver((entries = []) => {
+      for (const entry of entries) if (entry.target === nativeCloseHeading) {
+        setTitleHeight(entry.borderBoxSize?.[0]?.blockSize ?? nativeCloseHeading!.getBoundingClientRect().height);
+      }
+      updateScrollHints();
+    }) : null;
     stack.addEventListener("scroll", updateScrollHints, true);
     stack.addEventListener("animationend", updateScrollHints, true);
     stack.addEventListener("animationcancel", updateScrollHints, true);
@@ -1477,7 +1576,7 @@ export function injectComposerInfo(document: Document): () => void {
           }
           choice.addEventListener("click", () => {
             open(item.key, orb, "node" in item ? item : undefined);
-            (menu ?? activeNode)?.querySelector<HTMLElement>('button, a, input, [tabindex="0"]')?.focus();
+            (menu ?? activeNode)?.querySelector<HTMLElement>(`button:not([${MARK}-readonly-title]), a, input, [tabindex="0"]`)?.focus();
           });
           grid.append(choice);
         }
@@ -1540,7 +1639,7 @@ export function injectComposerInfo(document: Document): () => void {
       // The value names the family, so a shared host card shows only that family.
       item.node.setAttribute(OPEN, key);
       if (key === "parent") parentArm = item.trigger;
-      if (item.trigger?.getAttribute("aria-expanded") === "false") item.trigger.click();
+      if (item.trigger?.getAttribute("aria-expanded") === "false") clickNativeTitle(item.trigger);
       syncNativeControls();
       syncTitleIcon();
       buttons.get(key)?.setAttribute("aria-expanded", "true");
@@ -2159,6 +2258,10 @@ export function injectComposerInfo(document: Document): () => void {
       edgeResize?.disconnect();
       jumpWatch.disconnect();
       sourceWatch.disconnect();
+      stack.removeEventListener("click", blockTitleActivation, true);
+      stack.removeEventListener("keydown", blockTitleActivation, true);
+      for (const title of readOnlyTitles.keys()) restoreTitle(title);
+      trackCloseHeading(null,null);
       jumpSource?.removeAttribute(`${MARK}-jump-source`);
       stack.removeEventListener("scroll", updateScrollHints, true);
       stack.removeEventListener("animationend", updateScrollHints, true);

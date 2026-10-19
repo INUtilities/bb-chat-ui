@@ -92,9 +92,15 @@ Diff 팝오버의 파일·커밋 목록은 각각 5개까지 먼저 보여 준�
 
 전체 정보 목록을 제외한 모든 정보 팝오버는 타이틀 왼쪽에 해당 계열의 SDK 아이콘을 14px로 표시한다. Parent는 계열 아이콘과 별도 제목 대신 부모 provider 아이콘과 부모 제목을 한 행으로 표시한다. 빈 상태·Code Diff·Archived 및 환경 복구 상세에도 적용한다. 기존 제목 glyph는 원래 DOM에 두고 중복 표시만 숨기며 실제 액션 아이콘은 유지한다. SDK 아이콘이 늦게 준비되거나 native 제목이 다시 렌더되어도 갱신하고, 닫기·플러그인 해제 시 원래 제목 아이콘을 복원한다.
 
-Goal 팝오버는 native `Goal controls` 헤더 대신 아이콘이 있는 공통 `Goal` 제목을 사용한다. native 헤더의 ring·배경·테두리와 본문의 `bg-popover`·상단 테두리를 제거해 카드 glass만 남긴다. 상단 `×`는 팝오버만 닫으며, native Goal 해제 버튼은 DOM 부모와 동작을 유지한 채 본문 아래 오른쪽의 `Goal 해제` 텍스트 액션으로 표시한다. 처리 중에는 `해제 중…`과 원래 disabled 상태를 반영하고, native 재렌더에도 라벨을 복원한다. 닫기·플러그인 해제 시 추가 제목·라벨을 제거하고 원래 카드 표시를 복원한다.
+Goal 팝오버는 native `Goal controls` 헤더 대신 아이콘이 있는 공통 `Goal` 제목을 사용한다. native 헤더의 ring·배경·테두리와 본문의 `bg-popover`·상단 테두리를 제거해 카드 glass만 남긴다. 상단 `×`는 팝오버만 닫으며, native Goal 해제 버튼은 DOM 부모와 동작을 유지한 채 제목 행의 `×` 왼쪽에 `Goal 해제` 텍스트 액션으로 표시한다. 제목·액션·닫기는 같은 grid 행에서 세로 중앙에 정렬하고 본문은 다음 행 전체 너비를 쓴다. 처리 중에는 `해제 중…`과 원래 disabled 상태를 반영하고, native 재렌더에도 라벨을 복원한다. 닫기·플러그인 해제 시 추가 제목·라벨을 제거하고 원래 카드 표시를 복원한다.
+
+Agentation의 `Send all`·`Discard all`도 제목 행의 `×` 왼쪽에 두고 제목·액션·닫기를 세로 중앙에 정렬한다. native 헤더 wrapper를 `display:contents`로 풀고 액션 wrapper를 같은 grid 행에 배치하며 버튼의 DOM 부모·핸들러·disabled 상태를 유지한다. 액션은 줄바꿈하지 않으며 좁은 폭에서는 제목만 말줄임한다. 본문은 다음 행 전체 너비를 쓴다.
 
 팝오버 닫기 버튼은 Child Thread·Agentation·native 상세·전체 정보·빈 상태·Diff 모두 24px 원형 영역과 12px `×`를 공유한다. 글자 굵기는 400, line-height는 1이며 flex로 중앙 정렬해 제목의 글자 크기·굵기를 상속하지 않는다.
+
+팝오버 제목은 읽기 전용이다. native 제목 disclosure의 사용자 클릭·Enter·Space는 본문을 접지 않으며 제목에는 hover 배경·pointer·추가 Tab 정지를 두지 않는다. pill·×·Escape와 실제 액션, 본문 안의 목록 펼치기는 유지한다. 닫기·해제하면 native 제목의 원래 속성과 동작을 복구한다. native ×는 제목 높이의 중앙에 맞추고, 기존 ResizeObserver로 줄바꿈·크기 변경을 반영한다. 제목·액션·본문의 DOM 부모는 옮기지 않는다.
+
+To-do·Workflow·백그라운드 작업의 목록 행 밀도와 팝오버 공통 디자인은 `docs/composer-popovers.md`를 따른다. native 상태별 여백과 부모 gap·space-y margin이 중복되지 않도록 하며, 계층·실제 액션·DOM 부모는 유지한다.
 
 데스크톱에서는 정보 pill·전체 정보 원 버튼 위에 mouse pointer가 180ms 머물면 팝오버를 미리 연다. 기기는 `DeviceChromeBridge`의 `desktop` 값을 사용하며 화면 폭으로 판단하지 않는다. phone·tablet·touch·pen에는 hover 열기를 적용하지 않는다. pointer가 pill과 열린 카드 사이를 이동하면 유지하고, 둘 다 벗어나면 150ms 뒤 닫는다. 미리 열린 pill을 클릭하면 닫지 않고 고정하며 다음 클릭은 기존처럼 닫는다. 팝오버 내부의 pointerdown·키보드 포커스·전체 정보 항목 선택도 열린 상태를 유지한다. 클릭으로 연 카드나 편집 중인 큐를 다른 pill의 hover로 교체하지 않는다. 입력 요청·스레드 이동·해제 시 hover 타이머를 취소하고, hover에는 햅틱을 추가하지 않는다.
 

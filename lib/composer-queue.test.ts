@@ -131,7 +131,7 @@ test("queue actions stay beside the first line in compact rows with appropriate 
       assert.equal(style(actions.querySelector('button')!).height,small?'24px':'32px','mobile retains a larger touch target');
       assert.equal(style(text).padding,small?'3px 0px':'7px 0px','the first 18px text line is centered beside the action');
       assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'4px 0px','the list has compact vertical spacing');
-      assert.equal(style(f.queue).getPropertyValue('--bb-chat-ui-queue-height'),'min(30dvh,12rem)');
+      assert.equal(style(f.queue).maxHeight,'var(--bb-chat-ui-info-max-height)');
       assert.equal(actions.parentElement,original,'native action controls retain their parent');
       f.click('[data-send]'); assert.equal(f.sent(),1);
       f.click('[data-edit]'); await f.tick(); assert.equal(f.queue.querySelector('textarea')!.value,'unsaved queue draft');
