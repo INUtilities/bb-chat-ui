@@ -30,6 +30,11 @@ export interface ChildChangeEvent {
   metadata?: { eventTypes?: readonly string[] };
 }
 
+export const timelineEventTypes = [
+  "thread/goal/updated", "thread/goal/cleared", "turn/plan/updated", "thread/extensionState/updated", "turn/completed",
+  "item/backgroundTask/progress", "item/backgroundTask/completed", "item/delegation/progress", "item/delegation/completed",
+] as const;
+
 export function childEventRefreshes(
   event: ChildChangeEvent,
   scope: { threadId: string; parentId: string | null; childIds: ReadonlySet<string> },
@@ -40,5 +45,5 @@ export function childEventRefreshes(
   if (event.id !== scope.threadId && (!event.id || !scope.childIds.has(event.id))) return false;
   if (event.changes.some(change => change !== "events-appended" && change !== "read-state-changed" && change !== "tabs-changed" && change !== "terminals-changed")) return true;
   const types = event.metadata?.eventTypes;
-  return event.changes.includes("events-appended") && (!types || types.some(type => ["thread/goal/updated", "thread/goal/cleared", "turn/plan/updated", "thread/extensionState/updated", "turn/completed"].includes(type)));
+  return event.changes.includes("events-appended") && (!types || types.some(type => (timelineEventTypes as readonly string[]).includes(type)));
 }

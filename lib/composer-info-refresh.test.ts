@@ -72,7 +72,7 @@ test('initial entry, focus refresh and reconnect synchronize all sources',async 
 
 test('Goal, Plan and todo events read only the current timeline; token streaming reads nothing',async t=>{
   const f=await ready();
-  for(const type of ['thread/goal/updated','thread/goal/cleared','turn/plan/updated','thread/extensionState/updated','turn/completed']){
+  for(const type of ['thread/goal/updated','thread/goal/cleared','turn/plan/updated','thread/extensionState/updated','turn/completed','item/backgroundTask/progress','item/backgroundTask/completed','item/delegation/progress','item/delegation/completed']){
     f.emit('thread',['events-appended'],[type]); await flush(t);
     assert.deepEqual(f.calls,['timeline'],type); f.calls.length=0;
   }

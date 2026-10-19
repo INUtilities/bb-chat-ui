@@ -1,3 +1,4 @@
+import type { BackgroundActivity } from "./background-activity.ts";
 import type { ChildSummary } from "./composer-child.ts";
 import type { ParentSummary } from "./composer-parent.ts";
 import type { WorkspaceDiffSnapshot } from "./workspace-diff-data.ts";
@@ -7,6 +8,7 @@ export interface ComposerInfoData {
   settings: Record<string, unknown>;
   children: readonly ChildSummary[];
   parent: ParentSummary | null;
+  background?: readonly BackgroundActivity[];
   openThread?: (id: string) => void;
 }
 export interface ComposerDiffData {
@@ -41,7 +43,8 @@ export const readDiffData = (source: Element | null | undefined) => source ? dif
 export function publishInfoData(source: Element, value: ComposerInfoData) {
   const previous = info.get(source);
   if (previous && sameComposerData(previous.value.settings, value.settings)
-    && sameComposerData(previous.value.children, value.children) && sameComposerData(previous.value.parent, value.parent)) {
+    && sameComposerData(previous.value.children, value.children) && sameComposerData(previous.value.parent, value.parent)
+    && sameComposerData(previous.value.background, value.background)) {
     // Refresh action closures without turning them into a visual data change.
     if (previous.value.openThread !== value.openThread) info.set(source, { ...previous, value });
     return;

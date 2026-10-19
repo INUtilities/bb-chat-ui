@@ -1,6 +1,6 @@
 import type { composerInfoReads } from "./composer-info-settings.ts";
 import type { useSdk } from "@get-bb/plugin-sdk/app";
-import { childEventRefreshes, childListArgs, visibleChildren, type ChildChangeEvent } from "./composer-child.ts";
+import { childEventRefreshes, childListArgs, timelineEventTypes, visibleChildren, type ChildChangeEvent } from "./composer-child.ts";
 import { loadParent, parentEventMatters, type ParentSummary } from "./composer-parent.ts";
 
 type Sdk = Pick<ReturnType<typeof useSdk>, "threads" | "environments" | "subscribe">;
@@ -25,7 +25,7 @@ function refreshTargets(event:ChildChangeEvent, scope:Scope):readonly Part[] {
       if (change==="events-appended") {
         // Missing metadata cannot prove that only streaming text changed.
         if (!event.metadata?.eventTypes) { parts.add("timeline"); parts.add("context"); }
-        else if (event.metadata.eventTypes.some(type=>["thread/goal/updated","thread/goal/cleared","turn/plan/updated","thread/extensionState/updated","turn/completed"].includes(type))) parts.add("timeline");
+        else if (event.metadata.eventTypes.some(type=>(timelineEventTypes as readonly string[]).includes(type))) parts.add("timeline");
       } else if (["archived-changed","environment-changed","parent-changed","queue-changed","interactions-changed"].includes(change)) parts.add("context");
       else { parts.add("timeline"); parts.add("context"); }
     }

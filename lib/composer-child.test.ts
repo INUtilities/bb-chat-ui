@@ -48,5 +48,6 @@ test('archived-changed refreshes before the child id gate, including a child nev
   assert.equal(childEventRefreshes({ id: 'mom', changes: ['title-changed'] }, { ...scope, parentId: 'mom' }), true);
   assert.equal(childEventRefreshes({ id: 'mom', changes: ['status-changed'] }, { ...scope, parentId: 'mom' }), false);
   assert.equal(childEventRefreshes({ id: 'live', changes: ['events-appended'], metadata: { eventTypes: ['turn/completed'] } }, scope), true);
+  assert.equal(childEventRefreshes({ id: 'live', changes: ['events-appended'], metadata: { eventTypes: ['item/backgroundTask/progress'] } }, scope), true);
   assert.equal(childEventRefreshes({ id: 'live', changes: ['events-appended'], metadata: { eventTypes: ['item/completed'] } }, scope), false);
 });

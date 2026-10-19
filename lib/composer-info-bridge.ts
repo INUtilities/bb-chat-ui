@@ -1,5 +1,6 @@
 import { createElement, Fragment, useEffect, useMemo, useState, useLayoutEffect, useRef, useCallback } from "react";
 import { experimental_Icon, experimental_ProviderIcon, experimental_useProviders, UrlLink, useBbNavigate, useComposer, useSdk, useSettings } from "@get-bb/plugin-sdk/app";
+import { backgroundActivities } from "./background-activity.ts";
 import { publishInfoData, clearComposerData } from "./composer-data.ts";
 import { composerInfoReads, infoKinds, listedInfo } from "./composer-info-settings.ts";
 import { childState } from "./composer-child.ts";
@@ -32,6 +33,7 @@ export function ComposerInfoBridge() {
     publishInfoData(source.current, {
       settings: values ?? {}, parent: reads.parent ? data?.parent ?? null : null, openThread,
       children: (reads.children ? data?.children ?? [] : []).map(child => ({ id: child.id, title: child.title ?? child.titleFallback ?? "Child Thread", providerId: child.providerId, state: childState(child.runtime.displayStatus, child.hasPendingInteraction) })),
+      background: listed.includes("background") ? backgroundActivities(data?.timeline) : [],
     });
   }, [threadId, snapshot, values, openThread]);
   const restore = useMemo(() => createThreadRestorer(sdk.threads, state => setRestoreStates(previous => ({ ...previous, [state.threadId]:state }))), [sdk]);

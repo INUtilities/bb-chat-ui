@@ -10,6 +10,7 @@ import { infoStack } from "./composer-info-stack.ts";
 import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
 import { attachQueueControls } from "./composer-queue-controls.ts";
 import { interceptPrMerge } from "./composer-pr-merge.ts";
+import { createBackgroundAccordions } from "./background-activity.ts";
 
 const STACK = "[data-promptbox-shell] > .grid";
 const MARK = "data-bb-chat-ui-info";
@@ -180,6 +181,7 @@ ${DETAIL}[${OPEN}="workflow"] button[aria-expanded] { background:transparent !im
 ${DETAIL}[${OPEN}="workflow"] button[aria-expanded]:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 16px); margin:0 -8px; }
+[${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); font-size:12px; line-height:16px; }
 [${MARK}-panel-action], [${MARK}-action="diff"] { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:24px; height:24px; padding:0 !important; border-radius:50% !important; color:var(--subtle-foreground); }
 [${MARK}-panel-action] svg, [${MARK}-action="diff"] svg { width:14px; height:14px; }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
@@ -671,6 +673,7 @@ export function injectComposerInfo(document: Document): () => void {
     let prHeading: HTMLElement | null = null;
     let prLink: HTMLAnchorElement | null = null;
     let prLinkTitle: string | null = null;
+    const backgroundAccordions = createBackgroundAccordions(document);
     const clearPrHeader = () => {
       prTitle?.remove(); prTitle = null;
       prHeading?.removeAttribute(`${MARK}-pr-heading`); prHeading = null;
@@ -739,6 +742,8 @@ export function injectComposerInfo(document: Document): () => void {
       for (const title of readOnlyTitles.keys()) if (title !== item?.trigger || !item.node.hasAttribute(OPEN)) restoreTitle(title);
       if (!item || !item.node.hasAttribute(OPEN)) trackCloseHeading(null,null);
       if (item?.key !== "pullRequest" || !item.node.hasAttribute(OPEN)) clearPrHeader();
+      const backgroundHost = item?.key === "background" && item.node.hasAttribute(OPEN) ? item.node : null;
+      backgroundAccordions.sync(backgroundHost, readInfoData(stack.querySelector(`[${SOURCE}]`))?.value.background ?? []);
       const escapeAttr = (value: string) => view?.CSS?.escape(value) ?? value.replace(/["\\]/g, "\\$&");
       const readParent = () => readInfoData(stack.querySelector(`[${SOURCE}]`))?.value.parent ?? null;
       const parentHost = item?.key === "parent" && item.node.hasAttribute(OPEN) ? item.node : null;
@@ -2389,6 +2394,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const heading of closeHeadings) heading.removeAttribute(`${MARK}-close-heading`);
       for (const heading of generatedCloseHeadings) heading.remove();
       clearPrHeader();
+      backgroundAccordions.stop();
       for (const node of owned) { node.removeAttribute(UNIT); node.removeAttribute(OPEN); }
       for (const node of wrappers) node.removeAttribute(WRAP);
     } };

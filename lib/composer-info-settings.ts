@@ -50,7 +50,7 @@ export function listedInfo(values: Record<string, unknown> = {}): InfoKind[] {
 export function composerInfoReads(values:Record<string,unknown> = {}) {
   const listed=listedInfo(values);
   return {
-    timeline:listed.some(kind=>kind==="plan" || kind==="goal" || kind==="todos"),
+    timeline:listed.some(kind=>kind==="plan" || kind==="goal" || kind==="todos" || kind==="background"),
     children:listed.includes("children"), parent:listed.includes("parent"),
     queue:listed.includes("queue"), pullRequest:listed.includes("pullRequest"),
   };

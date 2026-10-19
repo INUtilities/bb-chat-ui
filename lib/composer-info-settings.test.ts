@@ -36,7 +36,7 @@ test('read gates stop only explicit off and share the timeline across Plan, Goal
   assert.deepEqual(composerInfoReads(),{timeline:true,children:true,parent:true,queue:true,pullRequest:true});
   const off=Object.fromEntries(infoKinds.map(kind=>[kind.setting,'끄기']));
   assert.deepEqual(composerInfoReads(off),{timeline:false,children:false,parent:false,queue:false,pullRequest:false});
-  for(const key of ['showPlan','showGoal','showTodos']) {
+  for(const key of ['showPlan','showGoal','showTodos','showBackground']) {
     for(const value of ['상단 표시','목록에만 표시',false,undefined,'unknown']) {
       assert.equal(composerInfoReads({...off,[key]:value}).timeline,true);
     }

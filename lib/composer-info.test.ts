@@ -716,6 +716,52 @@ test("popover headings stay flat on focus while background rows gain an inset wi
   } finally { stop(); f.dom.window.close(); }
 });
 
+test("a background row accordion shows only that task and closes again", async () => {
+  const f = fixture();
+  const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const card = f.document.createElement('section');
+  card.setAttribute('aria-label', 'Background commands');
+  card.innerHTML = '<div><button id="thread-background-commands-card-toggle" aria-expanded="false" aria-controls="thread-background-commands-card-body">Running 2 background commands</button></div><section id="thread-background-commands-card-body" role="region" hidden><div><div class="flex flex-col"><div class="flex min-w-0 px-3"><span title="npm test">npm test</span></div><div class="flex min-w-0 px-3"><span title="npm test">npm test</span></div><div class="flex min-w-0 px-3" style="cursor:text"><span title="build">build</span></div></div></div></section>';
+  const toggle = card.querySelector<HTMLButtonElement>('button')!;
+  const body = card.querySelector<HTMLElement>('section')!;
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(expanded));
+    body.hidden = !expanded;
+  });
+  stack.append(card);
+  const source = f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-settings]')!;
+  const stop = injectComposerInfo(f.document);
+  const activities = [
+    { id:'one', description:'npm test', lines:['실행 중','첫 번째'] },
+    { id:'two', description:'npm test', lines:['실행 중','두 번째'] },
+  ];
+  try {
+    publishInfoData(source, { ...readInfoData(source)!.value, background: activities });
+    await f.tick();
+    f.click('[data-bb-chat-ui-info-trigger="background"]');
+    await f.tick();
+    const rows = Array.from(body.querySelectorAll<HTMLElement>('div.px-3'));
+    assert.equal(rows[2].getAttribute('role'), null, 'a row without progress stays decorative');
+    assert.equal(f.dom.window.getComputedStyle(rows[2]).cursor, 'text');
+    rows[0].click();
+    assert.equal(rows[0].getAttribute('aria-expanded'), 'true');
+    assert.equal(rows[0].nextElementSibling?.textContent, '실행 중첫 번째');
+    rows[0].click();
+    assert.equal(body.querySelector('[data-bb-chat-ui-info-activity-panel]'), null);
+    rows[1].click();
+    assert.equal(rows[0].getAttribute('aria-expanded'), 'false');
+    assert.equal(rows[1].nextElementSibling?.textContent, '실행 중두 번째');
+    publishInfoData(source, { ...readInfoData(source)!.value, background: [activities[0], { ...activities[1], lines:['완료','갱신'] }] });
+    await f.tick();
+    assert.equal(rows[1].nextElementSibling?.textContent, '완료갱신');
+    assert.equal(body.querySelectorAll('[data-bb-chat-ui-info-activity-panel]').length, 1);
+  } finally { stop(); }
+  assert.equal(body.querySelector('[data-bb-chat-ui-info-activity]'), null);
+  assert.equal(body.querySelector('[data-bb-chat-ui-info-activity-panel]'), null);
+  f.dom.window.close();
+});
+
 test("popover entrance settles only the outer native disclosure and keeps inner transitions", () => {
   const f=fixture();
   const style=f.document.createElement('style');
