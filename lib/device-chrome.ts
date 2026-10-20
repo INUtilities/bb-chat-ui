@@ -6,6 +6,7 @@ export const PHONE_NARROW = 'html[data-bb-chat-ui-root-device="phone"][data-bb-c
 export const NARROW_VIEWPORT = 'html[data-bb-chat-ui-root-viewport="narrow"]';
 export const ROOMY_VIEWPORT = 'html:is([data-bb-chat-ui-root-viewport="medium"], [data-bb-chat-ui-root-viewport="wide"])';
 export const SMALL_HIT_TARGET = 'html[data-bb-chat-ui-root-hit-target="small"]';
+export const LARGE_HIT_TARGET = 'html[data-bb-chat-ui-root-hit-target="large"]';
 
 export function DeviceChromeBridge() {
   const chrome = useDeviceChrome();

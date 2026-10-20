@@ -167,7 +167,8 @@ test("keeps the standalone legacy queue layout outside managed information popov
     /header\[data-queued-messages-mode\]\s*\{[^}]*position:\s*absolute !important;[^}]*width:\s*32px !important;[^}]*height:\s*32px !important;[^}]*border-radius:\s*50% !important;/,
   );
   assert.doesNotMatch(css, /margin-left:\s*auto/);
-  assert.doesNotMatch(css, /border-radius:\s*18px !important/);
+  // Only the floating row menu reads the shared card face; the legacy queue itself never becomes a card.
+  for (const block of css.split("}").filter(block => block.includes('section[aria-label="Queued messages"]'))) assert.doesNotMatch(block, /border-radius:\s*18px !important/);
   assert.match(
     css,
     /header\[data-queued-messages-mode="drawer"\]::before,[\s\S]*?header\[data-queued-messages-mode="workspace"\]::before\s*\{\s*content:\s*none;/,

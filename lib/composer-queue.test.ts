@@ -329,7 +329,7 @@ test("queue ellipsis opens a separate action popover without a glass drag handle
   } finally {stopInfo();stopQueue();f.cleanup();}
 });
 
-test("queue ellipsis is a bordered button in its row, without a displaced pseudo background", async () => {
+test("queue ellipsis is the shared flat icon action in its row, without a displaced pseudo background", async () => {
   for (const small of [false,true]) {
     const f=fixture();
     f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target',small?'small':'large');
@@ -346,9 +346,9 @@ test("queue ellipsis is a bordered button in its row, without a displaced pseudo
         const s=f.dom.window.getComputedStyle(more);
         assert.equal(s.right,'auto','native absolute positioning must not displace the button');
         assert.equal(s.top,'auto');
-        assert.equal(s.borderTopWidth,'1px');
-        assert.equal(s.borderTopStyle,'solid');
-        assert.equal(s.borderRadius,'6px');
+        assert.equal(s.borderTopWidth,'0px','no bordered chip inside the card');
+        assert.equal(s.borderRadius,'999px','the shared round icon action');
+        assert.equal(s.backgroundColor,'rgba(0, 0, 0, 0)');
         assert.equal(s.backgroundImage,'none');
         assert.equal(s.width,'24px','ellipsis box stays compact on both devices');
         assert.equal(s.height,'24px');

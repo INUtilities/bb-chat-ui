@@ -1,4 +1,4 @@
-import { LIGHT_GLASS_FACE, DARK_GLASS_FACE } from "./glass-surface.ts";
+import { cardFaceCss, cardStyle } from "./info-card.ts";
 import { SMALL_HIT_TARGET } from "./device-chrome.ts";
 
 const STYLE_ID = "bb-chat-ui-queued-messages";
@@ -252,17 +252,18 @@ ${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] {
   translate:none !important;
   flex:none;
   align-self:center;
-  border-radius:6px !important;
-  border-width:1px !important;
-  border-style:solid !important;
-  border-color:var(--border) !important;
-  background:color-mix(in oklab,var(--foreground) 4%,transparent) !important;
+  border:0 !important;
+  border-radius:999px !important;
+  color:var(--subtle-foreground);
+  background:transparent !important;
   background-image:none !important;
   box-shadow:none !important;
   backdrop-filter:none !important;
   -webkit-backdrop-filter:none !important;
+  transition:background-color 150ms ease-out, color 150ms ease-out;
 }
-${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]:is(:hover,:focus-visible,[aria-expanded="true"]) { background:color-mix(in oklab,var(--foreground) 8%,transparent) !important; }
+/* The row menu is the card's icon action (info-card.ts): flat, 6% only while pointed or open. */
+${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]:is(:hover,:focus-visible,[aria-expanded="true"]) { ${cardStyle.hover} }
 ${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]::before {
   content:none !important;
 }
@@ -397,23 +398,13 @@ ${OPEN_QUEUE} [data-bb-chat-ui-queue-edit-save] { min-width:32px; min-height:32p
 ${OPEN_QUEUE} [data-bb-chat-ui-queue-edit-save] > :not([data-bb-chat-ui-queue-save-icon]) { display:none !important; }
 ${OPEN_QUEUE} [data-bb-chat-ui-queue-save-icon] { display:block; width:16px; height:16px; }
 
+${cardFaceCss("[data-bb-chat-ui-queue-menu]")}
 [data-bb-chat-ui-queue-menu] {
   position:fixed;
   z-index:56;
   display:flex;
   gap:4px;
   padding:8px;
-  border:0;
-  border-radius:18px;
-  color:var(--foreground);
-  background:${LIGHT_GLASS_FACE};
-  backdrop-filter:blur(14px) saturate(1.25);
-  -webkit-backdrop-filter:blur(14px) saturate(1.25);
-  box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent);
-}
-.dark [data-bb-chat-ui-queue-menu] {
-  background:${DARK_GLASS_FACE};
-  box-shadow:0 6px 18px -12px color-mix(in oklab,black 60%,transparent),inset 0 1px 3px color-mix(in oklab,var(--foreground) 8%,transparent);
 }
 [data-bb-chat-ui-queue-menu] button {
   display:inline-flex; align-items:center; justify-content:center;

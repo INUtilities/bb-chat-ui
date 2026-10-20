@@ -11,6 +11,7 @@ import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
 import { attachQueueControls } from "./composer-queue-controls.ts";
 import { interceptPrMerge } from "./composer-pr-merge.ts";
 import { createBackgroundAccordions } from "./background-activity.ts";
+import { cardFaceCss, cardSlot, cardStyle, createCardAction, createCardClose, createCardHead, infoCardCss } from "./info-card.ts";
 
 const STACK = "[data-promptbox-shell] > .grid";
 const MARK = "data-bb-chat-ui-info";
@@ -66,7 +67,11 @@ export function scrollOverflowEdges(metrics: { scrollTop: number; clientHeight: 
   };
 }
 
+const CARD_ROOT = `[${MARK}-menu], ${DETAIL}`;
+const PILL = `:is([${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump])`;
+
 export const composerInfoCss = `
+${infoCardCss(CARD_ROOT)}
 [${MARK}-stack] { --bb-chat-ui-info-row-gap:2px; --bb-chat-ui-info-max-height:min(50dvh,26rem); --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
 .dark [${MARK}-stack] { --bb-chat-ui-info-face:${DARK_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,black 60%,transparent); }
 [${MARK}-stack]::after { display:none !important; }
@@ -81,40 +86,32 @@ ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD}
 [${MARK}-bar][${MARK}-archived] { padding-right:0; }
 [${MARK}-bar][${MARK}-archived] [${MARK}-trigger="status"] { width:100%; max-width:none; justify-content:center; }
 [${MARK}-unarchive]:disabled { opacity:.5; cursor:default; }
-[${MARK}-bar] button { font:inherit; cursor:pointer; color:var(--foreground); }
-[${MARK}-unarchive] { min-height:32px; border-radius:8px; padding:6px 10px; font-size:12px !important; line-height:18px !important; }
+/* Pills only: a card inside the bar keeps its slot sizes. */
+${PILL}, [${MARK}-jump] { font:inherit; cursor:pointer; color:var(--foreground); }
 [${MARK}-bar] button:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
-[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border:0; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; background:var(--bb-chat-ui-info-face); backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent); transition:transform 260ms cubic-bezier(.2,.9,.22,1.25); }
+[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; transition:transform 260ms cubic-bezier(.2,.9,.22,1.25); }
 [${MARK}-trigger] { width:auto; min-width:0; }
-/* Queue ellipsis owns its bordered face in queued-messages.ts. */
-[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-choice], [${MARK}-menu] button, ${DETAIL} button:not([aria-label^="Queued message"][aria-label$=" actions"]):not([${MARK}-child-row]) { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge); }
-[${MARK}-menu] header button { width:24px; height:24px; padding:0; border-radius:50%; }
+/* Pills are the only frost outside a card. Controls inside a card sit flat on its face (info-card.ts). */
+${PILL} { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; }
 [${MARK}-panel-source] { display:none !important; }
-[${MARK}-panel-heading] { display:flex; align-items:center; gap:6px; }
-[${MARK}-title-heading] { display:flex; align-items:center; gap:7px; }
-[${MARK}-title-icon], [${MARK}-title-icon] > :is(svg, [data-icon-root]) { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:14px; height:14px; }
 [${MARK}-title-source] { display:none !important; }
 [${MARK}-stack] [${MARK}-collapse] { display:none !important; }
-${DETAIL} > h3[${MARK}-close-heading] { display:flex; align-items:center; min-height:28px; margin:0 0 8px; font-size:12px; font-weight:600; }
 /* Native cards already have a gutter on layout wrappers; the popover supplies it once. */
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-git-body, #thread-prompt-banner-parent-thread-toggle, [aria-label^="Pull request "]),
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > [${MARK}-parent-toggle-wrap],
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-parent-thread-toggle, #thread-prompt-banner-parent-thread-body) { display:none !important; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > :not([${MARK}-parent-row]):not([${MARK}-dismiss]),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > :not([${MARK}-parent-row]):not([${MARK}-dismiss]):not([${cardSlot.head}]),
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] #thread-prompt-banner-parent-thread-body,
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(svg, [data-icon-root]):not([${MARK}-parent-row] *),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(svg, [data-icon-root]):not([${MARK}-parent-row] *):not([${cardSlot.head}] *),
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row]:not([${MARK}-with-parent-body]) :is([${MARK}-parent-link-wrap], a[href*="/threads/"]) { display:none !important; }
-${NATIVE_DETAIL} :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"]) { padding-left:0 !important; padding-right:0 !important; }
-${NATIVE_DETAIL} > button[aria-expanded][aria-controls][class~="px-3"] { padding-left:0 !important; padding-right:0 !important; }
-${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"],[class~="px-2"]) { padding-left:0 !important; padding-right:0 !important; }
-${NATIVE_DETAIL} > div[class~="p-1"], ${NATIVE_DETAIL} > div[class~="p-1"] > div[class~="px-2"] { padding-left:0 !important; padding-right:0 !important; }
+${NATIVE_DETAIL} :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"]):not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
+${NATIVE_DETAIL} > button[aria-expanded][aria-controls][class~="px-3"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
+${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"],[class~="px-2"]):not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
+${NATIVE_DETAIL} > div[class~="p-1"]:not([${cardSlot.head}]), ${NATIVE_DETAIL} > div[class~="p-1"] > div[class~="px-2"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:-8px; margin-right:-8px; width:calc(100% + 16px); box-sizing:border-box; }
-${DETAIL} [${MARK}-close-heading] { box-sizing:border-box; padding-right:34px !important; }
-${NATIVE_DETAIL}[aria-label="Machine status"] > div[class~="p-1"][${MARK}-close-heading] { padding-right:34px !important; }
-${DETAIL} [${MARK}-native-dismiss] { position:absolute; top:calc(16px + var(--bb-chat-ui-info-title-height,28px) / 2 - 12px); right:24px; color:var(--subtle-foreground); cursor:pointer; }
 ${DETAIL} [${MARK}-readonly-title] { cursor:default !important; background:transparent !important; box-shadow:none !important; }
 /* Keep native title, live counters and phase bars on their original parents. */
-${WORKFLOW_HEADING} { display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 7px; align-items:center; padding:0 34px 6px 0 !important; }
+${WORKFLOW_HEADING} { display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 8px; align-items:center; padding:0 32px 6px 0 !important; }
 ${WORKFLOW_HEADING} > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
 ${WORKFLOW_HEADING} > span[class~="flex-1"] { display:contents; }
 ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:first-child { grid-column:2 / -1; grid-row:1; }
@@ -123,13 +120,12 @@ ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(3) { grid-column:3;
 ${WORKFLOW_HEADING} > [role="presentation"] { grid-column:4; grid-row:2; width:64px; max-width:100%; }
 ${WORKFLOW_HEADING} > span[class~="ml-auto"] { display:none; }
 /* Current runs put the title button inside the controls group, under an Active workflows host. */
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { position:relative; display:grid !important; grid-template-columns:14px minmax(0,1fr) 24px 24px; grid-template-rows:28px auto 12px; align-items:center; column-gap:6px; row-gap:2px; padding:0 !important; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-native-dismiss] { position:static; top:auto; right:auto; grid-column:4; grid-row:1; align-self:center; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { position:relative; display:grid !important; grid-template-columns:14px minmax(0,1fr) 24px; grid-template-rows:28px auto 12px; align-items:center; column-gap:8px; row-gap:2px; margin:0 0 8px; padding:0 32px 0 0 !important; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-panel-action] { grid-column:3; grid-row:1; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] { display:grid !important; position:static !important; align-self:stretch; grid-column:2 / -1; grid-row:1 / span 3; grid-template-columns:auto minmax(0,1fr) auto; grid-template-rows:28px auto; align-items:center; justify-items:start; column-gap:4px; row-gap:2px; width:100%; max-width:100%; min-width:0; padding:0 0 12px !important; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] { display:contents; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:first-child { grid-column:1 / -1; grid-row:1; width:100%; box-sizing:border-box; padding-right:60px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:first-child { grid-column:1 / -1; grid-row:1; width:100%; box-sizing:border-box; padding-right:32px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(2) { grid-column:1; grid-row:2; white-space:nowrap; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(3) { grid-column:3; grid-row:2; justify-self:end; white-space:nowrap; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > :is([role="presentation"], div[class~="w-16"]) { position:absolute; left:0; right:0; bottom:0; grid-column:1 / -1; grid-row:3; width:100%; max-width:none; height:3px; min-height:3px; overflow:hidden; border-radius:999px; }
@@ -143,19 +139,18 @@ ${WORKFLOW_LIST_ROW} > span[class~="ml-auto"] { min-width:0; max-width:40%; flex
 ${WORKFLOW_LIST_ROW} > span[class~="ml-auto"] > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 ${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area] { margin-top:0; padding-top:8px !important; border-top:0; }
 ${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] [data-detail-scroll-area] { padding-top:0 !important; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] [${MARK}-native-dismiss] { top:8px; right:8px; }
 ${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] { grid-area:actions; display:flex; align-items:center; justify-content:flex-end; margin-top:0; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > button[aria-expanded][aria-controls],
 ${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] > button[aria-expanded] { display:none !important; }
 ${DETAIL}[aria-label="Goal"] > #thread-goal-card-body { grid-area:body; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > #thread-goal-card-body > div { background:transparent !important; box-shadow:none !important; }
-${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] { grid-area:actions; flex:none; width:auto; min-height:28px; padding:5px 9px; border-radius:8px; font-size:11px; line-height:18px; white-space:nowrap; }
+${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] { grid-area:actions; width:auto; }
 ${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] > :is(svg, [data-icon-root]) { display:none !important; }
-${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] { flex:none; width:auto; min-height:28px; padding:5px 9px; border:0 !important; border-radius:8px; font-size:11px; line-height:18px; }
+${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] { width:auto; }
 ${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[aria-label="Model fallback"] [role="status"] > :is(svg, [data-icon-root]),
 ${DETAIL}[aria-label="Model fallback"] [role="status"] > span:not([title]) { display:none !important; }
-${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { flex:none; width:auto; min-height:28px; margin-left:8px; padding:5px 9px; border-radius:8px; font-size:11px; line-height:18px; }
+${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { width:auto; margin-left:8px; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
@@ -164,30 +159,26 @@ ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull reques
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:16px; height:16px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title]:has([${MARK}-title-source]) { display:none; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { position:relative; align-items:center; gap:0; padding:4px 34px 4px 12px; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px; background:var(--bb-chat-ui-info-face); backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:none !important; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; gap:0; padding:0 34px 0 12px !important; cursor:default; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; line-height:20px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-native-dismiss] { top:50%; transform:translateY(-50%); }
-${NATIVE_DETAIL}[${OPEN}="pullRequest"] > div[class~="p-1"][${MARK}-close-heading] { padding-right:34px !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button[aria-label="Choose pull request merge method"] { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:flex-end; width:100%; min-width:0; height:100%; min-height:0; margin:0; padding:0 12px !important; color:var(--foreground); cursor:pointer; }
 ${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge method"] svg { display:block; width:14px; height:14px; opacity:1; }
 [data-bb-chat-ui-pr-menu-layer] { z-index:56 !important; }
 [data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
-[data-bb-chat-ui-pr-menu] { border:0 !important; border-radius:18px; background:${LIGHT_GLASS_FACE} !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px color-mix(in oklab,var(--foreground) 22%,transparent),inset 0 1px 3px color-mix(in oklab,var(--popover) 35%,transparent); }
-.dark [data-bb-chat-ui-pr-menu] { background:${DARK_GLASS_FACE} !important; box-shadow:0 6px 18px -12px color-mix(in oklab,black 60%,transparent),inset 0 1px 3px color-mix(in oklab,var(--foreground) 8%,transparent); }
+${cardFaceCss("[data-bb-chat-ui-pr-menu]")}
 ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria-label^="Queued message"][aria-label$=" actions"]) { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
-${DETAIL}[${OPEN}="other"] h3[class~="px-3"][${MARK}-close-heading] { padding-left:0 !important; padding-right:34px !important; }
 /* One glass face. Header disclosure sits flat on it; small actions keep the shared face. */
 /* The popup owns its entrance; native outer bodies open without another height reveal. */
 ${DETAIL} > section[role="region"], ${DETAIL}.agentation-staging-shell > .grid { transition:none !important; grid-template-rows:1fr !important; opacity:1 !important; }
 ${DETAIL} > section[role="region"] { border-top-width:0 !important; border-top-color:transparent !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL} > section[role="region"] > div[class~="bg-popover"] { background-color:transparent !important; box-shadow:none !important; }
 ${DETAIL} ${LEGACY_ROW} { background-color:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-${LIST_ROW} { box-sizing:border-box; min-height:32px; margin-top:0 !important; margin-bottom:0 !important; padding:8px !important; border-radius:10px; font-size:12px; line-height:16px; background:transparent !important; box-shadow:none !important; cursor:default; transition:background-color 150ms ease-out; }
-${LIST_ROW.split(", ").map(selector => `${selector}:hover`).join(", ")} { background-color:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
+${LIST_ROW} { ${cardStyle.rowBox} margin-top:0 !important; margin-bottom:0 !important; cursor:default; }
+${LIST_ROW.split(", ").map(selector => `${selector}:hover`).join(", ")} { ${cardStyle.rowHover} }
 /* Match the background activity's row rhythm; native space-y margins must not stack with the gap. */
 ${DETAIL}[${OPEN}="todos"] ul { display:flex; flex-direction:column; row-gap:var(--bb-chat-ui-info-row-gap); }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div[class~="flex-col"],
@@ -222,20 +213,14 @@ ${WORKFLOW_AGENT_ROW} { display:grid; grid-template-columns:14px minmax(0,1fr); 
 ${WORKFLOW_AGENT_ROW} > svg[data-icon-root] { grid-column:1; grid-row:1; align-self:center; }
 ${WORKFLOW_AGENT_ROW} > span[class~="truncate"] { grid-column:2; grid-row:1; font-weight:400; }
 ${WORKFLOW_AGENT_ROW} > span[class~="ml-auto"] { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
-${DETAIL} button[aria-expanded][aria-controls] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-${DETAIL} button[aria-expanded][aria-controls]:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
-${DETAIL}[${OPEN}="workflow"] button[aria-expanded] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-${DETAIL}[${OPEN}="workflow"] button[aria-expanded]:is(:hover, :focus-visible) { background-color:color-mix(in oklab, var(--foreground) 6%, transparent) !important; }
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 16px); margin:0 -8px; }
 [${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); font-size:12px; line-height:16px; }
-[${MARK}-panel-action], [${MARK}-action="diff"] { display:inline-flex; align-items:center; justify-content:center; align-self:center; flex:none; width:24px; height:24px; min-height:24px; padding:0 !important; border-radius:50% !important; color:var(--subtle-foreground); }
-[${MARK}-panel-action] svg, [${MARK}-action="diff"] svg { width:14px; height:14px; }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
 [${MARK}-trigger]:active, [${MARK}-stack-kind]:active, [${MARK}-all]:active { transform:scale(.95); }
 [${MARK}-trigger][aria-expanded=true], [${MARK}-stack-kind][aria-expanded=true], [${MARK}-all][aria-expanded=true] { box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge),inset 0 0 0 1px var(--border); }
 [${MARK}-trigger][hidden] { display:none; }
-[${MARK}-trigger][${MARK}-unavailable] { width:32px; min-height:32px; padding:0; border-radius:50%; color:var(--subtle-foreground); background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; }
+[${MARK}-trigger][${MARK}-unavailable] { width:32px; min-height:32px; padding:0; border-radius:50%; color:var(--subtle-foreground); }
 [${MARK}-trigger] > span:not([${MARK}-avatars]) { overflow:hidden; text-overflow:ellipsis; }
 [${MARK}-trigger] svg { width:16px; height:16px; flex-shrink:0; }
 [${MARK}-trigger] > [data-icon-root], [${MARK}-choice] > [data-icon-root] { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
@@ -275,12 +260,13 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-jump] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:5px; padding:0; border:0; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; color:var(--foreground); cursor:pointer; }
 [${MARK}-jump] svg { width:16px; height:16px; flex-shrink:0; transition:scale 420ms cubic-bezier(.22,1,.36,1); }
 [${MARK}-jump][${MARK}-jump-off] { visibility:hidden; opacity:0; pointer-events:none; }
-[${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump] { position:absolute; right:0; top:0; z-index:2; width:32px; height:32px; background:var(--bb-chat-ui-info-face); backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge); transition:opacity 280ms ease-out, translate 460ms cubic-bezier(.22,1,.36,1), scale 460ms cubic-bezier(.22,1,.36,1), visibility 0s; }
+[${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump] { position:absolute; right:0; top:0; z-index:2; width:32px; height:32px; transition:opacity 280ms ease-out, translate 460ms cubic-bezier(.22,1,.36,1), scale 460ms cubic-bezier(.22,1,.36,1), visibility 0s; }
 [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump][${MARK}-jump-off] { translate:0 10px; scale:.92; transition:opacity 220ms ease-in, translate 340ms cubic-bezier(.4,0,.2,1), scale 340ms cubic-bezier(.4,0,.2,1), visibility 0s 340ms; }
 [${MARK}-bar][${MARK}-layout="dock"] [${MARK}-jump-label] { display:none; }
 [${MARK}-jump]:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 [data-bb-chat-ui-info-jump-source] { visibility:hidden !important; pointer-events:none !important; }
-[${MARK}-avatar] { backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); }
+/* Avatars frost only on the bar; inside a card they sit on its face. */
+[${MARK}-trigger] [${MARK}-avatar] { backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); }
 [${MARK}-trigger="children"] { padding:0; min-height:34px; border-radius:0; background:transparent !important; backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow:none !important; }
 [${MARK}-trigger="children"]:hover { transform:none; }
 [${MARK}-avatars] { display:flex; align-items:center; isolation:isolate; }
@@ -299,23 +285,21 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-state="done"][data-unread="true"] [${MARK}-avatar-dot] { background:var(--timeline-accent); }
 [${MARK}-avatar] [${MARK}-provider-icon], [${MARK}-avatar] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
-[${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; padding:16px 24px !important; order:0 !important; border:0 !important; border-radius:18px !important; background:var(--bb-chat-ui-info-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); color:var(--foreground); box-shadow:0 12px 32px -14px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] { padding:8px !important; }
+[${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; order:0 !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
 /* Keep native actions on their original parents while sharing one title row. */
 ${DETAIL}[aria-label="Goal"] { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; gap:8px; outline:0 !important; }
 ${DETAIL}[aria-label="Goal"] > * { min-width:0; flex-shrink:0; }
 ${DETAIL}[aria-label="Goal"] > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
-${DETAIL}[aria-label="Goal"] > [${MARK}-native-dismiss] { grid-area:close; position:static; top:auto; right:auto; }
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
-[${MARK}-menu] header { display:flex; align-items:center; gap:6px; font-size:12px; padding-bottom:8px; }
-[${MARK}-menu] header button:last-child { margin-left:auto; }
-[${MARK}-menu] p { font-size:11px; color:var(--subtle-foreground); margin:0 0 8px; }
-[${MARK}-menu] > div { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr)); gap:6px; }
-[${MARK}-choice] { display:flex; min-width:0; align-items:center; gap:8px; border:0; border-radius:10px; background:var(--bb-chat-ui-info-face); padding:9px 10px; text-align:left; font-size:12px !important; }
+[${MARK}-menu] > p { margin:0 0 8px; }
+/* The catalog is a list of rows laid out in columns: the grid owns the hover gutter. */
+[${MARK}-menu] > div { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); gap:2px; ${cardStyle.rowGutter} }
+[${MARK}-choice] { display:flex; min-width:0; align-items:center; gap:8px; color:inherit; font:inherit; text-align:left; cursor:pointer; ${cardStyle.rowBox} }
+[${MARK}-choice]:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 [${MARK}-choice] span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 [${MARK}-choice] svg { width:16px; height:16px; flex-shrink:0; }
 [${MARK}-choice][${MARK}-unavailable] { color:var(--subtle-foreground); }
-[${MARK}-choice] small { margin-left:auto; flex-shrink:0; font-size:10px; color:var(--subtle-foreground); }
+[${MARK}-choice] small { margin-left:auto; flex-shrink:0; ${cardStyle.meta} }
 [${MARK}-scroll-hint] { position:absolute; pointer-events:none; z-index:53; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); }
 [${MARK}-scroll-hint][hidden] { display:none; }
 [${MARK}-scroll-hint="top"] { border-radius:18px 18px 0 0; background:linear-gradient(to bottom,var(--bb-chat-ui-info-face),transparent); mask-image:linear-gradient(to bottom,black,transparent); -webkit-mask-image:linear-gradient(to bottom,black,transparent); }
@@ -340,12 +324,12 @@ ${DETAIL}[aria-label="Goal"] > [${MARK}-native-dismiss] { grid-area:close; posit
 [${MARK}-diff-graph] svg { position:absolute; width:12px; height:12px; left:2px; top:calc(50% - 6px); fill:none; stroke:currentColor; stroke-width:1.5; }
 [${MARK}-diff-file] code, [${MARK}-diff-commit] code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:11px/1.6 var(--font-mono,monospace); }
 [${MARK}-diff-file] > span { flex-shrink:0; font-size:11px; }
-[${MARK}-diff-content] h4 { font-size:10px; font-weight:400; color:var(--subtle-foreground); margin:9px 0 3px; }
+[${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }
 [${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:11px !important; color:var(--subtle-foreground); }
 [${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
-${DETAIL}[aria-label="Queued messages"] > * { min-height:0; }
+${DETAIL}[aria-label="Queued messages"] > :not([${cardSlot.head}]) { min-height:0; }
 ${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:12px; }
 ${DETAIL} [data-queued-messages-scroll-frame] { position:static !important; display:grid !important; grid-template-rows:minmax(0,1fr); flex:0 1 auto !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; overflow:hidden !important; }
 ${DETAIL} [data-queued-messages-scroll] { height:auto !important; min-height:0 !important; max-height:none !important; padding:4px 0; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
@@ -379,58 +363,45 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [data-scroll-footer]:has([${MARK}-request]) button[aria-label="Scroll to latest event"] { display:none !important; }
 [${MARK}-stack] [${MARK}-supplements] { display:contents; }
 [${MARK}-kind] { font-size:12px; }
-[${MARK}-kind] h3 { margin:0 0 8px; font-size:12px; font-weight:600; }
 [${MARK}-kind] p { white-space:pre-wrap; margin:6px 0; }
-[${MARK}-kind] button { border-radius:8px; padding:5px 8px; background:var(--bb-chat-ui-info-face); }
-[${MARK}-kind="children"] { border-radius:18px !important; }
-[${MARK}-kind="children"] h3 { display:flex; align-items:center; gap:7px; min-height:28px; margin:0 0 8px; }
-[${MARK}-kind="children"] h3 [data-icon-root] { width:14px; height:14px; }
-[${MARK}-kind="children"] [${MARK}-dismiss] { margin-left:auto; border:0; background:transparent; color:var(--subtle-foreground); }
-${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row] { display:flex; align-items:center; gap:8px; width:calc(100% + 16px); box-sizing:border-box; margin:0 -8px; padding:8px; min-width:0; border:0; border-radius:10px; text-align:left; cursor:pointer; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; transition:background-color 150ms ease-out; }
-${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row]:hover, ${DETAIL}[${MARK}-kind="children"] [${MARK}-child-row]:focus-visible { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
-${DETAIL} [${MARK}-parent-row] { display:flex; align-items:center; gap:8px; width:calc(100% + 16px); box-sizing:border-box; margin:-8px; padding:8px 40px 8px 8px; min-height:40px; min-width:0; border-radius:10px; text-align:left; cursor:pointer; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; transition:background-color 150ms ease-out; }
-${DETAIL} [${MARK}-parent-row]:hover, ${DETAIL} [${MARK}-parent-row]:focus-visible { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
 [${MARK}-parent-row] [${MARK}-provider-icon], [${MARK}-parent-row] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-parent-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
 [${MARK}-child-row] [${MARK}-avatar] { width:27px; height:27px; margin-left:0; }
 [${MARK}-child-main] { flex:1; min-width:0; }
 [${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
-[${MARK}-child-meta], [${MARK}-child-status] { font-size:10px; color:var(--subtle-foreground); }
+[${MARK}-child-meta], [${MARK}-child-status] { ${cardStyle.meta} }
 [${MARK}-child-meta] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 [${MARK}-child-status] { flex:none; white-space:nowrap; }
-${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; border:0 !important; border-radius:18px !important; gap:8px; }
+/* Agentation: native header pieces join the card's head line; the close is the shared slot. */
+${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; column-gap:8px; row-gap:8px; }
 ${DETAIL}.agentation-staging-shell > div:first-child { display:contents !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { display:contents !important; }
-${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [${MARK}-title-icon] { grid-area:heading; justify-self:start; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [data-icon="ChatFeedback"] { display:none !important; }
-${DETAIL}.agentation-staging-shell > div:first-child > div:first-child p { grid-area:heading; min-width:0; margin:0; padding-left:21px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; }
-${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] { grid-area:close; width:24px; height:24px; margin:0; background:transparent; border-radius:50%; }
-${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] svg,
-${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] [data-icon-root] { display:none; }
-${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"]::after { content:"×"; font:inherit; color:var(--subtle-foreground); }
-${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-area:actions; display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:6px; margin-top:0; }
-${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button { font-size:11px; min-height:28px; border:1px solid var(--border); border-radius:7px; padding:5px 9px; background:var(--bb-chat-ui-info-face); color:var(--foreground); }
+${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > p { grid-area:heading; margin:0; padding-right:0 !important; overflow:hidden; white-space:nowrap; }
+${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] :is(svg, [data-icon-root]) { display:none; }
+${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"]::after { content:"×"; font:inherit; }
+${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-area:actions; display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:4px; margin-top:0; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:first-child { order:2; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:last-child { order:1; }
-${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] { width:28px; min-width:28px; height:28px; padding:0 !important; gap:0; border-radius:8px; font-size:0 !important; }
+${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { ${cardStyle.button} }
+${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] { gap:0; font-size:0 !important; }
 ${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] > :not([${MARK}-bulk-icon]) { display:none !important; }
-[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:16px; height:16px; pointer-events:none; }
+[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:14px; height:14px; pointer-events:none; }
 ${DETAIL}.agentation-staging-shell > .grid { grid-area:body; width:100%; }
 ${DETAIL}.agentation-staging-shell > .grid,
 ${DETAIL}.agentation-staging-shell > .grid > div { overflow:visible !important; }
 ${DETAIL}.agentation-staging-shell > .grid > div > div { padding:0 !important; }
 ${DETAIL}.agentation-staging-shell ul { max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; overflow:visible !important; }
-${DETAIL}.agentation-staging-shell li { display:flex !important; align-items:center; gap:8px; min-width:0; min-height:52px; width:calc(100% + 16px); box-sizing:border-box; padding:10px 8px; margin:0 -8px !important; border:0 !important; border-radius:10px; background:transparent !important; transition:background-color 150ms ease-out; }
-${DETAIL}.agentation-staging-shell li + li { margin-top:4px !important; }
-${DETAIL}.agentation-staging-shell li:hover, ${DETAIL}.agentation-staging-shell li:focus-within { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
+${DETAIL}.agentation-staging-shell ul { display:flex; flex-direction:column; row-gap:2px; }
+${DETAIL}.agentation-staging-shell li { display:flex !important; align-items:center; gap:8px; min-width:0; margin-top:0 !important; margin-bottom:0 !important; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+${DETAIL}.agentation-staging-shell li:is(:hover, :focus-within) { ${cardStyle.rowHover} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] { display:grid !important; grid-template-areas:"comment comment" "location target"; grid-template-columns:auto minmax(0,1fr); gap:0 6px; flex:1; min-width:0; }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span { max-width:none !important; font:inherit; }
-${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(1) { grid-area:location; font-size:10px; color:var(--subtle-foreground); }
-${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(2) { grid-area:target; font-size:10px; color:var(--subtle-foreground); }
+${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(1) { grid-area:location; ${cardStyle.meta} }
+${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(2) { grid-area:target; ${cardStyle.meta} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(3) { display:none; }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(4) { grid-area:comment; font-size:12px; font-weight:400; white-space:normal; overflow-wrap:anywhere; }
 ${DETAIL}.agentation-staging-shell li::before { content:""; flex-shrink:0; width:14px; height:14px; background:var(--subtle-foreground); mask:var(--bb-chat-ui-feedback-icon) center/contain no-repeat; }
-${DETAIL} [${MARK}-dismiss], [${MARK}-menu] [${MARK}-close], ${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:24px; height:24px; padding:0 !important; border-radius:50%; font-size:12px; font-weight:400; line-height:1; }
 @keyframes bb-info-enter { from { opacity:0; translate:0 8px; scale:.98; } to { opacity:1; translate:0 0; scale:1; } }
 @keyframes bb-info-droplet { 0% { transform:translateY(8px) scale(.82,.72); } 35% { transform:translateY(-4px) scale(.94,1.16); } 65% { transform:translateY(0) scale(1.1,.94); } 82% { transform:translateY(-1px) scale(.985,1.015); } 100% { transform:none; } }
 @keyframes bb-info-breathe { 50% { opacity:.4; } }
@@ -670,28 +641,6 @@ export function injectComposerInfo(document: Document): () => void {
       }
       title.removeAttribute(`${MARK}-readonly-title`); readOnlyTitles.delete(title);
     };
-    let nativeCloseHeading:HTMLElement | null = null, nativeCloseCard:HTMLElement | null = null;
-    let previousTitleHeight = "", previousTitlePriority = "";
-    const titleHeightProperty = "--bb-chat-ui-info-title-height";
-    const setTitleHeight = (height:number) => {
-      if (!nativeCloseCard || height <= 0) return;
-      const value = `${height}px`;
-      if (nativeCloseCard.style.getPropertyValue(titleHeightProperty) !== value) nativeCloseCard.style.setProperty(titleHeightProperty,value);
-    };
-    const trackCloseHeading = (card:HTMLElement | null, heading:HTMLElement | null) => {
-      if (card === nativeCloseCard && heading === nativeCloseHeading) return;
-      if (nativeCloseHeading) edgeResize?.unobserve(nativeCloseHeading);
-      if (nativeCloseCard) {
-        if (previousTitleHeight) nativeCloseCard.style.setProperty(titleHeightProperty,previousTitleHeight,previousTitlePriority);
-        else nativeCloseCard.style.removeProperty(titleHeightProperty);
-      }
-      nativeCloseCard = card; nativeCloseHeading = heading;
-      if (!card || !heading) return;
-      previousTitleHeight = card.style.getPropertyValue(titleHeightProperty);
-      previousTitlePriority = card.style.getPropertyPriority(titleHeightProperty);
-      setTitleHeight(heading.getBoundingClientRect().height);
-      edgeResize?.observe(heading);
-    };
     const parentRows = new Map<HTMLElement, HTMLButtonElement>();
     // Markers the CSS reads instead of :has() (a generic-subject :has() restyles the app on every row insertion).
     const setMark = (node: Element, name: string, on: boolean) => { if (node.hasAttribute(name) !== on) node.toggleAttribute(name, on); };
@@ -711,7 +660,8 @@ export function injectComposerInfo(document: Document): () => void {
     };
     const droppedParents = new WeakSet<HTMLElement>();
     const collapseRows = new Set<HTMLElement>();
-    const closeHeadings = new Set<HTMLElement>();
+    // A shared host card (diff · PR · parent) keeps one head per family.
+    const closeHeadings = new Map<HTMLElement, InfoKind | "all" | null>();
     const generatedCloseHeadings = new Set<HTMLElement>();
     const goalClearLabels = new Map<HTMLElement, HTMLElement>();
     const planExitLabels = new Map<HTMLElement, HTMLElement>();
@@ -728,9 +678,10 @@ export function injectComposerInfo(document: Document): () => void {
       prLink = null; prLinkTitle = null;
     };
     const bulkActions = new Map<HTMLElement, {ariaLabel:string|null; title:string|null; icon:Element; source:string}>();
+    const agentationCloses = new Set<HTMLElement>();
     const restoreBulkAction = (button:HTMLElement) => {
       const saved=bulkActions.get(button);if(!saved)return;
-      saved.icon.remove();button.removeAttribute(`${MARK}-bulk-action`);
+      saved.icon.remove();button.removeAttribute(`${MARK}-bulk-action`);button.removeAttribute(cardSlot.action);
       for(const [key,value] of [["aria-label",saved.ariaLabel],["title",saved.title]] as const){
         if(value===null)button.removeAttribute(key);else button.setAttribute(key,value);
       }
@@ -755,6 +706,7 @@ export function injectComposerInfo(document: Document): () => void {
         }
         if(saved.icon.parentElement!==button)button.append(saved.icon);
         if(button.getAttribute(`${MARK}-bulk-action`)!==kind)button.setAttribute(`${MARK}-bulk-action`,kind);
+        if(!button.hasAttribute(cardSlot.action))button.setAttribute(cardSlot.action,'');
         if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
         if(button.getAttribute('title')!==label)button.setAttribute('title',label);
         current.add(button);
@@ -781,13 +733,12 @@ export function injectComposerInfo(document: Document): () => void {
       for (const [node, button] of nativeDismisses) if (node !== activeNode || !node.hasAttribute(OPEN)) {
         button.remove(); nativeDismisses.delete(node);
       }
-      for (const heading of closeHeadings) if (!activeNode?.contains(heading)) {
-        heading.removeAttribute(`${MARK}-close-heading`); closeHeadings.delete(heading);
+      for (const [heading, family] of closeHeadings) if (!activeNode?.contains(heading) || !activeNode.hasAttribute(OPEN) || family !== active) {
+        heading.removeAttribute(`${MARK}-close-heading`); heading.removeAttribute(cardSlot.head); closeHeadings.delete(heading);
         if (generatedCloseHeadings.delete(heading)) heading.remove();
       }
       const item = items.find(item => item.node === activeNode && item.key === active);
       for (const title of readOnlyTitles.keys()) if (title !== item?.trigger || !item.node.hasAttribute(OPEN)) restoreTitle(title);
-      if (!item || !item.node.hasAttribute(OPEN)) trackCloseHeading(null,null);
       if (item?.key !== "pullRequest" || !item.node.hasAttribute(OPEN)) clearPrHeader();
       const backgroundHost = item?.key === "background" && item.node.hasAttribute(OPEN) ? item.node : null;
       backgroundAccordions.sync(backgroundHost, readInfoData(stack.querySelector(`[${SOURCE}]`))?.value.background ?? []);
@@ -810,6 +761,7 @@ export function injectComposerInfo(document: Document): () => void {
           if (!row) {
             row = document.createElement("button");
             row.type = "button";
+            row.setAttribute(cardSlot.row, "");
             const parentRow = row;
             parentRow.addEventListener("click", () => {
               const current = readParent();
@@ -837,13 +789,15 @@ export function injectComposerInfo(document: Document): () => void {
           if (row.querySelector(`[${MARK}-parent-title]`)?.textContent !== title || (row.querySelector(`[${MARK}-provider-icon]`)?.innerHTML ?? "") !== wantIcon) {
             row.replaceChildren(...(wantIcon ? [icon, label] : [label]));
           }
-          if (row.parentElement !== parentHost) parentHost.prepend(row);
+          const head = parentHost.querySelector(`:scope > [${cardSlot.head}]`);
+          if (head) { if (head.nextElementSibling !== row) head.after(row); }
+          else if (row.parentElement !== parentHost) parentHost.prepend(row);
           markParent(parentHost);
         }
       }
       const namedAction = (labels: Map<HTMLElement, HTMLElement>, key: InfoKind, selector: string, mark: string, textFor: (button: HTMLElement) => string) => {
         for (const [button, label] of labels) if (item?.key !== key || !item.node.hasAttribute(OPEN) || !item.node.contains(button)) {
-          label.remove(); labels.delete(button);
+          label.remove(); labels.delete(button); button.removeAttribute(cardSlot.button);
         }
         if (item?.key !== key || !item.node.hasAttribute(OPEN)) return;
         const button = item.node.querySelector<HTMLElement>(selector);
@@ -853,26 +807,34 @@ export function injectComposerInfo(document: Document): () => void {
         const text = textFor(button);
         if (label.textContent !== text) label.textContent = text;
         if (label.parentElement !== button) button.append(label);
+        if (!button.hasAttribute(cardSlot.button)) button.setAttribute(cardSlot.button, "");
       };
       namedAction(goalClearLabels, "goal", '[aria-label="Clear active Goal"]', `${MARK}-goal-clear-label`, button => button.hasAttribute("disabled") ? "해제 중…" : "Goal 해제");
       namedAction(planExitLabels, "plan", '[aria-label="Exit plan mode"]', `${MARK}-plan-exit-label`, button => button.hasAttribute("disabled") ? "종료 중…" : "Plan 종료");
       namedAction(fallbackDismissLabels, "fallback", '[aria-label="Dismiss model fallback"]', `${MARK}-fallback-dismiss-label`, () => "Fallback 해제");
       syncBulkActions(item?.key === "annotations" && item.node.hasAttribute(OPEN) ? item.node : null);
+      for (const button of agentationCloses) if (!(item?.key === "annotations" && item.node.hasAttribute(OPEN) && item.node.contains(button))) { button.removeAttribute(cardSlot.close); agentationCloses.delete(button); }
+      if (item?.key === "annotations" && item.node.hasAttribute(OPEN)) {
+        const collapse = item.node.querySelector<HTMLElement>('button[aria-label="Collapse staged annotations"]');
+        if (collapse && !collapse.hasAttribute(cardSlot.close)) { collapse.setAttribute(cardSlot.close, ""); agentationCloses.add(collapse); }
+      }
       if (!item || !item.node.hasAttribute(OPEN) || item.key === "diff" || item.node.matches(".agentation-staging-shell") || item.node.querySelector(`[${MARK}-dismiss]:not([${MARK}-native-dismiss])`)) return;
       let heading:HTMLElement | null = null;
-      if (item.key !== "parent") {
+      {
         heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading]`);
         if (!heading || heading.closest("button, a")) {
           const parent = item.trigger?.parentElement;
           heading = parent && parent !== item.node && !parent.closest("button, a") && !parent.hasAttribute("data-queued-messages-mode") ? parent : item.trigger;
           if (!item.trigger) heading = item.node.querySelector<HTMLElement>("h3, h4, header");
-          if (heading?.hasAttribute("data-queued-messages-mode") || item.key === "queue" || item.key === "goal") heading = null;
+          if (heading?.hasAttribute("data-queued-messages-mode") || item.key === "queue" || item.key === "goal" || item.key === "parent") heading = null;
         }
         if (!heading) {
           heading = document.createElement("h3"); heading.textContent = item.label;
           item.node.prepend(heading); generatedCloseHeadings.add(heading);
         }
-        heading.setAttribute(`${MARK}-close-heading`, ""); closeHeadings.add(heading);
+        if (!heading.hasAttribute(`${MARK}-close-heading`)) heading.setAttribute(`${MARK}-close-heading`, "");
+        if (!heading.hasAttribute(cardSlot.head)) heading.setAttribute(cardSlot.head, "");
+        closeHeadings.set(heading, item.key);
         if (item.key === "pullRequest") {
           const link = heading.querySelector<HTMLAnchorElement>('a[aria-label^="Pull request "][href]');
           if (link) {
@@ -898,28 +860,17 @@ export function injectComposerInfo(document: Document): () => void {
       }
       let dismiss = nativeDismisses.get(item.node);
       if (!dismiss) {
-        dismiss = document.createElement("button"); dismiss.type = "button"; dismiss.textContent = "×";
+        dismiss = createCardClose(document, `${item.label} 닫기`);
         dismiss.setAttribute(`${MARK}-dismiss`, ""); dismiss.setAttribute(`${MARK}-native-dismiss`, "");
-        dismiss.setAttribute("aria-label", `${item.label} 닫기`); dismiss.title = `${item.label} 닫기`;
         nativeDismisses.set(item.node, dismiss);
       }
-      const dismissParent = item.key === "workflow" && heading?.matches('[role="group"]') && !heading.closest("button, a") ? heading : item.node;
-      if (dismiss.parentElement !== dismissParent) dismissParent.append(dismiss);
-      trackCloseHeading(heading ? item.node : null,heading);
+      const dismissLabel = `${item.label} 닫기`;
+      if (dismiss.getAttribute("aria-label") !== dismissLabel) { dismiss.setAttribute("aria-label", dismissLabel); dismiss.title = dismissLabel; }
+      if (dismiss.parentElement !== item.node) item.node.append(dismiss);
     };
     const panelAction = (label:string, run:() => void) => {
-      const button = document.createElement("button");
-      button.type = "button";
+      const button = createCardAction(document, label, "M15 3h6v6m0-6L10 14M11 3H7a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-4");
       button.setAttribute(`${MARK}-panel-action`, "");
-      button.setAttribute("aria-label", label); button.title = label;
-      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      icon.setAttribute("viewBox", "0 0 24 24"); icon.setAttribute("fill", "none");
-      icon.setAttribute("stroke", "currentColor"); icon.setAttribute("stroke-width", "1.5");
-      icon.setAttribute("stroke-linecap", "round"); icon.setAttribute("stroke-linejoin", "round");
-      icon.setAttribute("aria-hidden", "true");
-      const path = document.createElementNS(icon.namespaceURI, "path");
-      path.setAttribute("d", "M15 3h6v6m0-6L10 14M11 3H7a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-4");
-      icon.append(path); button.append(icon);
       button.addEventListener("click", run);
       return button;
     };
@@ -1060,7 +1011,6 @@ export function injectComposerInfo(document: Document): () => void {
         }
         for (const body of bodyFades.keys()) edgeResize?.observe(body);
         for (const clip of clipNodes) edgeResize?.observe(clip);
-        if (nativeCloseHeading) edgeResize?.observe(nativeCloseHeading);
       }
       scrollHints.forEach(hint => { hint.hidden = true; });
       // Hints are siblings of the card and do not share its entrance opacity or
@@ -1079,12 +1029,7 @@ export function injectComposerInfo(document: Document): () => void {
         hint.hidden = index ? scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1 : scroller.scrollTop <= 1;
       });
     };
-    const edgeResize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver((entries = []) => {
-      for (const entry of entries) if (entry.target === nativeCloseHeading) {
-        setTitleHeight(entry.borderBoxSize?.[0]?.blockSize ?? nativeCloseHeading!.getBoundingClientRect().height);
-      }
-      updateScrollHints();
-    }) : null;
+    const edgeResize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(() => updateScrollHints()) : null;
     stack.addEventListener("scroll", updateScrollHints, true);
     stack.addEventListener("animationend", updateScrollHints, true);
     stack.addEventListener("animationcancel", updateScrollHints, true);
@@ -1241,8 +1186,11 @@ export function injectComposerInfo(document: Document): () => void {
     let titleIcon: HTMLElement | null = null;
     let titleArtwork = "";
     const titleSources = new Set<Element>();
+    let titleHeadMarked: HTMLElement | null = null;
     const clearTitleIcon = () => {
       titleIcon?.remove(); titleHeading?.removeAttribute(`${MARK}-title-heading`);
+      if (titleHeadMarked && !closeHeadings.has(titleHeadMarked)) titleHeadMarked.removeAttribute(cardSlot.head);
+      titleHeadMarked = null;
       for (const source of titleSources) source.removeAttribute(`${MARK}-title-source`);
       titleSources.clear(); titleHeading = titleIcon = null; titleArtwork = "";
     };
@@ -1250,19 +1198,20 @@ export function injectComposerInfo(document: Document): () => void {
       const item = items.find(item => item.node === activeNode && item.key === active);
       const heading = active && active !== "all" ? menu?.querySelector<HTMLElement>("header")
         ?? (activeNode?.matches(".agentation-staging-shell")
-          ? activeNode.querySelector<HTMLElement>(":scope > div:first-child > div:first-child")
+          ? activeNode.querySelector<HTMLElement>(":scope > div:first-child > div:first-child > p")
           : activeNode?.querySelector<HTMLElement>(`[${MARK}-close-heading], [${MARK}-panel-heading], h3, h4, header`)) : null;
       if (heading !== titleHeading || titleIcon && titleIcon.parentElement !== heading) clearTitleIcon();
       if (!heading || !active || active === "all") return;
       titleHeading = heading;
       heading.setAttribute(`${MARK}-title-heading`, active);
+      if (!heading.hasAttribute(cardSlot.head)) { heading.setAttribute(cardSlot.head, ""); titleHeadMarked = heading; }
       const nativeIcons = Array.from(heading.querySelectorAll("svg, [data-icon-root]"))
         .filter(icon => !icon.closest(`[${MARK}-title-icon], [${MARK}-panel-action], [${MARK}-dismiss], [${MARK}-close]`)
           && (!icon.closest("button, a") || icon.closest("button, a") === item?.trigger));
       const artwork = emptyIcon(active) ?? nativeIcons[0];
       if (artwork) {
         titleIcon ??= document.createElement("span");
-        titleIcon.setAttribute(`${MARK}-title-icon`, active); titleIcon.setAttribute("aria-hidden", "true");
+        titleIcon.setAttribute(`${MARK}-title-icon`, active); titleIcon.setAttribute(cardSlot.icon, ""); titleIcon.setAttribute("aria-hidden", "true");
         if (titleArtwork !== artwork.outerHTML) {
           titleArtwork = artwork.outerHTML;
           const copy = artwork.cloneNode(true) as Element;
@@ -1649,7 +1598,7 @@ export function injectComposerInfo(document: Document): () => void {
       let button = container.querySelector<HTMLButtonElement>(`[${MARK}-unarchive]`);
       if (!button) {
         button = document.createElement("button"); button.type = "button";
-        button.setAttribute(`${MARK}-unarchive`, "");
+        button.setAttribute(`${MARK}-unarchive`, ""); button.setAttribute(cardSlot.button, "");
         button.addEventListener("click", () => archiveAction(items.find(item => item.node === activeNode && item.key === "status"))?.click());
         container.replaceChildren(button);
       }
@@ -1688,16 +1637,12 @@ export function injectComposerInfo(document: Document): () => void {
         menu.id = `bb-composer-info-menu-${++serial}`;
         menu.setAttribute(`${MARK}-menu`, "");
         menu.setAttribute("aria-label", "전체 정보");
-        const header = document.createElement("header");
-        header.textContent = "전체 정보";
-        const dismiss = document.createElement("button");
-        dismiss.type = "button";
-        dismiss.textContent = "×";
+        const header = createCardHead(document, { title:"전체 정보", icon:null });
+        const dismiss = createCardClose(document, "전체 정보 닫기");
         dismiss.setAttribute(`${MARK}-close`, "");
-        dismiss.setAttribute("aria-label", "전체 정보 닫기");
         dismiss.addEventListener("click", () => close(true));
-        header.append(dismiss);
         const caption = document.createElement("p");
+        caption.setAttribute(cardSlot.meta, "");
         caption.textContent = "하나를 선택해 펼치기 · 상단 표시는 Chat UI 설정에서 선택";
         const grid = document.createElement("div");
         for (const item of catalog()) {
@@ -1723,7 +1668,7 @@ export function injectComposerInfo(document: Document): () => void {
           });
           grid.append(choice);
         }
-        menu.append(header, caption, grid);
+        menu.append(header, caption, grid, dismiss);
         bar.append(menu);
         syncTitleIcon();
         orb.setAttribute("aria-controls", menu.id);
@@ -1742,15 +1687,10 @@ export function injectComposerInfo(document: Document): () => void {
         menu.setAttribute(item ? archiveDetail ? `${MARK}-archived-detail` : `${MARK}-diff` : `${MARK}-empty`, key);
         const label = archiveDetail ? readOnlyLabel! : labelOf(key);
         menu.setAttribute("aria-label", label);
-        const header = document.createElement("header");
-        const title = document.createElement("span"); title.textContent = label;
-        header.append(title);
-        const dismiss = document.createElement("button");
-        dismiss.type = "button"; dismiss.textContent = "×";
+        const header = createCardHead(document, { title:label, icon:null });
+        const dismiss = createCardClose(document, `${label} 닫기`);
         dismiss.setAttribute(`${MARK}-close`, "");
-        dismiss.setAttribute("aria-label", `${label} 닫기`);
         dismiss.addEventListener("click", () => close(true));
-        header.append(dismiss);
         const caption = document.createElement(item ? "div" : "p");
         if (item && archiveDetail) {
           if (!archiveAction(item) && item.trigger?.getAttribute("aria-expanded") === "false") item.trigger.click();
@@ -1758,7 +1698,7 @@ export function injectComposerInfo(document: Document): () => void {
         }
         else if (item) { caption.setAttribute(`${MARK}-diff-content`, ""); renderDiff(caption, item); }
         else caption.textContent = "현재 정보 없음";
-        menu.append(header, caption);
+        menu.append(header, caption, dismiss);
         if (item && !archiveDetail) {
           const action = panelAction("Diff 패널 열기", () => {
             const current = items.find(item => item.key === "diff");
@@ -1767,7 +1707,7 @@ export function injectComposerInfo(document: Document): () => void {
             else openChangesPanel(document, stack);
           });
           action.setAttribute(`${MARK}-action`, "diff");
-          header.insertBefore(action, dismiss);
+          header.append(action);
         }
         buttons.get(key)?.setAttribute("aria-expanded", "true");
         bar.append(menu);
@@ -2412,7 +2352,6 @@ export function injectComposerInfo(document: Document): () => void {
       stack.removeEventListener("click", blockTitleActivation, true);
       stack.removeEventListener("keydown", blockTitleActivation, true);
       for (const title of readOnlyTitles.keys()) restoreTitle(title);
-      trackCloseHeading(null,null);
       jumpSource?.removeAttribute(`${MARK}-jump-source`);
       stack.removeEventListener("scroll", updateScrollHints, true);
       stack.removeEventListener("animationend", updateScrollHints, true);
@@ -2439,7 +2378,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const button of bulkActions.keys()) restoreBulkAction(button);
       for (const [host, row] of parentRows) { row.remove(); clearParentMarks(host); }
       for (const row of collapseRows) row.removeAttribute(`${MARK}-collapse`);
-      for (const heading of closeHeadings) heading.removeAttribute(`${MARK}-close-heading`);
+      for (const heading of closeHeadings.keys()) { heading.removeAttribute(`${MARK}-close-heading`); heading.removeAttribute(cardSlot.head); }
       for (const heading of generatedCloseHeadings) heading.remove();
       clearPrHeader();
       backgroundAccordions.stop();

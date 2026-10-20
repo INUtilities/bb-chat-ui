@@ -6,6 +6,7 @@ import { composerInfoReads, infoKinds, listedInfo } from "./composer-info-settin
 import { childExecutionLabel, childState, childUnread } from "./composer-child.ts";
 import { startComposerInfoRefresh, type ComposerInfoSnapshot } from "./composer-info-refresh.ts";
 import { createThreadRestorer, type RestoreState } from "./composer-restore.ts";
+import { cardSlot } from "./info-card.ts";
 
 const mark = "data-bb-chat-ui-info";
 
@@ -56,8 +57,10 @@ export function ComposerInfoBridge() {
   const pullRequest = reads.pullRequest && data?.pullRequest?.outcome === "available" ? data.pullRequest.pullRequest : null;
   const section = (kind: string, title: string, icon: "FileText" | "ListTodo" | "Target" | "UserRound" | "CircleAlert", content: ReturnType<typeof createElement>) => createElement("section", {
     key:kind, [`${mark}-kind`]:kind, "aria-label":title,
-  }, createElement("h3", null, createElement(experimental_Icon, { name:icon, "aria-hidden":true }), " ", title,
-    kind === "children" ? createElement("button", { type:"button", [`${mark}-dismiss`]:kind, "aria-label":"Child Threads 닫기" }, "×") : null), content);
+  }, createElement("h3", { [cardSlot.head]:"" },
+    createElement("span", { [cardSlot.icon]:"", "aria-hidden":true }, createElement(experimental_Icon, { name:icon, "aria-hidden":true })),
+    createElement("span", { [cardSlot.title]:"" }, title)),
+    kind === "children" ? createElement("button", { type:"button", [`${mark}-dismiss`]:kind, [cardSlot.close]:"", "aria-label":"Child Threads 닫기", title:"Child Threads 닫기" }, "×") : null, content);
   return createElement(Fragment, null,
     createElement("span", {
       ref:source, hidden:true,
@@ -79,11 +82,11 @@ export function ComposerInfoBridge() {
         createElement("p", null, timeline.goal.objective),
         createElement("p", { className:"text-subtle-foreground" }, `${timeline.goal.status} · ${timeline.goal.tokensUsed.toLocaleString()}${timeline.goal.tokenBudget == null ? "" : ` / ${timeline.goal.tokenBudget.toLocaleString()}`} tokens · ${Math.round(timeline.goal.timeUsedSeconds)}s`))) : null,
       listed.includes("todos") && timeline?.pendingTodos ? section("todos", "할 일", "ListTodo", createElement("ul", null, ...timeline.pendingTodos.items.map(item => createElement("li", { key:item.id }, `${item.status === "completed" ? "✓" : item.status === "in_progress" ? "◉" : "○"} ${item.text}`)))) : null,
-      children.length ? section("children", "Child Threads", "UserRound", createElement("div", null, ...children.map(child => {
+      children.length ? section("children", "Child Threads", "UserRound", createElement("div", { [cardSlot.list]:"" }, ...children.map(child => {
         const title = child.title ?? child.titleFallback ?? "Child Thread";
         const state = childState(child.runtime.displayStatus, child.hasPendingInteraction);
         const metadata = childExecutionLabel(child.executionOptions);
-        return createElement("button", { key:child.id, type:"button", [`${mark}-child-row`]:"", onClick:() => navigate.toThread(child.id) },
+        return createElement("button", { key:child.id, type:"button", [`${mark}-child-row`]:"", [cardSlot.row]:"", onClick:() => navigate.toThread(child.id) },
           createElement("span", { [`${mark}-avatar`]:"", "data-state":state, "data-unread":String(childUnread(child)), "aria-hidden":true },
             createElement("span", { [`${mark}-provider-icon`]:"" }, providerIcon(child.providerId)),
             createElement("span", { [`${mark}-avatar-dot`]:"" })),
