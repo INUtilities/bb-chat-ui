@@ -163,6 +163,7 @@ ${DETAIL}[aria-label="Model fallback"] [role="status"] > span:not([title]) { dis
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { width:auto; margin-left:8px; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] > [${MARK}-close-heading] { ${cardStyle.headOnly} }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-size:12px; font-weight:600; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { display:inline-flex; align-items:center; justify-content:center; flex:none; width:24px; height:24px; padding:0 !important; font-size:0 !important; text-decoration:none; }

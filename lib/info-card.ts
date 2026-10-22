@@ -35,6 +35,7 @@ export const cardStyle = {
   face: `--bb-chat-ui-card-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); border:0 !important; border-radius:18px !important; color:var(--foreground); background:var(--bb-chat-ui-card-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow),inset 0 1px 3px var(--bb-chat-ui-card-edge) !important;`,
   faceDark: `--bb-chat-ui-card-face:${DARK_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,black 60%,transparent);`,
   head: `display:flex; align-items:center; gap:8px; box-sizing:border-box; min-width:0; height:28px; min-height:28px; margin:0 0 8px; padding:0 32px 0 0 !important; ${TITLE_TYPE}`,
+  headOnly: "margin-bottom:0;",
   icon: "display:inline-flex; align-items:center; justify-content:center; flex:none; width:14px; height:14px;",
   title: `flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${TITLE_TYPE}`,
   action: `display:inline-flex; align-items:center; justify-content:center; align-self:center; flex:none; box-sizing:border-box; width:24px; height:24px; min-width:24px; min-height:24px; margin:0; padding:0 !important; border:0 !important; border-radius:999px !important; color:var(--subtle-foreground); font-family:inherit; font-size:12px; font-weight:400; line-height:1; cursor:pointer; transition:background-color 150ms ease-out, color 150ms ease-out; ${FLAT}`,
@@ -67,6 +68,7 @@ ${card} { position:relative; box-sizing:border-box; padding:16px 24px !important
 ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }
+${card}[${cardSlot.layout}="heading-only"] > ${s.head} { ${cardStyle.headOnly} }
 ${s.body} { ${cardStyle.body} }
 ${s.body} > :first-child { margin-top:0 !important; }
 ${s.body} > :last-child { margin-bottom:0 !important; }

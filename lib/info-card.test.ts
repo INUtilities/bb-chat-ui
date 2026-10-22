@@ -69,6 +69,15 @@ test("a single-row navigation card reserves its close and centers it on the row"
   f.dom.window.close();
 });
 
+test("a heading-only card leaves no body gap beneath its title", () => {
+  const f = page(`<section ${CARD} data-bb-chat-ui-card-layout="heading-only"></section>`);
+  const card = f.document.querySelector(`[${CARD}]`)!;
+  const head = createCardHead(f.document, { title: 'Pull request', icon: null });
+  card.append(head, createCardClose(f.document, 'PR 닫기'));
+  assert.equal(f.style(head).marginBottom, '0px');
+  f.dom.window.close();
+});
+
 test("the common body removes inherited edge insets while keeping row padding", () => {
   const f = page(`<section ${CARD}><div data-bb-chat-ui-card-body style="padding:8px 0 10px"><p style="margin:6px 0">Text</p><div ${cardSlot.row}>Row</div></div></section>`);
   const body = f.document.querySelector('[data-bb-chat-ui-card-body]')!;

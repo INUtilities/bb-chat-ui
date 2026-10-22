@@ -55,6 +55,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 | 규격 | 구성과 여백 | 연결 |
 |---|---|---|
 | 기본 상세 카드 | 28px 제목 + 8px 간격 + 본문, 바깥 패딩 16px 24px | `cardSlot.head`, `cardSlot.body` |
+| 제목 단독 카드 (`heading-only`) | 본문 없이 28px 제목만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout, native PR 제목은 `cardStyle.headOnly` 재사용 |
 | 단일 탐색 카드 (`single-row`) | 제목 없이 최소 32px 탐색 행 하나, 바깥 패딩 16px 24px | Parent adapter → `cardSlot.layout="single-row"`, `cardSlot.row` |
 | 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
 

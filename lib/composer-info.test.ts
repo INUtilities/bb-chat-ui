@@ -150,6 +150,7 @@ test("PR header removes the hidden icon gutter and uses the shared hairline Merg
     assert.equal(style(trigger).width,'100%');
     assert.equal(style(trigger).height,'100%');
     assert.equal(style(trigger).padding,'0px 12px');
+    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom,'0px','a PR header without a body has no trailing body gap');
     const close=context.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(close.hasAttribute('data-bb-chat-ui-card-close'));
     assert.equal(style(close).position,'absolute');assert.equal(style(close).top,'18px','the shared close sits on the 28px head line');
