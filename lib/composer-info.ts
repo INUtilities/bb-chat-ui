@@ -5,7 +5,7 @@ import { commitIcon, fileStatusIcon } from "./composer-diff-icons.ts";
 import { childInitial, type ChildState, type ChildSummary } from "./composer-child.ts";
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE } from "./glass-surface.ts";
 import { eventHop, pressPop, stickyDrop } from "./motion.ts";
-import { isDesktopChrome } from "./device-chrome.ts";
+import { isDesktopChrome, LARGE_HIT_TARGET } from "./device-chrome.ts";
 import { infoStack } from "./composer-info-stack.ts";
 import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
 import { attachQueueControls } from "./composer-queue-controls.ts";
@@ -110,8 +110,9 @@ ${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"]
 ${NATIVE_DETAIL} > div[class~="p-1"]:not([${cardSlot.head}]), ${NATIVE_DETAIL} > div[class~="p-1"] > div[class~="px-2"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:-8px; margin-right:-8px; width:calc(100% + 16px); box-sizing:border-box; }
 ${DETAIL} [${MARK}-readonly-title] { cursor:default !important; background:transparent !important; box-shadow:none !important; }
+${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; gap:8px; min-width:0; min-height:28px; height:28px; padding:0 !important; font-size:12px; line-height:16px; font-weight:600; text-align:left; }
 /* Keep native title, live counters and phase bars on their original parents. */
-${WORKFLOW_HEADING} { display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 8px; align-items:center; padding:0 32px 6px 0 !important; }
+${WORKFLOW_HEADING} { height:auto; display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 8px; align-items:center; padding:0 32px 6px 0 !important; }
 ${WORKFLOW_HEADING} > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
 ${WORKFLOW_HEADING} > span[class~="flex-1"] { display:contents; }
 ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:first-child { grid-column:2 / -1; grid-row:1; }
@@ -120,15 +121,16 @@ ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(3) { grid-column:3;
 ${WORKFLOW_HEADING} > [role="presentation"] { grid-column:4; grid-row:2; width:64px; max-width:100%; }
 ${WORKFLOW_HEADING} > span[class~="ml-auto"] { display:none; }
 /* Current runs put the title button inside the controls group, under an Active workflows host. */
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { position:relative; display:grid !important; grid-template-columns:14px minmax(0,1fr) 24px; grid-template-rows:28px auto 12px; align-items:center; column-gap:8px; row-gap:2px; margin:0 0 8px; padding:0 32px 0 0 !important; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { height:auto; position:relative; display:grid !important; grid-template-columns:14px fit-content(calc(100% - 62px)) 24px minmax(0,1fr); grid-template-rows:28px auto 12px; align-items:center; column-gap:8px; row-gap:2px; margin:0 0 8px; padding:0 32px 0 0 !important; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-panel-action] { grid-column:3; grid-row:1; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] { display:grid !important; position:static !important; align-self:stretch; grid-column:2 / -1; grid-row:1 / span 3; grid-template-columns:auto minmax(0,1fr) auto; grid-template-rows:28px auto; align-items:center; justify-items:start; column-gap:4px; row-gap:2px; width:100%; max-width:100%; min-width:0; padding:0 0 12px !important; }
+/* Flatten only the read-only title layout. Native controls and their handlers keep their parents. */
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] { display:contents !important; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] { display:contents; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:first-child { grid-column:1 / -1; grid-row:1; width:100%; box-sizing:border-box; padding-right:32px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(2) { grid-column:1; grid-row:2; white-space:nowrap; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(3) { grid-column:3; grid-row:2; justify-self:end; white-space:nowrap; }
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > :is([role="presentation"], div[class~="w-16"]) { position:absolute; left:0; right:0; bottom:0; grid-column:1 / -1; grid-row:3; width:100%; max-width:none; height:3px; min-height:3px; overflow:hidden; border-radius:999px; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:first-child { grid-column:2; grid-row:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(2) { grid-column:1 / 3; grid-row:2; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="flex-1"] > span:nth-child(3) { grid-column:3 / -1; grid-row:2; justify-self:end; white-space:nowrap; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > :is([role="presentation"], div[class~="w-16"]) { position:static; grid-column:1 / -1; grid-row:3; width:100%; max-width:none; height:3px; min-height:3px; overflow:hidden; border-radius:999px; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > button[aria-label^="Workflow:"] > span[class~="ml-auto"] { display:none; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[class~="min-h-7"], button[aria-expanded], div[class~="items-center"][class~="gap-1.5"]) { min-width:0; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[class~="min-h-7"], button[aria-expanded], div[class~="items-center"][class~="gap-1.5"]) :is([class~="truncate"], [class~="min-w-0"], [class~="flex-1"]) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -154,12 +156,13 @@ ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { w
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-size:12px; font-weight:600; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { display:inline-flex; align-items:center; justify-content:center; flex:none; width:24px; height:24px; padding:0 !important; font-size:0 !important; text-decoration:none; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:16px; height:16px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title]:has([${MARK}-title-source]) { display:none; }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; gap:0; padding:0 34px 0 12px !important; cursor:default; }
+${LARGE_HIT_TARGET} ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { height:32px; min-height:32px; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; line-height:20px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
@@ -187,10 +190,10 @@ ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [cl
 ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [class~="flex-col"] { margin-top:var(--bb-chat-ui-info-row-gap) !important; }
 /* Leave the corner gutter inside the real scroller, not outside a clipped reveal wrapper. */
 ${LIST_DETAIL} > section[role="region"], ${LIST_DETAIL} > section[role="region"] > div[class~="bg-popover"] { min-width:0; overflow:visible !important; }
-${LIST_DETAIL} ul[class~="px-2.5"], ${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
+${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
 /* Main popovers own the common height cap; native list caps must not shorten it. */
 ${DETAIL}[${OPEN}="todos"] ul, ${DETAIL} [data-detail-scroll-area] { max-height:none !important; overflow:visible !important; }
-${DETAIL}[${OPEN}="workflow"] section[aria-label="Workflow"] { overflow:visible !important; background-color:transparent !important; border-color:transparent !important; box-shadow:none !important; }
+${DETAIL}[${OPEN}="workflow"] section[aria-label="Workflow"] { overflow:visible !important; background-color:transparent !important; border:0 !important; box-shadow:none !important; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) { overflow:visible !important; border-top-width:0 !important; border-top-color:transparent !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) > div[class~="bg-popover"] { overflow:visible !important; background-color:transparent !important; box-shadow:none !important; }
 ${WORKFLOW_LIST_ROW} { width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; min-height:28px !important; padding:6px 8px !important; }
@@ -287,13 +290,13 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
 [${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; order:0 !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
 /* Keep native actions on their original parents while sharing one title row. */
-${DETAIL}[aria-label="Goal"] { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; gap:8px; outline:0 !important; }
+${DETAIL}[aria-label="Goal"] { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; grid-template-rows:28px auto; align-items:center; gap:8px; outline:0 !important; }
 ${DETAIL}[aria-label="Goal"] > * { min-width:0; flex-shrink:0; }
 ${DETAIL}[aria-label="Goal"] > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
 [${MARK}-menu] > p { margin:0 0 8px; }
 /* The catalog is a list of rows laid out in columns: the grid owns the hover gutter. */
-[${MARK}-menu] > div { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); gap:2px; ${cardStyle.rowGutter} }
+[${MARK}-menu] > [${MARK}-catalog] { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); gap:2px; ${cardStyle.rowGutter} }
 [${MARK}-choice] { display:flex; min-width:0; align-items:center; gap:8px; color:inherit; font:inherit; text-align:left; cursor:pointer; ${cardStyle.rowBox} }
 [${MARK}-choice]:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 [${MARK}-choice] span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -372,6 +375,8 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-child-meta], [${MARK}-child-status] { ${cardStyle.meta} }
 [${MARK}-child-meta] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 [${MARK}-child-status] { flex:none; white-space:nowrap; }
+${DETAIL}[aria-label="Child threads"] ul > li > a { display:flex; align-items:center; gap:8px; min-width:0; color:inherit; cursor:pointer; text-decoration:none; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+${DETAIL}[aria-label="Child threads"] ul > li > a:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 /* Agentation: native header pieces join the card's head line; the close is the shared slot. */
 ${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; column-gap:8px; row-gap:8px; }
 ${DETAIL}.agentation-staging-shell > div:first-child { display:contents !important; }
@@ -1186,11 +1191,14 @@ export function injectComposerInfo(document: Document): () => void {
     let titleIcon: HTMLElement | null = null;
     let titleArtwork = "";
     const titleSources = new Set<Element>();
+    const nativeTitles = new Set<HTMLElement>();
     let titleHeadMarked: HTMLElement | null = null;
     const clearTitleIcon = () => {
       titleIcon?.remove(); titleHeading?.removeAttribute(`${MARK}-title-heading`);
       if (titleHeadMarked && !closeHeadings.has(titleHeadMarked)) titleHeadMarked.removeAttribute(cardSlot.head);
       titleHeadMarked = null;
+      for (const title of nativeTitles) title.removeAttribute(cardSlot.title);
+      nativeTitles.clear();
       for (const source of titleSources) source.removeAttribute(`${MARK}-title-source`);
       titleSources.clear(); titleHeading = titleIcon = null; titleArtwork = "";
     };
@@ -1205,6 +1213,10 @@ export function injectComposerInfo(document: Document): () => void {
       titleHeading = heading;
       heading.setAttribute(`${MARK}-title-heading`, active);
       if (!heading.hasAttribute(cardSlot.head)) { heading.setAttribute(cardSlot.head, ""); titleHeadMarked = heading; }
+      const nativeLabel = item?.trigger?.querySelector<HTMLElement>(':scope > span[class~="truncate"], :scope > span[class~="flex-1"]');
+      const label = nativeLabel?.querySelector<HTMLElement>('span:first-child') ?? nativeLabel;
+      for (const title of nativeTitles) if (title !== label) { title.removeAttribute(cardSlot.title); nativeTitles.delete(title); }
+      if (label && !label.hasAttribute(cardSlot.title)) { label.setAttribute(cardSlot.title, ""); nativeTitles.add(label); }
       const nativeIcons = Array.from(heading.querySelectorAll("svg, [data-icon-root]"))
         .filter(icon => !icon.closest(`[${MARK}-title-icon], [${MARK}-panel-action], [${MARK}-dismiss], [${MARK}-close]`)
           && (!icon.closest("button, a") || icon.closest("button, a") === item?.trigger));
@@ -1645,6 +1657,7 @@ export function injectComposerInfo(document: Document): () => void {
         caption.setAttribute(cardSlot.meta, "");
         caption.textContent = "하나를 선택해 펼치기 · 상단 표시는 Chat UI 설정에서 선택";
         const grid = document.createElement("div");
+        grid.setAttribute(`${MARK}-catalog`, "");
         for (const item of catalog()) {
           const choice = document.createElement("button");
           choice.type = "button";

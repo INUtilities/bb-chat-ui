@@ -31,6 +31,7 @@ test("the head line is 28px and reserves the close gutter; icon, title, actions 
   assert.equal(s.display, "flex");
   assert.equal(s.alignItems, "center");
   assert.equal(s.minHeight, "28px");
+  assert.equal(s.height, "28px", "a larger touch action must not move the common title line");
   assert.equal(s.paddingRight, "32px", "24px close + 8px gap");
   assert.equal(s.fontSize, "12px");
   assert.equal(s.fontWeight, "600");
@@ -68,6 +69,19 @@ test("text actions are hairline pills without a second surface", () => {
   assert.equal(s.getPropertyValue("backdrop-filter"), "none");
   f.document.documentElement.setAttribute("data-bb-chat-ui-root-hit-target", "large");
   assert.equal(f.style(f.document.querySelector(`[${cardSlot.button}]`)!).height, "32px", "a finger keeps the 32px hit target");
+  f.dom.window.close();
+});
+
+test("an external action follows the title without an expanding title spacer", () => {
+  const f = page(`<section ${CARD}></section>`);
+  const card = f.document.querySelector(`[${CARD}]`)!;
+  const action = createCardAction(f.document, "패널 열기", "M3 3h6");
+  const head = createCardHead(f.document, { title: "Code Diff", icon: null, actions: [action] });
+  card.append(head);
+  const title = head.querySelector(`[${cardSlot.title}]`)!;
+  assert.equal(title.nextElementSibling, action);
+  assert.equal(f.style(title).flexGrow, "0", "short titles leave the action beside their text");
+  assert.equal(f.style(title).flexShrink, "1", "long titles still shrink before the action and close");
   f.dom.window.close();
 });
 

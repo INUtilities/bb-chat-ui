@@ -223,6 +223,87 @@ function bridgeFixtureData(dom: JSDOM) {
   new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof Element)hydrate(node);}).observe(document.body,{subtree:true,childList:true});
 }
 
+test("the catalog hover gutter never pulls a detail body left of its heading", async () => {
+  const f = fixture();
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="diff"]'); await f.tick();
+    const detail = f.document.querySelector('[data-bb-chat-ui-info-diff-content]')!;
+    const bodyStyle = f.dom.window.getComputedStyle(detail);
+    assert.equal(parseFloat(bodyStyle.marginLeft) || 0, 0, "Diff shares the card's title gutter");
+    assert.equal(parseFloat(bodyStyle.marginRight) || 0, 0);
+    f.click('[data-bb-chat-ui-info-all]'); await f.tick();
+    const choice = f.document.querySelector('[data-bb-chat-ui-info-choice]')!;
+    assert.equal(f.dom.window.getComputedStyle(choice.parentElement!).marginLeft, "-8px", "only the catalog extends its hover paint");
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("native child titles and rows use the shared card typography and gutter", async () => {
+  const f = fixture();
+  const card = f.document.querySelector('section[aria-label="Child threads"]')!;
+  card.innerHTML = '<button id="thread-prompt-banner-child-threads-toggle" aria-expanded="false" aria-controls="children"><span class="flex-1 truncate font-normal">Active child threads</span></button><section id="children" hidden><div><ul class="px-3 space-y-0.5"><li><a href="/review">Review</a></li></ul></div></section>';
+  const label = card.querySelector('button > span')!;
+  const parent = label.parentElement;
+  const utilities = f.document.createElement('style');
+  utilities.textContent = '.font-normal { font-weight:400; } .flex-1 { flex:1; }';
+  f.document.head.append(utilities);
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="children"]'); await f.tick();
+    assert.ok(label.hasAttribute('data-bb-chat-ui-card-title'));
+    assert.equal(f.dom.window.getComputedStyle(label).fontWeight, '600');
+    assert.equal(f.dom.window.getComputedStyle(label).flexGrow, '0');
+    const row = card.querySelector('li > a')!;
+    assert.equal(f.dom.window.getComputedStyle(row).padding, '8px');
+    assert.equal(f.dom.window.getComputedStyle(row).borderRadius, '10px');
+    assert.equal(label.parentElement, parent, 'native title nodes keep their parent');
+  } finally { stop(); }
+  assert.equal(label.hasAttribute('data-bb-chat-ui-card-title'), false, 'unload restores the native title');
+  f.dom.window.close();
+});
+
+test("todo rows extend their hover gutter once while the list keeps the title edge", async () => {
+  const f = fixture();
+  const body = f.document.querySelector('#todos')!;
+  body.innerHTML = '<ul class="px-2.5"><li class="px-2">Verify phone</li></ul>';
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="todos"]'); await f.tick();
+    const list = body.querySelector('ul')!;
+    assert.equal(parseFloat(f.dom.window.getComputedStyle(list).marginLeft) || 0, 0);
+    const row = list.querySelector('li')!;
+    assert.equal(f.dom.window.getComputedStyle(row).marginLeft, '-8px');
+    assert.equal(f.dom.window.getComputedStyle(row).paddingLeft, '8px');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("a touch-sized Goal action keeps the shared title and close on the 28px line", async () => {
+  const f = fixture();
+  f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="goal"]'); await f.tick();
+    const card=f.document.querySelector('section[aria-label="Goal"]')!;
+    assert.equal(f.dom.window.getComputedStyle(card).gridTemplateRows,'28px auto');
+    assert.equal(f.dom.window.getComputedStyle(card.querySelector('[aria-label="Clear active Goal"]')!).height,'32px');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("the native PR merge group uses the shared 32px touch action", async () => {
+  const f=fixture();
+  f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
+  const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  context.innerHTML='<div class="p-1"><a aria-label="Pull request 12: Open" href="https://example.com/pr/12">PR #12</a><div><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method">▾</button></div></div></div>';
+  const group=context.querySelector('.inline-flex')!;
+  const parent=group.parentElement;
+  const stop=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    assert.equal(f.dom.window.getComputedStyle(group).height,'32px');
+    assert.equal(group.parentElement,parent);
+  }finally{stop();f.dom.window.close();}
+});
+
 function stubAnimations(window: { HTMLElement: { prototype: HTMLElement & { animate: Function; getAnimations: Function } } }) {
   const live = new WeakMap<Element, Animation[]>();
   window.HTMLElement.prototype.getAnimations = function() { return (live.get(this) ?? []).slice(); };
@@ -5676,7 +5757,18 @@ test("native list viewports leave room for rounded row backgrounds without clipp
       assert.equal(style(c.querySelector('section[role="region"] > div')!).overflow,'visible',`${key}: the native body slab does not cut off row corners`);
       assert.equal(style(c.querySelector('section[role="region"]')!).minWidth,'0px',`${key}: native reveal fits a narrow card`);
       assert.equal(style(c.querySelector('section[role="region"] > div')!).minWidth,'0px',`${key}: native grid content can shrink without widening the hover rows`);
-      if(selector){const viewport=c.querySelector(selector)!;const s=style(viewport);assert.equal(s.paddingLeft,'8px');assert.equal(s.paddingRight,'8px');assert.equal(s.marginLeft,'-8px');assert.equal(s.marginRight,'-8px');assert.equal(s.width,'calc(100% + 16px)');assert.equal(s.overflow,'visible','the shared popover handles scrolling without clipping row corners');}
+      if(selector){
+        const viewport=c.querySelector(selector)!;const s=style(viewport);
+        if(key==='todos'){
+          assert.equal(s.paddingLeft,'0px');assert.equal(s.paddingRight,'0px');
+          assert.equal(parseFloat(s.marginLeft)||0,0);assert.equal(parseFloat(s.marginRight)||0,0);
+          const row=style(viewport.querySelector('li')!);
+          assert.equal(parseFloat(row.marginLeft)+parseFloat(row.paddingLeft),0,'only the row extends its hover paint; its content stays at the title edge');
+        }else{
+          assert.equal(s.paddingLeft,'8px');assert.equal(s.paddingRight,'8px');assert.equal(s.marginLeft,'-8px');assert.equal(s.marginRight,'-8px');assert.equal(s.width,'calc(100% + 16px)');
+        }
+        assert.equal(s.overflow,'visible','the shared popover handles scrolling without clipping row corners');
+      }
       if(key==='workflow')for(const row of c.querySelectorAll('[data-detail-scroll-area] > *')){const s=style(row);assert.equal(s.width,'calc(100% + 16px)');assert.equal(s.marginLeft,'-8px');assert.equal(s.borderRadius,'10px');}
       if(key==='todos')assert.equal(style(c.querySelector('ul')!).maxHeight,'none');
     }
@@ -5852,21 +5944,16 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     assert.equal(header.getAttribute('aria-expanded'),'true','opening the popover expands the workflow body');
     const controls=header.parentElement as HTMLElement;
     assert.equal(paint(controls).display,'grid');
+    assert.equal(paint(controls).gridTemplateColumns,'14px fit-content(calc(100% - 62px)) 24px minmax(0,1fr)','the workflow title sizes the external-action position');
     assert.equal(paint(controls).gridTemplateRows,'28px auto 12px');
-    assert.equal(paint(header).display,'grid');
-    assert.equal(paint(header).gridColumn,'2 / -1');
-    assert.equal(paint(header).gridRow,'1 / span 3');
-    assert.equal(paint(header).alignSelf,'stretch');
-    assert.equal(paint(header).position,'static');
-    assert.equal(paint(header).justifyItems,'start');
-    assert.equal(paint(header).columnGap,'4px');
+    assert.equal(paint(header).display,'contents','read-only title content shares the controls grid without moving nodes');
     assert.equal(paint(summary).display,'contents');
     assert.equal(paint(title).gridRow,'1');
-    assert.equal(paint(title).gridColumn,'1 / -1');
-    assert.equal(paint(count).gridRow,'2');assert.equal(paint(count).gridColumn,'1','agent count stays at the list edge');
-    assert.equal(paint(time).gridRow,'2');assert.equal(paint(time).gridColumn,'3');assert.equal(paint(time).justifySelf,'end');
-    assert.equal(paint(progress).position,'absolute');
-    assert.equal(paint(progress).left,'0px');assert.equal(paint(progress).right,'0px');assert.equal(paint(progress).bottom,'0px');
+    assert.equal(paint(title).gridColumn,'2');
+    assert.equal(paint(count).gridRow,'2');assert.equal(paint(count).gridColumn,'1 / 3','agent count starts at the common content edge');
+    assert.equal(paint(time).gridRow,'2');assert.equal(paint(time).gridColumn,'3 / -1');assert.equal(paint(time).justifySelf,'end');
+    assert.equal(paint(progress).position,'static');
+    assert.equal(paint(progress).gridColumn,'1 / -1');assert.equal(paint(progress).gridRow,'3');
     assert.equal(paint(progress).width,'100%');assert.equal(paint(progress).height,'3px');
     assert.equal(paint(header.querySelector('.ml-auto')!).display,'none','the native chevron yields to the popover close');
     assert.equal(title.parentElement,summary);assert.equal(progress.parentElement,header);
