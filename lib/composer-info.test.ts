@@ -277,6 +277,68 @@ test("todo rows extend their hover gutter once while the list keeps the title ed
   } finally { stop(); f.dom.window.close(); }
 });
 
+test("long todo paths wrap within the card", async () => {
+  const f = fixture();
+  const body = f.document.querySelector('#todos')!;
+  body.innerHTML = '<ul class="px-2.5"><li class="px-2"></li></ul>';
+  const row = body.querySelector('li')!;
+  row.textContent = 'lib/aVeryLongComponentIdentifierWithoutSpaces'.repeat(6);
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="todos"]'); await f.tick();
+    const style = f.dom.window.getComputedStyle(row);
+    assert.equal(style.overflowWrap, 'anywhere', 'unbroken paths can wrap before crossing the card edge');
+    assert.equal(style.minWidth, '0px');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("long information paragraphs wrap without changing code blocks", async () => {
+  const f = fixture();
+  const banner = f.document.querySelector('.plugin-banner')!;
+  const cards: [string, Element][] = [['other', banner]];
+  const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  for (const [kind, label] of [['plan', 'Prompt mode'], ['fallback', 'Model fallback'], ['machine', 'Machine status']]) {
+    const card = f.document.createElement('section');
+    card.setAttribute('aria-label', label);
+    stack.append(card);
+    cards.push([kind, card]);
+  }
+  for (const [, card] of cards) {
+    card.innerHTML = '<h3>Information</h3><p></p><pre><code>keep code spacing</code></pre>';
+    card.querySelector('p')!.textContent = 'https://example.com/' + 'longPathWithoutSpaces'.repeat(20);
+  }
+  const stop = injectComposerInfo(f.document);
+  try {
+    for (const [kind, card] of cards) {
+      f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`); await f.tick();
+      assert.equal(f.dom.window.getComputedStyle(card.querySelector('p')!).overflowWrap, 'anywhere', `${kind}: body paragraphs can wrap unbroken strings`);
+      assert.equal(f.dom.window.getComputedStyle(card.querySelector('pre')!).overflowWrap, 'normal', `${kind}: code blocks retain their own formatting`);
+    }
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("native child lists scroll at the shared card cap without clipping row gutters", async () => {
+  const f = fixture();
+  const native = f.document.createElement('style');
+  native.textContent = '.native-child-cap{max-height:160px;overflow-y:auto}.native-child-reveal{overflow:hidden}';
+  f.document.head.append(native);
+  const card = f.document.querySelector('section[aria-label="Child threads"]')!;
+  card.querySelector('#children')!.outerHTML = '<section id="children" role="region" hidden class="native-child-reveal"><div class="native-child-reveal bg-popover"><ul class="native-child-cap"><li><a href="/review">Review</a></li></ul></div></section>';
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="children"]'); await f.tick();
+    const style = (node: Element) => f.dom.window.getComputedStyle(node);
+    assert.equal(style(card.querySelector('ul')!).maxHeight, 'none');
+    assert.equal(style(card.querySelector('ul')!).overflow, 'visible');
+    for (const reveal of card.querySelectorAll('.native-child-reveal')) {
+      assert.equal(style(reveal).overflow, 'visible');
+      assert.equal(style(reveal).minWidth, '0px');
+    }
+  } finally { stop(); }
+  assert.equal(f.dom.window.getComputedStyle(card.querySelector('ul')!).maxHeight, '160px', 'unload restores the native limit');
+  f.dom.window.close();
+});
+
 test("a touch-sized Goal action keeps the shared title and close on the 28px line", async () => {
   const f = fixture();
   f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
@@ -2357,6 +2419,11 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(send.getAttribute('data-bb-chat-ui-info-bulk-action'),null,'error recovery stays a readable native button');
   assert.equal(send.getAttribute('aria-label'),null);assert.equal(send.getAttribute('title'),null);
   assert.equal(f.dom.window.getComputedStyle(send).borderTopWidth,'1px','a readable recovery action is the shared hairline text action');
+  assert.equal(f.dom.window.getComputedStyle(send).height,'28px');
+  f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
+  assert.equal(f.dom.window.getComputedStyle(send).height,'32px','recovery actions retain the shared touch height');
+  assert.equal(f.dom.window.getComputedStyle(shell).gridTemplateRows,'28px auto','a larger action keeps the title on its shared line');
+  f.document.documentElement.removeAttribute('data-bb-chat-ui-root-hit-target');
   send.innerHTML='<svg data-native-up><path d="M12 19V5m-7 7 7-7 7 7" /></svg>Sending…';
   (send as HTMLButtonElement).disabled=true;await f.tick();
   assert.equal(send.getAttribute('aria-label'),'Sending…');

@@ -40,7 +40,7 @@ const WORKFLOW_PHASES = `${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area]
 const WORKFLOW_PHASE_ROW = `${WORKFLOW_PHASES} > div > button[aria-expanded], ${WORKFLOW_PHASES} > div[class~="items-center"]`;
 const WORKFLOW_AGENT_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="min-h-7"]:has(> span[class~="truncate"])`;
 const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${WORKFLOW_LIST_ROW}, ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
-const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"])`;
+const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"], [${OPEN}="children"])`;
 const WORKFLOW_HEADING = `${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] > button[${MARK}-close-heading][${MARK}-readonly-title][aria-label^="Workflow:"]`;
 
 const GITHUB_MARK = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 3.86c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>')}")`;
@@ -174,6 +174,7 @@ ${cardFaceCss("[data-bb-chat-ui-pr-menu]")}
 ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria-label^="Queued message"][aria-label$=" actions"]) { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
+${DETAIL} p${PROTECTED_EXCLUDE} { min-width:0; overflow-wrap:anywhere; }
 /* One glass face. Header disclosure sits flat on it; small actions keep the shared face. */
 /* The popup owns its entrance; native outer bodies open without another height reveal. */
 ${DETAIL} > section[role="region"], ${DETAIL}.agentation-staging-shell > .grid { transition:none !important; grid-template-rows:1fr !important; opacity:1 !important; }
@@ -184,6 +185,7 @@ ${LIST_ROW} { ${cardStyle.rowBox} margin-top:0 !important; margin-bottom:0 !impo
 ${LIST_ROW.split(", ").map(selector => `${selector}:hover`).join(", ")} { ${cardStyle.rowHover} }
 /* Match the background activity's row rhythm; native space-y margins must not stack with the gap. */
 ${DETAIL}[${OPEN}="todos"] ul { display:flex; flex-direction:column; row-gap:var(--bb-chat-ui-info-row-gap); }
+${DETAIL}[${OPEN}="todos"] li { min-width:0; overflow-wrap:anywhere; }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div[class~="flex-col"],
 ${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="flex-col"][class~="gap-1.5"],
 ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [class~="flex-col"] { row-gap:var(--bb-chat-ui-info-row-gap); }
@@ -192,7 +194,7 @@ ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [cl
 ${LIST_DETAIL} > section[role="region"], ${LIST_DETAIL} > section[role="region"] > div[class~="bg-popover"] { min-width:0; overflow:visible !important; }
 ${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
 /* Main popovers own the common height cap; native list caps must not shorten it. */
-${DETAIL}[${OPEN}="todos"] ul, ${DETAIL} [data-detail-scroll-area] { max-height:none !important; overflow:visible !important; }
+${DETAIL}[${OPEN}="todos"] ul, ${DETAIL}[aria-label="Child threads"] ul, ${DETAIL} [data-detail-scroll-area] { max-height:none !important; overflow:visible !important; }
 ${DETAIL}[${OPEN}="workflow"] section[aria-label="Workflow"] { overflow:visible !important; background-color:transparent !important; border:0 !important; box-shadow:none !important; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) { overflow:visible !important; border-top-width:0 !important; border-top-color:transparent !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) > div[class~="bg-popover"] { overflow:visible !important; background-color:transparent !important; box-shadow:none !important; }
@@ -378,7 +380,7 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 ${DETAIL}[aria-label="Child threads"] ul > li > a { display:flex; align-items:center; gap:8px; min-width:0; color:inherit; cursor:pointer; text-decoration:none; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${DETAIL}[aria-label="Child threads"] ul > li > a:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 /* Agentation: native header pieces join the card's head line; the close is the shared slot. */
-${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; align-items:center; column-gap:8px; row-gap:8px; }
+${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-rows:28px auto; grid-template-areas:"heading actions close" "body body body"; align-items:center; column-gap:8px; row-gap:8px; }
 ${DETAIL}.agentation-staging-shell > div:first-child { display:contents !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { display:contents !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [data-icon="ChatFeedback"] { display:none !important; }
@@ -389,6 +391,7 @@ ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-are
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:first-child { order:2; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:last-child { order:1; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { ${cardStyle.button} }
+${LARGE_HIT_TARGET} ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { height:32px; min-height:32px; }
 ${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] { gap:0; font-size:0 !important; }
 ${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] > :not([${MARK}-bulk-icon]) { display:none !important; }
 [${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:14px; height:14px; pointer-events:none; }
