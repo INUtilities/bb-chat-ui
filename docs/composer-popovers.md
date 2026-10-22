@@ -26,10 +26,11 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   긴 제목은 버튼과 닫기 영역을 남긴 뒤 한 줄 말줄임한다.
 - 제목·액션·닫기의 세로 중앙선을 맞춘다. 닫기는 24px 원형 영역의 ×다.
   액션은 × 왼쪽에 두며, 제목과 겹치지 않게 별도 열 또는 닫기 여백을 확보한다.
-- 닫기는 카드 위에서 18px·오른쪽에서 24px이며 제목에는 32px 닫기 여백을 남긴다.
+- 닫기는 카드 위에서 18px·오른쪽에서 16px이며 제목에는 32px 닫기 여백을 남긴다.
   글자 액션은 28px, large hit target에서는 32px로 표시한다. 카드 안 아이콘 액션과
   닫기는 24px이며 추가 frost 면·그림자를 겹치지 않는다.
-- Parent도 공통 제목 행 아래에 부모 provider 아이콘과 제목을 가진 탐색 행을 둔다.
+- Parent 탐색은 아래의 `single-row` 규격을 쓴다. 별도의 `Parent` 제목·계열 아이콘은
+  추가하지 않으며 provider 아이콘·부모 제목·닫기만 한 줄에 둔다.
   부모 정보가 아직 없으면 기존 링크로 보완하고, 사라진 부모로 이동하지 않는다.
 - Goal 해제는 이름이 있는 액션으로 유지한다. Agentation의 전체 액션은
   ↑ 전송 → 휴지통 삭제 → × 닫기 순서다. 아이콘만 표시해도 tooltip과 접근성
@@ -48,6 +49,24 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   원래 PR 링크는 제목 옆의 외부 열기 아이콘으로 보이며 GitHub URL과 탐색 동작을
   유지한다. SDK 제목을 아직 읽지 못했으면 원래 PR 번호를 임시 제목으로 쓴다.
   Merge 메뉴와 닫기는 별도 영역으로 두어 제목과 겹치지 않게 한다.
+
+## 공통 규격과 컴포넌트 연결
+
+| 규격 | 구성과 여백 | 연결 |
+|---|---|---|
+| 기본 상세 카드 | 28px 제목 + 8px 간격 + 본문, 바깥 패딩 16px 24px | `cardSlot.head`, `cardSlot.body` |
+| 단일 탐색 카드 (`single-row`) | 제목 없이 최소 32px 탐색 행 하나, 바깥 패딩 16px 24px | Parent adapter → `cardSlot.layout="single-row"`, `cardSlot.row` |
+| 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
+
+- `single-row`의 닫기는 위 20px·오른쪽 16px로 32px 행의 중앙에 놓인다.
+  탐색 행은 닫기 클릭 영역 앞에서 끝나며 긴 제목은 한 줄 말줄임한다.
+- 부모 metadata가 늦게 오거나 native 링크만 있어도 같은 단일 행을 쓴다.
+  관계가 제거된 경우의 기존 비활성 처리와 native 복원 동작은 유지한다.
+- native Child 목록, Goal 본문, 백그라운드 목록, Workflow scroll area, Queue scroll/list의
+  추가 상하 패딩을 제거한다. 본문 사이의 간격과 목록 행 자체의 8px 패딩은 유지한다.
+- Queue 제목 아래도 8px 간격을 쓴다. 빈 정보 안내는 본문의 끝에 추가 margin을 남기지 않는다.
+  Queue의 마지막 그룹 경계가 잘리지 않도록 확보한 하단 12px는 기능 여백이므로 유지한다.
+- 닫기·해제하면 Parent의 layout 표식과 추가 행을 제거하고 원래 native DOM을 복원한다.
 
 ## 비활성 정보와 접힌 스택
 

@@ -339,6 +339,41 @@ test("native child lists scroll at the shared card cap without clipping row gutt
   f.dom.window.close();
 });
 
+test("native body adapters remove duplicate vertical insets and keep the common title gap", async () => {
+  const cases = [
+    ['children', 'Child threads', 'children-inset', '<ul data-inset style="padding:6px 0 0"><li>Child</li></ul>'],
+    ['goal', 'Goal', 'thread-goal-card-body', '<div data-inset style="padding:8px 0 10px">Goal body</div>'],
+    ['background', 'Background agents', 'thread-background-commands-card-body', '<div class="flex-col" data-inset style="padding:4px 0">Activity</div>'],
+    ['workflow', 'Workflow', 'workflow-inset', '<div data-detail-scroll-area data-inset style="padding:8px 0">Phase</div>'],
+    ['queue', 'Queued messages', 'queue-inset', '<div data-queued-messages-scroll data-inset style="padding:4px 0"><ul data-inset style="padding:4px 0"><li>Message</li></ul></div>'],
+  ] as const;
+  for (const [kind, label, id, content] of cases) {
+    const f = fixture();
+    const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+    stack.querySelector(`section[aria-label="${label}"]`)?.remove();
+    const card = f.document.createElement('section');
+    card.setAttribute('aria-label', label);
+    card.innerHTML = `<button ${kind === 'children' ? 'id="thread-prompt-banner-child-threads-toggle"' : ''} aria-expanded="false" aria-controls="${id}">${label}</button><section role="region" id="${id}" hidden><div class="bg-popover">${content}</div></section>`;
+    const toggle = card.querySelector('button')!;
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(expanded));
+      card.querySelector('section')!.hidden = !expanded;
+    });
+    stack.append(card);
+    const stop = injectComposerInfo(f.document);
+    try {
+      f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`); await f.tick();
+      for (const body of card.querySelectorAll('[data-inset]')) {
+        const style = f.dom.window.getComputedStyle(body);
+        assert.equal(style.paddingTop, '0px', `${kind}: the card owns the top inset`);
+        assert.equal(style.paddingBottom, '0px', `${kind}: the card owns the bottom inset`);
+      }
+      if (kind === 'queue') assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom, '8px');
+    } finally { stop(); f.dom.window.close(); }
+  }
+});
+
 test("a touch-sized Goal action keeps the shared title and close on the 28px line", async () => {
   const f = fixture();
   f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
@@ -772,7 +807,7 @@ test("queue and list cards share the same horizontal content gutter as their hea
       const gutter=inset(outer.paddingLeft)+inset(row.marginLeft)+inset(row.paddingLeft)+(scroll?inset(f.dom.window.getComputedStyle(scroll).paddingLeft):0);
       assert.equal(gutter,inset(outer.paddingLeft),`${key}: body starts at the same inset as its header`);
       assert.equal(outer.paddingLeft,outer.paddingRight,'left and right card gutters match');
-      if (key === 'queue') assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,'12px','queue messages have a little more space below the title');
+      if (key === 'queue') assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,'8px','queue uses the common title-to-body gap');
       gutters.push(gutter);
     }
     assert.equal(new Set(gutters).size,1,'the queue does not get an extra horizontal gutter');
@@ -1438,7 +1473,7 @@ test("native close survives header replacement and keeps genuine actions on thei
   } finally { stop(); f.dom.window.close(); }
 });
 
-test("Parent popover is the shared card: a Parent head line and one row of the parent provider and title", async () => {
+test("Parent uses the shared single-row card without a family heading", async () => {
   const f = fixture();
   const source = f.document.querySelector<HTMLElement>("[data-bb-chat-ui-info-settings]")!;
   source.insertAdjacentHTML("beforeend", '<span data-bb-chat-ui-info-icon="parent"><svg data-family="parent"></svg></span><span data-bb-chat-ui-info-child-icon="child-1"><svg data-provider="child-provider"></svg></span>');
@@ -1480,11 +1515,10 @@ test("Parent popover is the shared card: a Parent head line and one row of the p
   try {
     f.click('[data-bb-chat-ui-info-trigger="parent"]'); await f.tick();
     const head = card.querySelector<HTMLElement>("[data-bb-chat-ui-card-head]")!;
-    assert.equal(head?.textContent, "Parent", "Parent reads like every other card: a head line first");
-    assert.ok(head.querySelector('[data-bb-chat-ui-info-title-icon="parent"]'), "the head carries the family icon");
-    assert.equal(style(head).minHeight, "28px");
+    assert.equal(head, null, "the parent navigation is the only content line");
+    assert.equal(card.getAttribute('data-bb-chat-ui-card-layout'), 'single-row', "the adapter binds Parent to the common navigation variant");
+    assert.equal(card.querySelector('[data-bb-chat-ui-info-title-icon="parent"]'), null);
     const row = card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-parent-row]")!;
-    assert.equal(head.nextElementSibling, row, `the parent row sits under the head: ${Array.from(card.children).map(n=>n.tagName+(n.getAttribute("data-bb-chat-ui-card-head")!==null?"[head]":"")+(n.hasAttribute("data-bb-chat-ui-info-parent-row")?"[row]":"")).join(",")}`);
     assert.ok(row, "the parent is one card row");
     assert.equal(card.querySelectorAll("[data-bb-chat-ui-info-parent-row]").length, 1);
     assert.equal(row.parentElement, card);
@@ -1503,6 +1537,7 @@ test("Parent popover is the shared card: a Parent head line and one row of the p
     assert.equal(style(row).borderRadius, "10px");
     assert.equal(style(row).padding, "8px", "the shared list row");
     assert.equal(style(row).minHeight, "32px");
+    assert.equal(style(row).width, "calc(100% - 16px)", "the row leaves the separate close hit target clear");
     assert.equal(style(card).padding, "16px 24px", "the shared card gutter");
     assert.match(style(card).backdropFilter, /blur\(14px\)/);
     assert.match(style(card).animation, /bb-info-enter/);
@@ -1511,7 +1546,8 @@ test("Parent popover is the shared card: a Parent head line and one row of the p
     assert.equal(dismiss.closest("[data-bb-chat-ui-info-parent-row]"), null);
     assert.equal(style(dismiss).width, "24px");
     assert.equal(style(dismiss).height, "24px");
-    assert.equal(style(dismiss).top, "18px", "the shared close position");
+    assert.equal(style(dismiss).top, "20px", "the close centers on the single 32px navigation row");
+    assert.equal(style(dismiss).right, "16px");
     assert.equal(shown("#thread-prompt-banner-parent-thread-body"), false, "the relationship sentence stays out of the popover");
     assert.equal(shown("#thread-prompt-banner-git-toggle"), false);
     assert.equal(shown("#thread-prompt-banner-git-body"), false);
@@ -1593,7 +1629,7 @@ test("Parent popover is the shared card: a Parent head line and one row of the p
     assert.equal(only.querySelector("[data-provider]")?.getAttribute("data-provider"), "codex");
     assert.equal(style(card.querySelector("svg[data-icon='UserRound']")!).display, "none");
     assert.equal(style(inlineLink).display, "none");
-    assert.equal(card.querySelector("[data-bb-chat-ui-card-head]")?.textContent, "Parent");
+    assert.equal(card.querySelector("[data-bb-chat-ui-card-head]"), null);
     assert.equal(inlineLink.parentElement, inlineParent);
     const before = linkMoves;
     only.click();
@@ -1690,7 +1726,7 @@ test("Parent popover keeps one row before parent metadata and does not follow a 
   } finally { stop(); f.dom.window.close(); }
 });
 
-test("Parent popovers keep the native link under the shared Parent head", async () => {
+test("Parent native-link fallback also uses a single row without a heading", async () => {
   for (const inline of [true, false]) {
     const f = fixture();
     const node = f.document.querySelector<HTMLElement>('section[aria-label="Thread context before sending"]')!;
@@ -1710,7 +1746,8 @@ test("Parent popovers keep the native link under the shared Parent head", async 
     try {
       f.click('[data-bb-chat-ui-info-trigger="parent"]'); await f.tick();
       const waiting = node.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-parent-row]');
-      assert.equal(node.querySelector('[data-bb-chat-ui-card-head]')?.textContent, 'Parent', 'the shared head names the family');
+      assert.equal(node.querySelector('[data-bb-chat-ui-card-head]'), null, 'native-link fallback does not add a family heading');
+      assert.equal(node.getAttribute('data-bb-chat-ui-card-layout'), 'single-row');
       assert.equal(waiting?.textContent, 'Parent title', 'this card native title fills the row before parent metadata');
       assert.equal(waiting?.querySelector('[data-provider], [data-family]'), null);
       assert.equal(f.dom.window.getComputedStyle(link).display, 'none', 'the native sentence and link stay out of the popover');
@@ -5469,7 +5506,7 @@ test("Parent popover hides the native sentence, person icon, and Diff without mo
     assert.equal(style(card.querySelector('a[aria-label^="Pull request "]')!).display, "none");
     assert.equal(style(body).display, "none", "the relationship sentence stays out of the popover");
     const waiting = card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-parent-row]");
-    assert.equal(card.querySelector("[data-bb-chat-ui-card-head]")?.textContent, "Parent", "the shared head names the family");
+    assert.equal(card.querySelector("[data-bb-chat-ui-card-head]"), null, "Parent stays a single navigation row");
     assert.equal(waiting?.textContent, "VAU-2 · 그래프 ㄱ자 코너 리사이즈 핸들");
     assert.equal(waiting?.querySelector("[data-provider], [data-family], [data-icon='UserRound']"), null);
     assert.match(body.textContent ?? "", /This thread is a child of/);
@@ -5520,7 +5557,7 @@ test("Parent popover hides the native sentence, person icon, and Diff without mo
     assert.equal(style(inlineLink).display, "none");
     assert.equal(inlineLink.parentElement, inlineParent);
     const nativeRow = card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-parent-row]");
-    assert.equal(card.querySelector("[data-bb-chat-ui-card-head]")?.textContent, "Parent", "the shared head names the family");
+    assert.equal(card.querySelector("[data-bb-chat-ui-card-head]"), null, "Parent stays a single navigation row");
     assert.equal(nativeRow?.textContent, "Chat UI 전체 이슈 정리");
     assert.equal(nativeRow?.querySelector("[data-provider], [data-family], [data-icon='UserRound']"), null);
     assert.equal(card.querySelectorAll("[data-bb-chat-ui-info-native-dismiss]").length, 1);
@@ -6079,7 +6116,7 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     assert.equal(paint(region).overflow,'visible');
     const workflowList=region.querySelector<HTMLElement>('[data-detail-scroll-area]')!;
     assert.equal(paint(workflowList).marginTop,'0px','the progress bar replaces the divider at the list boundary');
-    assert.equal(paint(workflowList).paddingTop,'8px','the list content clears the divider');
+    assert.equal(paint(workflowList).paddingTop,'0px','the card body does not add another top inset');
     assert.equal(paint(workflowList).borderTopWidth,'0px');
     const composerCss=f.document.querySelector<HTMLStyleElement>('#bb-chat-ui-composer-info')!.textContent!;
     assert.doesNotMatch(composerCss,/content:"·"/,'split metadata has no separator');
@@ -6191,7 +6228,7 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
       assert.equal(closes.length,1,`${kind}: exactly one close slot`);
       assert.equal(css(closes[0]).position,'absolute',`${kind}: close sits on the card, not in a per-card grid`);
       assert.equal(css(closes[0]).top,'18px',`${kind}: close centers on the 28px head line`);
-      assert.equal(css(closes[0]).right,'24px',`${kind}: close aligns with the content edge`);
+      assert.equal(css(closes[0]).right,'16px',`${kind}: close uses the common outer inset`);
       const head=card.querySelector('[data-bb-chat-ui-card-head]');
       assert.ok(head,`${kind}: a head slot`);
       assert.equal(css(head!).minHeight,'28px',`${kind}: one head line height`);

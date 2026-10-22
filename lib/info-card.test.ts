@@ -42,7 +42,7 @@ test("the head line is 28px and reserves the close gutter; icon, title, actions 
   const c = f.style(close);
   assert.equal(c.position, "absolute");
   assert.equal(c.top, "18px", "16px padding + (28px line - 24px button) / 2");
-  assert.equal(c.right, "24px");
+  assert.equal(c.right, "16px");
   assert.equal(c.width, "24px");
   assert.equal(c.height, "24px");
   assert.equal(close.getAttribute("aria-label"), "Goal 닫기");
@@ -54,6 +54,28 @@ test("the head line is 28px and reserves the close gutter; icon, title, actions 
   assert.equal(a.backgroundColor, "rgba(0, 0, 0, 0)");
   assert.equal(action.getAttribute("aria-label"), "패널 열기");
   assert.equal(action.title, "패널 열기");
+  f.dom.window.close();
+});
+
+test("a single-row navigation card reserves its close and centers it on the row", () => {
+  const f = page(`<section ${CARD} data-bb-chat-ui-card-layout="single-row"><button ${cardSlot.row}>Parent thread</button></section>`);
+  const card = f.document.querySelector(`[${CARD}]`)!;
+  const close = createCardClose(f.document, "Parent 닫기");
+  card.append(close);
+  assert.equal(f.style(card).padding, "16px 24px");
+  assert.equal(f.style(card.querySelector(`[${cardSlot.row}]`)!).width, "calc(100% - 16px)", "the navigation row ends before the close hit target");
+  assert.equal(f.style(close).top, "20px", "16px inset + (32px row - 24px close) / 2");
+  assert.equal(f.style(close).right, "16px");
+  f.dom.window.close();
+});
+
+test("the common body removes inherited edge insets while keeping row padding", () => {
+  const f = page(`<section ${CARD}><div data-bb-chat-ui-card-body style="padding:8px 0 10px"><p style="margin:6px 0">Text</p><div ${cardSlot.row}>Row</div></div></section>`);
+  const body = f.document.querySelector('[data-bb-chat-ui-card-body]')!;
+  assert.equal(f.style(body).paddingTop, '0px');
+  assert.equal(f.style(body).paddingBottom, '0px');
+  assert.equal(f.style(body.querySelector('p')!).marginTop, '0px');
+  assert.equal(f.style(body.querySelector(`[${cardSlot.row}]`)!).padding, '8px');
   f.dom.window.close();
 });
 

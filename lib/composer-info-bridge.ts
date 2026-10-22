@@ -77,12 +77,12 @@ export function ComposerInfoBridge() {
       createElement("button", { type:"button", [`${mark}-restore-source`]:"environment", disabled:restoring?.pending === true || !data?.readOnly.canRestore,
         [`${mark}-restore-error`]:restoring?.error ?? undefined, onClick:() => void restore(threadId, "environment") }, restoring?.pending ? "Restoring..." : !data ? "불러오는 중" : data.readOnly.canRestore ? "Restore workspace" : "복구 불가")),
     createElement("div", { [`${mark}-supplements`]:"" },
-      listed.includes("plan") && timeline?.activePromptMode ? section("plan", "Plan", "FileText", createElement("p", null, timeline.activePromptMode.prompt)) : null,
-      listed.includes("goal") && timeline?.goal ? section("goal", "Goal", "Target", createElement("div", null,
+      listed.includes("plan") && timeline?.activePromptMode ? section("plan", "Plan", "FileText", createElement("p", { [cardSlot.body]:"" }, timeline.activePromptMode.prompt)) : null,
+      listed.includes("goal") && timeline?.goal ? section("goal", "Goal", "Target", createElement("div", { [cardSlot.body]:"" },
         createElement("p", null, timeline.goal.objective),
         createElement("p", { className:"text-subtle-foreground" }, `${timeline.goal.status} · ${timeline.goal.tokensUsed.toLocaleString()}${timeline.goal.tokenBudget == null ? "" : ` / ${timeline.goal.tokenBudget.toLocaleString()}`} tokens · ${Math.round(timeline.goal.timeUsedSeconds)}s`))) : null,
-      listed.includes("todos") && timeline?.pendingTodos ? section("todos", "할 일", "ListTodo", createElement("ul", null, ...timeline.pendingTodos.items.map(item => createElement("li", { key:item.id }, `${item.status === "completed" ? "✓" : item.status === "in_progress" ? "◉" : "○"} ${item.text}`)))) : null,
-      children.length ? section("children", "Child Threads", "UserRound", createElement("div", { [cardSlot.list]:"" }, ...children.map(child => {
+      listed.includes("todos") && timeline?.pendingTodos ? section("todos", "할 일", "ListTodo", createElement("ul", { [cardSlot.body]:"", [cardSlot.list]:"" }, ...timeline.pendingTodos.items.map(item => createElement("li", { key:item.id, [cardSlot.row]:"" }, `${item.status === "completed" ? "✓" : item.status === "in_progress" ? "◉" : "○"} ${item.text}`)))) : null,
+      children.length ? section("children", "Child Threads", "UserRound", createElement("div", { [cardSlot.body]:"", [cardSlot.list]:"" }, ...children.map(child => {
         const title = child.title ?? child.titleFallback ?? "Child Thread";
         const state = childState(child.runtime.displayStatus, child.hasPendingInteraction);
         const metadata = childExecutionLabel(child.executionOptions);
@@ -95,10 +95,10 @@ export function ComposerInfoBridge() {
             metadata ? createElement("span", { [`${mark}-child-meta`]:"", title:metadata }, metadata) : null),
           createElement("span", { [`${mark}-child-status`]:"" }, child.runtime.displayStatus));
       }))) : null,
-      reads.queue && data?.queue.length ? section("queue", "대기 메시지", "ListTodo", createElement("div", null, ...data.queue.map(row => createElement("div", { key:row.id },
+      reads.queue && data?.queue.length ? section("queue", "대기 메시지", "ListTodo", createElement("div", { [cardSlot.body]:"" }, ...data.queue.map(row => createElement("div", { key:row.id, [cardSlot.body]:"" },
         createElement("p", null, row.content.filter(part => part.visibility !== "agent-only").map(part => part.type === "text" ? part.text : part.type === "localFile" ? part.name ?? part.path : part.type === "localImage" ? part.path : "Image").join("\n")),
         createElement("p", { className:"text-subtle-foreground" }, row.failureReason ?? (row.sendAt ? new Date(row.sendAt).toLocaleString() : "Queued")))))) : null,
-      pullRequest ? section("pullRequest", "Pull request", "ListTodo", createElement("div", null, createElement(UrlLink, { href:pullRequest.url }, `#${pullRequest.number} · ${pullRequest.title}`), createElement("p", null, `${pullRequest.state} · ${pullRequest.checks.state} · ${pullRequest.review.state}`))) : null,
-      error && !data ? section("other", "정보를 불러오지 못했습니다", "CircleAlert", createElement("p", null, "연결이 복구되면 다시 읽습니다. 현재 표시된 BB 정보는 계속 열 수 있습니다.")) : null,
+      pullRequest ? section("pullRequest", "Pull request", "ListTodo", createElement("div", { [cardSlot.body]:"" }, createElement(UrlLink, { href:pullRequest.url }, `#${pullRequest.number} · ${pullRequest.title}`), createElement("p", null, `${pullRequest.state} · ${pullRequest.checks.state} · ${pullRequest.review.state}`))) : null,
+      error && !data ? section("other", "정보를 불러오지 못했습니다", "CircleAlert", createElement("p", { [cardSlot.body]:"" }, "연결이 복구되면 다시 읽습니다. 현재 표시된 BB 정보는 계속 열 수 있습니다.")) : null,
     ));
 }

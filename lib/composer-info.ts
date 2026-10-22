@@ -41,6 +41,14 @@ const WORKFLOW_PHASE_ROW = `${WORKFLOW_PHASES} > div > button[aria-expanded], ${
 const WORKFLOW_AGENT_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="min-h-7"]:has(> span[class~="truncate"])`;
 const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${WORKFLOW_LIST_ROW}, ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
 const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"], [${OPEN}="children"])`;
+const NATIVE_BODY = [
+  `${DETAIL}[aria-label="Child threads"] ul`,
+  `${DETAIL}[aria-label="Goal"] #thread-goal-card-body > div > div`,
+  `${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div[class~="flex-col"]`,
+  `${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area]`,
+  `${DETAIL}[${OPEN}="queue"] [data-queued-messages-scroll]`,
+  `${DETAIL}[${OPEN}="queue"] [data-queued-messages-scroll] > ul:not([data-bb-chat-ui-queue-end-boundary="true"])`,
+].join(", ");
 const WORKFLOW_HEADING = `${DETAIL}[aria-label="Workflow"][${OPEN}="workflow"] > button[${MARK}-close-heading][${MARK}-readonly-title][aria-label^="Workflow:"]`;
 
 const GITHUB_MARK = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 3.86c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>')}")`;
@@ -193,6 +201,8 @@ ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [cl
 /* Leave the corner gutter inside the real scroller, not outside a clipped reveal wrapper. */
 ${LIST_DETAIL} > section[role="region"], ${LIST_DETAIL} > section[role="region"] > div[class~="bg-popover"] { min-width:0; overflow:visible !important; }
 ${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
+${NATIVE_BODY} { ${cardStyle.body} }
+${DETAIL}[${OPEN}="queue"] [data-queued-messages-scroll] > ul[data-bb-chat-ui-queue-end-boundary="true"] { padding-top:0 !important; }
 /* Main popovers own the common height cap; native list caps must not shorten it. */
 ${DETAIL}[${OPEN}="todos"] ul, ${DETAIL}[aria-label="Child threads"] ul, ${DETAIL} [data-detail-scroll-area] { max-height:none !important; overflow:visible !important; }
 ${DETAIL}[${OPEN}="workflow"] section[aria-label="Workflow"] { overflow:visible !important; background-color:transparent !important; border:0 !important; box-shadow:none !important; }
@@ -335,7 +345,7 @@ ${DETAIL}[aria-label="Goal"] > h3[${MARK}-close-heading] { grid-area:heading; ma
 [${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
 ${DETAIL}[aria-label="Queued messages"] > :not([${cardSlot.head}]) { min-height:0; }
-${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:12px; }
+${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:8px; }
 ${DETAIL} [data-queued-messages-scroll-frame] { position:static !important; display:grid !important; grid-template-rows:minmax(0,1fr); flex:0 1 auto !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; overflow:hidden !important; }
 ${DETAIL} [data-queued-messages-scroll] { height:auto !important; min-height:0 !important; max-height:none !important; padding:4px 0; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
 ${DETAIL} header[data-queued-messages-mode] { display:none !important; }
@@ -656,12 +666,14 @@ export function injectComposerInfo(document: Document): () => void {
     const PARENT_TOGGLE_WRAP = `${MARK}-parent-toggle-wrap`, PARENT_LINK_WRAP = `${MARK}-parent-link-wrap`;
     const clearParentMarks = (host: HTMLElement) => {
       host.removeAttribute(WITH_PARENT_ROW); host.removeAttribute(WITH_PARENT_BODY);
+      host.removeAttribute(cardSlot.layout);
       for (const node of Array.from(host.querySelectorAll(`[${PARENT_TOGGLE_WRAP}], [${PARENT_LINK_WRAP}]`))) {
         node.removeAttribute(PARENT_TOGGLE_WRAP); node.removeAttribute(PARENT_LINK_WRAP);
       }
     };
     const markParent = (host: HTMLElement) => {
       setMark(host, WITH_PARENT_ROW, true);
+      if (host.getAttribute(cardSlot.layout) !== "single-row") host.setAttribute(cardSlot.layout, "single-row");
       setMark(host, WITH_PARENT_BODY, host.querySelector("#thread-prompt-banner-parent-thread-body") !== null);
       for (const child of Array.from(host.children)) setMark(child, PARENT_TOGGLE_WRAP, child.tagName === "DIV" && child.querySelector("#thread-prompt-banner-parent-thread-toggle") !== null);
       for (const span of Array.from(host.querySelectorAll("span"))) setMark(span, PARENT_LINK_WRAP, Array.from(span.children).some(child => child.tagName === "A"));
@@ -828,7 +840,7 @@ export function injectComposerInfo(document: Document): () => void {
       }
       if (!item || !item.node.hasAttribute(OPEN) || item.key === "diff" || item.node.matches(".agentation-staging-shell") || item.node.querySelector(`[${MARK}-dismiss]:not([${MARK}-native-dismiss])`)) return;
       let heading:HTMLElement | null = null;
-      {
+      if (item.node.getAttribute(cardSlot.layout) !== "single-row") {
         heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading]`);
         if (!heading || heading.closest("button, a")) {
           const parent = item.trigger?.parentElement;
@@ -1207,7 +1219,7 @@ export function injectComposerInfo(document: Document): () => void {
     };
     const syncTitleIcon = () => {
       const item = items.find(item => item.node === activeNode && item.key === active);
-      const heading = active && active !== "all" ? menu?.querySelector<HTMLElement>("header")
+      const heading = active && active !== "all" && activeNode?.getAttribute(cardSlot.layout) !== "single-row" ? menu?.querySelector<HTMLElement>("header")
         ?? (activeNode?.matches(".agentation-staging-shell")
           ? activeNode.querySelector<HTMLElement>(":scope > div:first-child > div:first-child > p")
           : activeNode?.querySelector<HTMLElement>(`[${MARK}-close-heading], [${MARK}-panel-heading], h3, h4, header`)) : null;
@@ -1711,6 +1723,7 @@ export function injectComposerInfo(document: Document): () => void {
         dismiss.setAttribute(`${MARK}-close`, "");
         dismiss.addEventListener("click", () => close(true));
         const caption = document.createElement(item ? "div" : "p");
+        caption.setAttribute(cardSlot.body, "");
         if (item && archiveDetail) {
           if (!archiveAction(item) && item.trigger?.getAttribute("aria-expanded") === "false") item.trigger.click();
           renderArchiveRestore(caption, item);

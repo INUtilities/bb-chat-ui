@@ -130,7 +130,7 @@ test("queue actions stay vertically centered in compact rows with appropriate hi
       assert.equal(style(actions).alignSelf,'center');
       assert.equal(style(actions.querySelector('button')!).height,small?'24px':'32px','mobile retains a larger touch target');
       assert.equal(style(text).padding,small?'4px 0px':'8px 0px','existing message body padding is preserved');
-      assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'4px 0px','the list has compact vertical spacing');
+      assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'0px','the common card supplies the outer vertical inset');
       assert.equal(style(f.queue).maxHeight,'var(--bb-chat-ui-info-max-height)');
       assert.equal(actions.parentElement,original,'native action controls retain their parent');
       f.click('[data-send]'); assert.equal(f.sent(),1);

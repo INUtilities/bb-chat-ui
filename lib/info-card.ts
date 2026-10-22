@@ -3,13 +3,15 @@ import { LARGE_HIT_TARGET } from "./device-chrome.ts";
 
 /**
  * One information card for everything that opens above the composer.
- * The card owns a single frost face and a fixed 28px head line. Plugin-built nodes carry the
+ * The card owns one frost face, with a 28px head or a single 32px navigation row. Plugin-built nodes carry the
  * slot attributes; native nodes that cannot be marked reuse the same declaration blocks
  * through `cardStyle`, so every card reads its geometry from this file.
  */
 export const CARD = "data-bb-chat-ui-card";
 export const cardSlot = {
+  layout: `${CARD}-layout`,
   head: `${CARD}-head`,
+  body: `${CARD}-body`,
   icon: `${CARD}-icon`,
   title: `${CARD}-title`,
   action: `${CARD}-action`,
@@ -36,7 +38,8 @@ export const cardStyle = {
   icon: "display:inline-flex; align-items:center; justify-content:center; flex:none; width:14px; height:14px;",
   title: `flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${TITLE_TYPE}`,
   action: `display:inline-flex; align-items:center; justify-content:center; align-self:center; flex:none; box-sizing:border-box; width:24px; height:24px; min-width:24px; min-height:24px; margin:0; padding:0 !important; border:0 !important; border-radius:999px !important; color:var(--subtle-foreground); font-family:inherit; font-size:12px; font-weight:400; line-height:1; cursor:pointer; transition:background-color 150ms ease-out, color 150ms ease-out; ${FLAT}`,
-  close: "position:absolute !important; top:18px !important; right:24px !important; z-index:1;",
+  close: "position:absolute !important; top:18px !important; right:16px !important; z-index:1;",
+  body: "min-width:0; margin-top:0 !important; margin-bottom:0 !important; padding-top:0 !important; padding-bottom:0 !important;",
   button: `display:inline-flex; align-items:center; justify-content:center; gap:4px; flex:none; box-sizing:border-box; height:28px; min-height:28px; margin:0; padding:0 12px !important; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px !important; color:var(--foreground); font-family:inherit; font-size:11px !important; font-weight:500; line-height:16px !important; white-space:nowrap; cursor:pointer; transition:background-color 150ms ease-out; ${FLAT}`,
   hover: `color:var(--foreground); background-color:${CARD_HOVER} !important;`,
   list: "display:flex; flex-direction:column; row-gap:2px; margin:0; padding:0; list-style:none;",
@@ -64,6 +67,9 @@ ${card} { position:relative; box-sizing:border-box; padding:16px 24px !important
 ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }
+${s.body} { ${cardStyle.body} }
+${s.body} > :first-child { margin-top:0 !important; }
+${s.body} > :last-child { margin-bottom:0 !important; }
 ${s.icon} { ${cardStyle.icon} }
 ${s.icon} > :is(svg, [data-icon-root]) { width:14px; height:14px; }
 ${s.title} { ${cardStyle.title} }
@@ -78,6 +84,8 @@ ${LARGE_HIT_TARGET} ${s.button} { height:32px; min-height:32px; }
 ${s.list} { ${cardStyle.list} }
 ${s.row} { display:flex; align-items:center; gap:8px; min-width:0; margin:0; color:inherit; font-family:inherit; text-align:left; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${s.row}:is(:hover, :focus-visible, :focus-within) { ${cardStyle.rowHover} }
+${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:calc(100% - 16px); margin-top:0 !important; margin-bottom:0 !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.close} { top:20px !important; }
 :is(button, a)${s.row} { cursor:pointer; }
 :is(${s.meta}, ${s.section}) { ${cardStyle.meta} }
 ${s.section} { margin:12px 0 4px; }
