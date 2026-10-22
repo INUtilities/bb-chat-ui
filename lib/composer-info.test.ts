@@ -2102,6 +2102,26 @@ test("children use a bare latest-three avatar stack and prefer the designed SDK 
   stop(); f.dom.window.close();
 });
 
+test("an SDK title icon leaves no second empty icon slot when the card opens", async () => {
+  const f = fixture();
+  const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  stack.insertAdjacentHTML('beforeend', '<section data-bb-chat-ui-info-kind="children" aria-label="Child Threads"><h3 data-bb-chat-ui-card-head><span data-bb-chat-ui-card-icon><svg data-native-child /></span><span data-bb-chat-ui-card-title>Child Threads</span></h3><button data-bb-chat-ui-info-dismiss="children" data-bb-chat-ui-card-close>×</button></section>');
+  const card = stack.querySelector('[data-bb-chat-ui-info-kind="children"]')!;
+  const nativeIcon = card.querySelector('[data-bb-chat-ui-card-icon]')!;
+  const nativeParent = nativeIcon.parentElement;
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="children"]'); await f.tick();
+    assert.equal(f.dom.window.getComputedStyle(nativeIcon).display, 'none', 'the replaced icon box must not reserve a second 14px slot and gap');
+    const visibleIcons = [...card.querySelectorAll('[data-bb-chat-ui-card-icon]')].filter(icon => f.dom.window.getComputedStyle(icon).display !== 'none');
+    assert.equal(visibleIcons.length, 1);
+    assert.equal(nativeIcon.parentElement, nativeParent);
+  } finally { stop(); }
+  assert.equal(nativeIcon.hasAttribute('data-bb-chat-ui-info-title-source'), false, 'unload restores the original SDK icon box');
+  assert.ok(nativeIcon.hasAttribute('data-bb-chat-ui-card-icon'));
+  f.dom.window.close();
+});
+
 test("Child Thread rows do not receive the shared button glass face", () => {
   const f=fixture();
   f.document.querySelector('[data-promptbox-shell] > .grid')!.insertAdjacentHTML('beforeend', '<section data-bb-chat-ui-info-kind="children" aria-label="Child Threads"><h3 data-bb-chat-ui-card-head><span data-bb-chat-ui-card-title>Child Threads</span></h3><button data-bb-chat-ui-info-dismiss="children" data-bb-chat-ui-card-close>×</button><div data-bb-chat-ui-card-list><button data-bb-chat-ui-info-child-row data-bb-chat-ui-card-row>Running child</button><button data-bb-chat-ui-info-child-row data-bb-chat-ui-card-row>Completed child</button></div></section>');

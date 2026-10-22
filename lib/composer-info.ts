@@ -1231,7 +1231,10 @@ export function injectComposerInfo(document: Document): () => void {
           titleIcon.replaceChildren(copy);
         }
         if (heading.firstElementChild !== titleIcon) heading.prepend(titleIcon);
-        for (const icon of nativeIcons) { icon.setAttribute(`${MARK}-title-source`, ""); titleSources.add(icon); }
+        for (const icon of nativeIcons) {
+          const source = icon.closest(`[${cardSlot.icon}]`) ?? icon;
+          source.setAttribute(`${MARK}-title-source`, ""); titleSources.add(source);
+        }
       }
     };
     const childIcon = (id:string) => Array.from(stack.querySelectorAll(`[${MARK}-child-icon]`))
