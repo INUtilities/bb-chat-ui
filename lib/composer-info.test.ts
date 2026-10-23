@@ -2230,6 +2230,31 @@ test("single-finger popup gestures do not reach chat handlers or chain from a sh
   f.dom.window.close();
 });
 
+test("the common pill face excludes active child avatar stacks and preserves the inactive child circle", async () => {
+  const f=fixture(),source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+  source.setAttribute('data-bb-chat-ui-info-children',JSON.stringify(Array.from({length:4},(_,i)=>({id:String(i),title:`Child ${i}`,state:'run'}))));
+  const stop=injectComposerInfo(f.document);
+  try {
+    const pill=f.document.querySelector('[data-bb-chat-ui-info-trigger="children"]')!;
+    const sheet=f.document.getElementById('bb-chat-ui-composer-info') as HTMLStyleElement;
+    const face=[...sheet.sheet!.cssRules].find(rule=>'style' in rule&&(rule as CSSStyleRule).style.getPropertyValue('box-shadow').includes('0 6px 18px -12px')) as CSSStyleRule;
+    assert.ok(face,'the shared pill face exists');
+    // Test selector ownership directly: jsdom does not implement :is() maximum specificity like Chrome.
+    for(const expanded of ['false','true']){
+      pill.setAttribute('aria-expanded',expanded);
+      assert.equal(pill.matches(face.selectorText),false,'the child stack must never receive a rectangular pill face');
+      assert.equal(f.dom.window.getComputedStyle(pill).boxShadow,'none');
+      assert.equal(f.dom.window.getComputedStyle(pill).borderTopWidth,'0px');
+      for(const circle of pill.querySelectorAll('[data-bb-chat-ui-info-avatar],[data-bb-chat-ui-info-avatar-more]'))assert.equal(f.dom.window.getComputedStyle(circle).borderRadius,'50%');
+    }
+    const goal=f.document.querySelector('[data-bb-chat-ui-info-trigger="goal"]')!;
+    assert.equal(goal.matches(face.selectorText),true,'ordinary pills keep their surface');
+    pill.setAttribute('data-bb-chat-ui-info-unavailable','');
+    assert.equal(pill.matches(face.selectorText),true,'the inactive child icon remains a normal circular pill');
+    assert.equal(f.dom.window.getComputedStyle(pill).borderRadius,'50%');
+  } finally {stop();f.dom.window.close();}
+});
+
 test("children use a bare latest-three avatar stack and prefer the designed SDK detail", async () => {
   const f = fixture();
   const children = [

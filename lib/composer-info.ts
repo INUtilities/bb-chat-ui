@@ -100,7 +100,8 @@ ${PILL}, [${MARK}-jump] { font:inherit; cursor:pointer; color:var(--foreground);
 [${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; transition:transform 260ms cubic-bezier(.2,.9,.22,1.25); }
 [${MARK}-trigger] { width:auto; min-width:0; }
 /* Pills are the only frost outside a card. Controls inside a card sit flat on its face (info-card.ts). */
-${PILL} { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; }
+/* Active child stacks paint only their circles; the inactive child icon still owns a pill face. */
+${PILL}:not(:where([${MARK}-trigger="children"]:not([${MARK}-unavailable]))) { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; }
 [${MARK}-panel-source] { display:none !important; }
 [${MARK}-title-source] { display:none !important; }
 [${MARK}-stack] [${MARK}-collapse] { display:none !important; }
@@ -282,8 +283,8 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [data-bb-chat-ui-info-jump-source] { visibility:hidden !important; pointer-events:none !important; }
 /* Avatars frost only on the bar; inside a card they sit on its face. */
 [${MARK}-trigger] [${MARK}-avatar] { backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); }
-[${MARK}-trigger="children"] { padding:0; min-height:34px; border-radius:0; background:transparent !important; backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow:none !important; }
-[${MARK}-trigger="children"]:hover { transform:none; }
+[${MARK}-trigger="children"]:not([${MARK}-unavailable]) { padding:0; min-height:34px; border:0 !important; border-radius:0; background:transparent !important; backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow:none !important; }
+[${MARK}-trigger="children"]:not([${MARK}-unavailable]):hover { transform:none; }
 [${MARK}-avatars] { display:flex; align-items:center; isolation:isolate; }
 [${MARK}-avatar], [${MARK}-avatar-more] { position:relative; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:30px; height:30px; margin-left:-12px; border-radius:50%; background:var(--bb-chat-ui-info-face); box-shadow:0 0 0 2px var(--bb-chat-ui-glass-base,var(--background)),inset 0 1px 3px var(--bb-chat-ui-info-edge); font-size:10px; font-weight:600; line-height:1; transition:transform 400ms cubic-bezier(.2,.9,.22,1.25); }
 [${MARK}-avatar]:first-child { margin-left:0; }

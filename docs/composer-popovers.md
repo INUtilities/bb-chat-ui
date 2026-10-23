@@ -132,6 +132,8 @@ Workflow는 위의 28px 규격을 적용한다. 그 밖의 32px는 최소 높이
   제목처럼 남은 너비 안에서 한 줄 말줄임한다. provider 아이콘과 탐색 동작은 유지한다.
   완료 표시는 체크 없이 6px 점으로 표시한다. 미확인은 Thread Theme와 같은
   `--timeline-accent`, 확인 후는 `--subtle-foreground`를 쓴다. 읽음 변경도 즉시 반영한다.
+- 상단 Child Thread 스택은 각 아바타와 `+N` 원에만 표면을 그린다. 공통 pill 배경·그림자를
+  스택 전체에 적용하지 않는다. 열기·hover에서도 유지하며, 비활성 Child 아이콘은 일반 원형 pill을 쓴다.
 
 모든 행을 같은 고정 높이로 만들지는 않는다. Child Thread·Parent의 탐색 행,
 Agentation의 피드백·위치 두 줄, 대기 메시지 본문·편집기는 각각의 정보량에 따라
