@@ -175,7 +175,7 @@ ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull reques
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title] { display:none; }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; z-index:1; gap:0; padding:0 22px 0 0 !important; border:0 !important; border-radius:0 !important; cursor:default; }
 ${LARGE_HIT_TARGET} ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { height:32px; min-height:32px; }
-${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; line-height:20px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; ${cardStyle.text} background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button[aria-label="Choose pull request merge method"] { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:flex-end; width:100%; min-width:0; height:100%; min-height:0; margin:0; padding:0 !important; color:var(--foreground); cursor:pointer; }
@@ -188,6 +188,7 @@ ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { backgroun
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL} p${PROTECTED_EXCLUDE} { min-width:0; overflow-wrap:anywhere; }
 ${DETAIL}[${OPEN}="background"] [aria-label^="Background command:"] > span[class~="flex-1"] > span[class~="whitespace-nowrap"]:not([class~="tabular-nums"]) { min-width:0; flex-shrink:1; overflow:hidden; text-overflow:ellipsis; }
+${DETAIL}[${OPEN}="background"] [class~="tabular-nums"] { ${cardStyle.secondaryText} }
 /* One glass face. Header disclosure sits flat on it; small actions keep the shared face. */
 /* The popup owns its entrance; native outer bodies open without another height reveal. */
 ${DETAIL} > section[role="region"], ${DETAIL}.agentation-staging-shell > .grid { transition:none !important; grid-template-rows:1fr !important; opacity:1 !important; }
@@ -223,7 +224,8 @@ ${WORKFLOW_PHASES} > div[class~="items-center"]:not(:last-child)::after { left:1
 ${WORKFLOW_PHASES} > div > button[aria-expanded] > svg { order:3; margin-left:auto; flex:none; color:var(--subtle-foreground); }
 ${WORKFLOW_PHASES} > div > button[aria-expanded] > span[class~="font-medium"] { flex:1; }
 ${WORKFLOW_PHASES} > div[class~="items-center"] > span[aria-hidden="true"] { display:none; }
-${WORKFLOW_PHASES} > div[class~="items-center"] > span[class~="tabular-nums"] { margin-left:auto; font-size:10px; white-space:nowrap; }
+${WORKFLOW_PHASE_ROW.split(", ").map(selector => `${selector} > span[class~="tabular-nums"]`).join(", ")} { ${cardStyle.secondaryText} }
+${WORKFLOW_PHASES} > div[class~="items-center"] > span[class~="tabular-nums"] { margin-left:auto; white-space:nowrap; }
 ${WORKFLOW_PHASES} > div > button[aria-expanded][class~="bg-background/70"]::before,
 ${WORKFLOW_PHASES} > div > button[aria-expanded]:has(> [data-icon="CircleCheck"])::before,
 ${WORKFLOW_PHASES} > div[class~="items-center"][class~="bg-background/70"]::before,
@@ -328,7 +330,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-content] { display:block !important; }
 [${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; padding:7px 0; font-size:12px; min-width:0; }
 [${MARK}-diff-file][hidden], [${MARK}-diff-commit][hidden] { display:none !important; }
-[${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; width:100%; min-height:28px; margin:3px 0; padding:4px 8px; border-radius:8px; font-size:11px !important; line-height:16px; color:var(--subtle-foreground); cursor:pointer; text-align:left; }
+[${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; width:100%; min-height:28px; margin:3px 0; padding:4px 8px; border-radius:8px; font-size:12px !important; line-height:16px; color:var(--subtle-foreground); cursor:pointer; text-align:left; }
 [${MARK}-diff] [${MARK}-diff-toggle] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 [${MARK}-diff-toggle]:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 [${MARK}-diff-toggle] svg { width:12px; height:12px; flex-shrink:0; }
@@ -1485,6 +1487,7 @@ export function injectComposerInfo(document: Document): () => void {
       foldRows(commits, "commits");
       if (detail.commitKind === "pr" && detail.unpushedCount != null) {
         const push = document.createElement("p");
+        push.setAttribute(cardSlot.meta, "");
         push.textContent = `미푸시 · ${detail.unpushedCount} commits · ${detail.unpushedRef ?? "기준 없음"} 대비`;
         overview.append(push);
       }

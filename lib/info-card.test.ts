@@ -101,16 +101,20 @@ test("the common body removes inherited edge insets while keeping row padding", 
 });
 
 test("main card text stays 12px/16px when host mobile utilities grow, without resizing metadata or editors", () => {
-  const f=page(`<section ${CARD}><div ${cardSlot.body}><p class="text-xs leading-relaxed">Goal objective</p><span class="text-xs">Workflow phase</span><p ${cardSlot.meta} class="text-xs">Usage</p><pre><code class="text-xs">code</code></pre><div contenteditable="true"><p class="text-xs">draft</p></div></div></section><p class="text-xs" data-outside>Native paragraph</p>`);
+  const f=page(`<section ${CARD}><div ${cardSlot.body}><p class="text-xs leading-relaxed">Goal objective</p><span class="text-xs">Workflow phase</span><span class="text-sm">Notice</span><span class="text-2xs leading-none">Count</span><p ${cardSlot.meta} class="text-xs">Usage</p><pre><code class="text-xs">code</code></pre><div contenteditable="true"><p class="text-xs">draft</p><span class="text-2xs" data-editor-caption>Editor caption</span></div></div></section><p class="text-xs" data-outside>Native paragraph</p>`);
   const host=f.document.createElement('style');
-  host.textContent='.text-xs { font-size:14px; line-height:20px; } .leading-relaxed { line-height:1.625; }';
+  host.textContent='.text-xs { font-size:14px; line-height:20px; } .text-sm { font-size:15px; line-height:22px; } .text-2xs { font-size:10px; line-height:14px; } .leading-none { line-height:1; } .leading-relaxed { line-height:1.625; }';
   f.document.head.prepend(host);
-  for(const selector of ['p.leading-relaxed','span.text-xs']){
+  for(const selector of ['p.leading-relaxed','span.text-xs','span.text-sm']){
     const s=f.style(f.document.querySelector(selector)!);
     assert.equal(s.fontSize,'12px','host mobile utilities must not enlarge main card content');
     assert.equal(s.lineHeight,'16px');
   }
   assert.equal(f.style(f.document.querySelector(`[${cardSlot.meta}]`)!).fontSize,'11px');
+  const caption=f.style(f.document.querySelector('span.leading-none')!);
+  assert.equal(caption.fontSize,'11px','counts use the secondary scale, regardless of the host utility');
+  assert.equal(caption.lineHeight,'16px');
+  assert.equal(f.style(f.document.querySelector('[data-editor-caption]')!).fontSize,'10px','editor captions keep their own type');
   for(const selector of ['code','[contenteditable] p','[data-outside]']){
     const s=f.style(f.document.querySelector(selector)!);
     assert.equal(s.fontSize,'14px',`${selector}: typography outside the main card text stays native`);
@@ -122,6 +126,8 @@ test("main card text stays 12px/16px when host mobile utilities grow, without re
 test("text actions are hairline pills without a second surface", () => {
   const f = page(`<section ${CARD}><div ${cardSlot.head}><button ${cardSlot.button}>Goal 해제</button></div></section>`);
   const s = f.style(f.document.querySelector(`[${cardSlot.button}]`)!);
+  assert.equal(s.fontSize, "12px", "text actions use the same readable size as the main content");
+  assert.equal(s.lineHeight, "16px");
   assert.equal(s.height, "28px");
   assert.equal(s.borderRadius, "999px");
   assert.equal(s.borderTopWidth, "1px");

@@ -24,9 +24,12 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 - 주 본문은 native·SDK, phone·desktop 모두 12px/16px다. 문단과 native `text-xs`도
   공통 `cardStyle.text`에 연결해 호스트의 모바일 14px·`leading-relaxed`가 섞이지 않게 한다.
   Diff의 파일 경로·커밋 본문도 같은 크기이며 코드 글꼴은 유지한다.
-- Goal의 사용량·상태와 SDK 대기 메시지의 상태 설명은 공통 보조 정보 11px/16px다.
+- 글자 액션도 12px/16px다. Merge·해제·복구·더 보기의 크기를 본문과 맞추고,
+  버튼의 클릭 영역 높이와 글자의 줄 높이를 분리한다.
+- Goal의 사용량·상태, Workflow의 진행 수·대기 상태·시간·모델, 백그라운드 시간,
+  Diff의 비교 통계·미푸시 안내와 SDK 대기 메시지 상태는 공통 보조 정보 11px/16px다.
   제목·액션·보조 정보 slot, 코드·입력·편집기와 그 자식은 본문 글자 규칙에서 제외한다.
-  Workflow의 작은 진행 수·상태와 모델 정보 등 별도로 정한 보조 크기는 유지한다.
+  native `text-2xs`와 작은 개수 배지도 같은 보조 크기를 쓰며 phone에서만 커지지 않는다.
   백그라운드 명령의 앞쪽 안내 문구는 좁은 카드에서 말줄임해 제목·시간이 가로로 넘치지 않게 한다.
 - 패널·플러그인 페이지·GitHub 등 외부 열기 버튼은 제목 텍스트 바로 오른쪽에
   둔다. 짧은 제목 뒤에 빈 공간을 늘려 버튼을 카드 오른쪽 끝으로 밀지 않는다.
@@ -63,6 +66,17 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   글자와 캐럿만 표시한다. 글자와 캐럿 모두 같은 머지 방식 메뉴를 열며, 방법을 선택할 때만 실행한다.
 
 ## 공통 규격과 컴포넌트 연결
+
+| 글자 역할 | 크기 / 줄 높이 | 연결 |
+|---|---|---|
+| 제목 | 12px / 16px, 굵기 600 | `cardSlot.head`, `cardSlot.title` |
+| 본문·목록 이름 | 12px / 16px | `cardStyle.text`, 문단·native `text-xs`·`text-sm` |
+| 글자 액션 | 12px / 16px | `cardStyle.button`, PR Merge, Diff 더 보기 |
+| 상태·시간·개수·모델 등 보조 정보 | 11px / 16px | `cardSlot.meta`, `cardSlot.section`, `cardStyle.secondaryText`, native `text-2xs` |
+
+두 글자 크기는 native·SDK, phone·desktop에 공통이다. 색·굵기·배치는 각 역할을
+따르고 입력·편집기·코드 본문의 자체 크기는 유지한다. 아이콘 전용 액션과 ×의
+글자는 일반 글자 액션의 줄 높이로 덮지 않는다.
 
 | 규격 | 구성과 여백 | 연결 |
 |---|---|---|

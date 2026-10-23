@@ -90,6 +90,29 @@ test("Goal body text shares the card line height and native/SDK metadata uses th
   f.dom.window.close();
 });
 
+test("Workflow and background metadata keep one secondary size across host device utilities", () => {
+  for(const phone of [false,true]){
+    const host=`.text-xs {font-size:${phone?14:12}px;line-height:${phone?20:16}px} .text-2xs {font-size:${phone?11:10}px;line-height:${phone?15:14}px}`;
+    const dom=new JSDOM(`<style>${host}\n${composerInfoCss}</style><div data-promptbox-shell><div class="grid" data-bb-chat-ui-info-stack>
+      <section data-bb-chat-ui-info-unit data-bb-chat-ui-info-open="workflow" aria-label="Workflow">
+        <header data-bb-chat-ui-card-head><span data-bb-chat-ui-card-title>Run title</span><span class="text-2xs" data-meta>2/3 agents</span></header>
+        <section role="region"><div data-detail-scroll-area><div class="flex flex-col gap-1.5">
+          <div><button aria-expanded="true"><span class="text-xs" data-main>Review</span><span class="text-xs tabular-nums" data-meta>1/2</span></button><div class="flex flex-col"><div class="flex min-h-7 items-center gap-1.5"><span class="truncate text-xs" data-main>Agent task</span><span class="ml-auto"><span class="text-2xs" data-meta>codex · model · medium</span></span></div></div></div>
+          <div class="flex items-center gap-1.5"><span class="text-xs" data-main>Next phase</span><span class="text-xs tabular-nums" data-meta>not started</span></div>
+        </div></div></section>
+      </section>
+      <section data-bb-chat-ui-info-unit data-bb-chat-ui-info-open="background" aria-label="Background activity"><div id="thread-background-commands-card-body"><div><div class="flex flex-col"><div class="px-3"><span data-main>Background task</span><span class="tabular-nums" data-meta>26m</span></div></div></div></div></section>
+    </div></div>`);
+    try{
+      for(const node of dom.window.document.querySelectorAll('[data-main],[data-meta]')){
+        const s=dom.window.getComputedStyle(node),meta=node.hasAttribute('data-meta');
+        assert.equal(s.fontSize,meta?'11px':'12px',`${phone?'phone':'desktop'}: ${node.textContent}`);
+        assert.equal(s.lineHeight,'16px',`${node.textContent}: one line-height for both roles`);
+      }
+    } finally {dom.window.close();}
+  }
+});
+
 test("Diff file paths and commit subjects use the main size while statistics stay secondary", () => {
   const dom=new JSDOM(`<style>${composerInfoCss}</style><div data-bb-chat-ui-info-diff-file><code>lib/example.ts</code><span>+12</span></div><div data-bb-chat-ui-info-diff-commit><code>Commit subject</code></div>`);
   for(const text of dom.window.document.querySelectorAll('code')){
@@ -205,6 +228,8 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
       assert.equal(style(button).borderRadius,'0px');
     }
     const [label,trigger]=Array.from(group.querySelectorAll('button'));
+    assert.equal(style(label).fontSize,'12px','Merge shares the common text action size');
+    assert.equal(style(label).lineHeight,'16px');
     assert.equal(style(label).pointerEvents,'none');
     assert.equal(style(label).height,'20px');
     assert.equal(style(trigger).position,'absolute');
@@ -4195,7 +4220,7 @@ test("restore action text keeps the compact size when desktop button defaults ar
       f.click('[data-bb-chat-ui-info-trigger="status"]');
       const action=f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-unarchive]')!;
       const css=f.dom.window.getComputedStyle(action);
-      assert.equal(css.fontSize,'11px',`${text}: desktop button defaults do not enlarge the shared text action`);
+      assert.equal(css.fontSize,'12px',`${text}: desktop button defaults do not enlarge the shared text action`);
       assert.equal(css.lineHeight,'16px','compact text keeps its matching line height');
       assert.equal(css.minHeight,'28px','a pointer uses the shared 28px text action');
       f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
