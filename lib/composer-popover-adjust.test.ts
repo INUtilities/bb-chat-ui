@@ -29,6 +29,23 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
   } finally { f.dom.window.close(); }
 });
 
+test("Diff rows share the hover gutter while their zero-gap graph spans the padded row", () => {
+  const f = surface("diff", '<div data-bb-chat-ui-info-diff-files><div data-bb-chat-ui-info-diff-file><svg/><code>path</code><span>+2</span></div></div><div data-bb-chat-ui-info-diff-commits><div data-bb-chat-ui-info-diff-commit><span data-bb-chat-ui-info-diff-graph><svg/></span><code>Commit</code></div><div data-bb-chat-ui-info-diff-commit><span data-bb-chat-ui-info-diff-graph><svg/></span><code>Next</code></div></div>');
+  try {
+    for (const selector of ['[data-bb-chat-ui-info-diff-file]', '[data-bb-chat-ui-info-diff-commit]']) {
+      const row = f.css(selector);
+      assert.equal(row.padding, '8px'); assert.equal(row.borderRadius, '10px');
+      assert.equal(row.minHeight, '32px'); assert.equal(row.marginLeft, '-8px');
+      assert.equal(row.transition, 'background-color 150ms ease-out');
+    }
+    assert.equal(f.css('[data-bb-chat-ui-info-diff-commits]').rowGap, '0px');
+    const graph = f.css('[data-bb-chat-ui-info-diff-graph]');
+    assert.equal(graph.alignSelf, 'stretch');
+    assert.equal(graph.marginTop, '-8px'); assert.equal(graph.marginBottom, '-8px');
+    assert.equal(f.css('code').fontSize, '13px'); assert.equal(f.css('[data-bb-chat-ui-info-diff-file] > span').fontSize, '12px');
+  } finally { f.dom.window.close(); }
+});
+
 test("the PR GitHub link uses the shared circular action without replacing its URL", () => {
   const f = surface("pullRequest", '<div data-bb-chat-ui-info-pr-heading><a aria-label="Pull request 12: Open" href="https://example.com/pr/12" class="rounded">PR</a></div>', "small", '.rounded{border-radius:4px}');
   try {

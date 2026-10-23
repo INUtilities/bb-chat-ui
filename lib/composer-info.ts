@@ -334,7 +334,9 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-scroll-hint="bottom"] { border-radius:0 0 18px 18px; background:linear-gradient(to top,var(--bb-chat-ui-info-face),transparent); mask-image:linear-gradient(to top,black,transparent); -webkit-mask-image:linear-gradient(to top,black,transparent); }
 [${MARK}-diff] p { white-space:pre-wrap; }
 [${MARK}-diff-content] { display:block !important; }
-[${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; padding:7px 0; ${cardStyle.text} min-width:0; }
+[${MARK}-diff-files], [${MARK}-diff-commits] { display:flex; flex-direction:column; row-gap:0; }
+[${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; min-width:0; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+[${MARK}-diff-file]:hover, [${MARK}-diff-commit]:hover { ${cardStyle.rowHover} }
 [${MARK}-diff-file][hidden], [${MARK}-diff-commit][hidden] { display:none !important; }
 [${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; width:100%; min-height:28px; margin:3px 0; padding:4px 8px; border-radius:8px; font-size:13px !important; line-height:16px; color:var(--subtle-foreground); cursor:pointer; text-align:left; }
 [${MARK}-diff] [${MARK}-diff-toggle] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
@@ -342,8 +344,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-toggle] svg { width:12px; height:12px; flex-shrink:0; }
 [${MARK}-diff-toggle][aria-expanded=true] svg { transform:rotate(180deg); }
 [${MARK}-diff-file] > svg { width:16px; height:16px; flex-shrink:0; }
-[${MARK}-diff-commit] { padding:0; min-height:32px; }
-[${MARK}-diff-graph] { position:relative; align-self:stretch; width:16px; flex-shrink:0; color:var(--subtle-foreground); }
+[${MARK}-diff-graph] { position:relative; align-self:stretch; margin-top:-8px; margin-bottom:-8px; width:16px; flex-shrink:0; color:var(--subtle-foreground); }
 [${MARK}-diff-graph]::before, [${MARK}-diff-graph]::after { content:""; position:absolute; left:7.5px; width:1px; background:color-mix(in oklab,var(--subtle-foreground) 40%,transparent); }
 [${MARK}-diff-graph]::before { top:0; bottom:calc(50% + 4px); }
 [${MARK}-diff-graph]::after { top:calc(50% + 4px); bottom:0; }
