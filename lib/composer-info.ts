@@ -163,19 +163,18 @@ ${DETAIL}[aria-label="Model fallback"] [role="status"] > span:not([title]) { dis
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { width:auto; margin-left:8px; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] > [${MARK}-close-heading] { ${cardStyle.headOnly} }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-size:12px; font-weight:600; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-size:12px; font-weight:400; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { display:inline-flex; align-items:center; justify-content:center; flex:none; width:24px; height:24px; padding:0 !important; font-size:0 !important; text-decoration:none; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:16px; height:16px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
-${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title]:has([${MARK}-title-source]) { display:none; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; gap:0; padding:0 34px 0 12px !important; cursor:default; }
+${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title] { display:none; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; gap:0; padding:0 22px 0 0 !important; border:0 !important; border-radius:0 !important; cursor:default; }
 ${LARGE_HIT_TARGET} ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { height:32px; min-height:32px; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; line-height:20px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
-${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button[aria-label="Choose pull request merge method"] { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:flex-end; width:100%; min-width:0; height:100%; min-height:0; margin:0; padding:0 12px !important; color:var(--foreground); cursor:pointer; }
+${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button[aria-label="Choose pull request merge method"] { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:flex-end; width:100%; min-width:0; height:100%; min-height:0; margin:0; padding:0 !important; color:var(--foreground); cursor:pointer; }
 ${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge method"] svg { display:block; width:14px; height:14px; opacity:1; }
 [data-bb-chat-ui-pr-menu-layer] { z-index:56 !important; }
 [data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
@@ -684,6 +683,7 @@ export function injectComposerInfo(document: Document): () => void {
     // A shared host card (diff · PR · parent) keeps one head per family.
     const closeHeadings = new Map<HTMLElement, InfoKind | "all" | null>();
     const generatedCloseHeadings = new Set<HTMLElement>();
+    const prSingleRows = new Set<HTMLElement>();
     const goalClearLabels = new Map<HTMLElement, HTMLElement>();
     const planExitLabels = new Map<HTMLElement, HTMLElement>();
     const fallbackDismissLabels = new Map<HTMLElement, HTMLElement>();
@@ -759,6 +759,9 @@ export function injectComposerInfo(document: Document): () => void {
         if (generatedCloseHeadings.delete(heading)) heading.remove();
       }
       const item = items.find(item => item.node === activeNode && item.key === active);
+      for (const card of prSingleRows) if (item?.key !== "pullRequest" || item.node !== card || !card.hasAttribute(OPEN)) {
+        card.removeAttribute(cardSlot.layout); prSingleRows.delete(card);
+      }
       for (const title of readOnlyTitles.keys()) if (title !== item?.trigger || !item.node.hasAttribute(OPEN)) restoreTitle(title);
       if (item?.key !== "pullRequest" || !item.node.hasAttribute(OPEN)) clearPrHeader();
       const backgroundHost = item?.key === "background" && item.node.hasAttribute(OPEN) ? item.node : null;
@@ -841,7 +844,7 @@ export function injectComposerInfo(document: Document): () => void {
       }
       if (!item || !item.node.hasAttribute(OPEN) || item.key === "diff" || item.node.matches(".agentation-staging-shell") || item.node.querySelector(`[${MARK}-dismiss]:not([${MARK}-native-dismiss])`)) return;
       let heading:HTMLElement | null = null;
-      if (item.node.getAttribute(cardSlot.layout) !== "single-row") {
+      if (item.key === "pullRequest" || item.node.getAttribute(cardSlot.layout) !== "single-row") {
         heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading]`);
         if (!heading || heading.closest("button, a")) {
           const parent = item.trigger?.parentElement;
@@ -857,6 +860,8 @@ export function injectComposerInfo(document: Document): () => void {
         if (!heading.hasAttribute(cardSlot.head)) heading.setAttribute(cardSlot.head, "");
         closeHeadings.set(heading, item.key);
         if (item.key === "pullRequest") {
+          if (item.node.getAttribute(cardSlot.layout) !== "single-row") item.node.setAttribute(cardSlot.layout, "single-row");
+          prSingleRows.add(item.node);
           const link = heading.querySelector<HTMLAnchorElement>('a[aria-label^="Pull request "][href]');
           if (link) {
             if (prHeading !== heading || prLink !== link) clearPrHeader();
@@ -2413,6 +2418,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const row of collapseRows) row.removeAttribute(`${MARK}-collapse`);
       for (const heading of closeHeadings.keys()) { heading.removeAttribute(`${MARK}-close-heading`); heading.removeAttribute(cardSlot.head); }
       for (const heading of generatedCloseHeadings) heading.remove();
+      for (const card of prSingleRows) card.removeAttribute(cardSlot.layout);
       clearPrHeader();
       backgroundAccordions.stop();
       for (const node of owned) { node.removeAttribute(UNIT); node.removeAttribute(OPEN); }

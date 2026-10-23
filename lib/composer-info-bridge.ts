@@ -98,7 +98,8 @@ export function ComposerInfoBridge() {
       reads.queue && data?.queue.length ? section("queue", "대기 메시지", "ListTodo", createElement("div", { [cardSlot.body]:"" }, ...data.queue.map(row => createElement("div", { key:row.id, [cardSlot.body]:"" },
         createElement("p", null, row.content.filter(part => part.visibility !== "agent-only").map(part => part.type === "text" ? part.text : part.type === "localFile" ? part.name ?? part.path : part.type === "localImage" ? part.path : "Image").join("\n")),
         createElement("p", { className:"text-subtle-foreground" }, row.failureReason ?? (row.sendAt ? new Date(row.sendAt).toLocaleString() : "Queued")))))) : null,
-      pullRequest ? section("pullRequest", "Pull request", "ListTodo", createElement("div", { [cardSlot.body]:"" }, createElement(UrlLink, { href:pullRequest.url }, `#${pullRequest.number} · ${pullRequest.title}`), createElement("p", null, `${pullRequest.state} · ${pullRequest.checks.state} · ${pullRequest.review.state}`))) : null,
+      pullRequest ? createElement("section", { key:"pullRequest", [`${mark}-kind`]:"pullRequest", "aria-label":"Pull request" },
+        createElement("div", null, createElement(UrlLink, { href:pullRequest.url, "aria-label":`Pull request ${pullRequest.number}: ${pullRequest.state}` }, pullRequest.title))) : null,
       error && !data ? section("other", "정보를 불러오지 못했습니다", "CircleAlert", createElement("p", { [cardSlot.body]:"" }, "연결이 복구되면 다시 읽습니다. 현재 표시된 BB 정보는 계속 열 수 있습니다.")) : null,
     ));
 }

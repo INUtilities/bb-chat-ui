@@ -69,6 +69,7 @@ ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }
 ${card}[${cardSlot.layout}="heading-only"] > ${s.head} { ${cardStyle.headOnly} }
+${card}[${cardSlot.layout}="single-row"] > ${s.head} { height:32px; min-height:32px; margin-bottom:0; }
 ${s.body} { ${cardStyle.body} }
 ${s.body} > :first-child { margin-top:0 !important; }
 ${s.body} > :last-child { margin-bottom:0 !important; }

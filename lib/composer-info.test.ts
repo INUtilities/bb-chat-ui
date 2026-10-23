@@ -116,7 +116,7 @@ test("PR method menus stay above the popover and the header reserves its close-b
   f.dom.window.close();
 });
 
-test("PR header removes the hidden icon gutter and uses the shared hairline Merge action with the shared close", async () => {
+test("PR uses a single 32px row with a text-and-caret Merge action and the shared close", async () => {
   const f=fixture();
   const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
   context.innerHTML='<div class="p-1"><a aria-label="Pull request 12: Open" class="px-2"><span title="Open" class="flex"><svg /></span><span>PR #12</span></a><div><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method" aria-expanded="false"><svg /></button></div></div></div>';
@@ -131,9 +131,9 @@ test("PR header removes the hidden icon gutter and uses the shared hairline Merg
     assert.equal(style(link).paddingTop,'4px');
     assert.equal(style(link).paddingBottom,'4px');
     assert.equal(style(link.querySelector('span[title]')!).display,'none','hidden native artwork must not leave an empty box');
-    assert.equal(style(group).borderTopWidth,'1px');
-    assert.equal(style(group).borderRadius,'999px');
-    assert.equal(style(group).padding,'0px 34px 0px 12px','the caret overlay keeps its right gutter');
+    assert.equal(style(group).borderTopWidth,'0px','Merge has no outer outline');
+    assert.equal(style(group).borderRadius,'0px');
+    assert.equal(style(group).padding,'0px 22px 0px 0px','only the 14px caret and 8px text gap reserve space');
     assert.equal(style(group).height,'28px','the shared text action height');
     assert.equal(style(group).backgroundColor,'rgba(0, 0, 0, 0)','no second frost inside the card');
     assert.equal(style(group).getPropertyValue('backdrop-filter'),'none');
@@ -149,12 +149,40 @@ test("PR header removes the hidden icon gutter and uses the shared hairline Merg
     assert.equal(style(trigger).position,'absolute');
     assert.equal(style(trigger).width,'100%');
     assert.equal(style(trigger).height,'100%');
-    assert.equal(style(trigger).padding,'0px 12px');
+    assert.equal(style(trigger).padding,'0px');
+    assert.equal(context.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
+    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).height,'32px');
     assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom,'0px','a PR header without a body has no trailing body gap');
     const close=context.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(close.hasAttribute('data-bb-chat-ui-card-close'));
-    assert.equal(style(close).position,'absolute');assert.equal(style(close).top,'18px','the shared close sits on the 28px head line');
+    assert.equal(style(close).position,'absolute');assert.equal(style(close).top,'20px','the shared close centers on the 32px row');
   } finally {stop();f.dom.window.close();}
+});
+
+test("the SDK PR fallback uses the same single row without a family title or family icon", async () => {
+  const f=fixture(),source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+  source.setAttribute('data-bb-chat-ui-info-pr-title','SDK PR title');
+  source.insertAdjacentHTML('beforeend','<span data-bb-chat-ui-info-icon="pullRequest"><svg /></span>');
+  f.document.querySelector('section[aria-label="Thread context before sending"]')!.remove();
+  const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  stack.insertAdjacentHTML('beforeend','<div data-bb-chat-ui-info-supplements><section data-bb-chat-ui-info-kind="pullRequest" aria-label="Pull request"><div><a aria-label="Pull request 42: Open" href="https://example.com/pr/42">SDK PR title</a></div></section></div>');
+  const card=stack.querySelector('[data-bb-chat-ui-info-kind="pullRequest"]')!,link=card.querySelector('a')!;
+  const stop=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    assert.equal(card.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
+    assert.equal(card.querySelector('[data-bb-chat-ui-info-title-icon]'),null);
+    assert.equal(card.querySelector('[data-bb-chat-ui-info-pr-title]')?.textContent,'SDK PR title');
+    assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).height,'32px');
+    f.click('[data-bb-chat-ui-card-close]');await f.tick();
+    assert.equal(card.hasAttribute('data-bb-chat-ui-card-layout'),false);
+    f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    assert.equal(card.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
+  } finally {stop();}
+  assert.equal(card.hasAttribute('data-bb-chat-ui-card-layout'),false);
+  assert.equal(link.textContent,'SDK PR title');
+  assert.equal(link.getAttribute('title'),null);
+  f.dom.window.close();
 });
 
 test("PR header shows the SDK title on one line and keeps a separate GitHub link", async () => {
@@ -1260,7 +1288,7 @@ test("named native actions stay separate from popover close", async () => {
     assert.ok(f.document.querySelector('[aria-label="실행 환경 닫기"]'));
     f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');
     const merge = context.querySelector<HTMLElement>("div.inline-flex.rounded")!;
-    assert.equal(paint(merge).borderTopWidth, "1px", "the Merge group has one outer outline");
+    assert.equal(paint(merge).borderTopWidth, "0px", "the Merge group is text and caret only");
     assert.equal(paint(context.querySelector("input")!).borderTopWidth, "1px");
     context.querySelector<HTMLButtonElement>("div.inline-flex button")!.click();
     assert.equal(merges, 1);
@@ -6228,11 +6256,11 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
       const closes=Array.from(card.querySelectorAll('[data-bb-chat-ui-card-close]')).filter(node=>css(node).display!=='none');
       assert.equal(closes.length,1,`${kind}: exactly one close slot`);
       assert.equal(css(closes[0]).position,'absolute',`${kind}: close sits on the card, not in a per-card grid`);
-      assert.equal(css(closes[0]).top,'18px',`${kind}: close centers on the 28px head line`);
+      assert.equal(css(closes[0]).top,kind==='pullRequest'?'20px':'18px',`${kind}: close centers on its row`);
       assert.equal(css(closes[0]).right,'16px',`${kind}: close uses the common outer inset`);
       const head=card.querySelector('[data-bb-chat-ui-card-head]');
       assert.ok(head,`${kind}: a head slot`);
-      assert.equal(css(head!).minHeight,'28px',`${kind}: one head line height`);
+      assert.equal(css(head!).minHeight,kind==='pullRequest'?'32px':'28px',`${kind}: one row height`);
       surfaceFree(card,kind);
       f.click('[data-bb-chat-ui-card-close]');
       await f.tick();

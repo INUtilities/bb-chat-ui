@@ -45,18 +45,20 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   단계 펼치기 캐럿과 대기 상태는 행 오른쪽에 둔다. 펼친 에이전트는 연결선 안쪽에
   들여쓰고, 작업 이름 아래에 provider·model·reasoning 정보를 작은 보조 줄로 표시한다.
   제목·에이전트 이름·보조 정보는 카드 안쪽 여백에서 한 줄 말줄임한다.
-- Pull request는 SDK에서 읽은 제목을 한 줄로 표시하고 남는 너비에서 말줄임한다.
+- Pull request도 Parent와 같은 `single-row` 카드다. 별도 계열 제목·계열 아이콘·상태 본문 없이
+  SDK에서 읽은 PR 제목을 한 줄로 표시하고 남는 너비에서 말줄임한다.
   원래 PR 링크는 제목 옆의 외부 열기 아이콘으로 보이며 GitHub URL과 탐색 동작을
   유지한다. SDK 제목을 아직 읽지 못했으면 원래 PR 번호를 임시 제목으로 쓴다.
-  Merge 메뉴와 닫기는 별도 영역으로 두어 제목과 겹치지 않게 한다.
+  Merge 메뉴와 닫기는 별도 영역으로 두어 제목과 겹치지 않게 한다. Merge는 테두리·배경 없이
+  글자와 캐럿만 표시한다. 글자와 캐럿 모두 같은 머지 방식 메뉴를 열며, 방법을 선택할 때만 실행한다.
 
 ## 공통 규격과 컴포넌트 연결
 
 | 규격 | 구성과 여백 | 연결 |
 |---|---|---|
 | 기본 상세 카드 | 28px 제목 + 8px 간격 + 본문, 바깥 패딩 16px 24px | `cardSlot.head`, `cardSlot.body` |
-| 제목 단독 카드 (`heading-only`) | 본문 없이 28px 제목만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout, native PR 제목은 `cardStyle.headOnly` 재사용 |
-| 단일 탐색 카드 (`single-row`) | 제목 없이 최소 32px 탐색 행 하나, 바깥 패딩 16px 24px | Parent adapter → `cardSlot.layout="single-row"`, `cardSlot.row` |
+| 제목 단독 카드 (`heading-only`) | 본문 없이 28px 제목만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout |
+| 단일 행 카드 (`single-row`) | 별도 제목 없이 32px 콘텐츠 행 하나, 바깥 패딩 16px 24px | Parent는 `cardSlot.row`, PR은 제목·외부 열기·Merge를 담은 native/SDK 행을 `cardSlot.head`에 연결, 공통 `cardSlot.layout="single-row"` |
 | 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
 
 - `single-row`의 닫기는 위 20px·오른쪽 16px로 32px 행의 중앙에 놓인다.
@@ -67,7 +69,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   추가 상하 패딩을 제거한다. 본문 사이의 간격과 목록 행 자체의 8px 패딩은 유지한다.
 - Queue 제목 아래도 8px 간격을 쓴다. 빈 정보 안내는 본문의 끝에 추가 margin을 남기지 않는다.
   Queue의 마지막 그룹 경계가 잘리지 않도록 확보한 하단 12px는 기능 여백이므로 유지한다.
-- 닫기·해제하면 Parent의 layout 표식과 추가 행을 제거하고 원래 native DOM을 복원한다.
+- 닫기·해제하면 Parent·PR의 layout 표식과 추가 표시를 제거하고 원래 native DOM을 복원한다.
 
 ## 비활성 정보와 접힌 스택
 
