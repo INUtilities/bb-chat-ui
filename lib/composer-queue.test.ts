@@ -125,12 +125,12 @@ test("queue actions stay vertically centered in compact rows with appropriate hi
     try {
       f.click('[data-bb-chat-ui-info-trigger="queue"]'); await f.tick();
       const style=(node:Element)=>f.dom.window.getComputedStyle(node);
-      assert.equal(style(row).padding,'4px 0px','rows no longer carry eight pixels above and below');
+      assert.equal(style(row).padding,'8px','message rows use the shared eight-pixel inset');
       assert.equal(style(row.querySelector('.flex')!).alignItems,'center','controls follow the entire message row, including wrapped text');
       assert.equal(style(actions).alignSelf,'center');
       assert.equal(style(actions.querySelector('button')!).height,small?'24px':'32px','mobile retains a larger touch target');
       assert.equal(style(text).padding,small?'4px 0px':'8px 0px','existing message body padding is preserved');
-      assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'0px','the common card supplies the outer vertical inset');
+      assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'0px 8px','the scroller holds the hover gutter without adding a vertical inset');
       assert.equal(style(f.queue).maxHeight,'var(--bb-chat-ui-info-max-height)');
       assert.equal(actions.parentElement,original,'native action controls retain their parent');
       f.click('[data-send]'); assert.equal(f.sent(),1);

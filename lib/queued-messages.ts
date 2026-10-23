@@ -209,11 +209,16 @@ ${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Edit"] {
   order: 3;
 }
 ${MANAGED_QUEUE} [data-queued-message-row] {
-  padding: 4px 0 !important;
+  ${cardStyle.rowBox}
+  ${cardStyle.rowGutter}
 }
-${MANAGED_QUEUE} [data-queued-message-row]:not(:last-child) {
-  border-bottom: 1px solid color-mix(in oklab, var(--border-seam) 55%, transparent) !important;
+${MANAGED_QUEUE} [data-queued-message-row]:is(:hover, :focus-within) {
+  ${cardStyle.rowHover}
 }
+${MANAGED_QUEUE} [data-queued-messages-scroll] > ul { display:flex; flex-direction:column; row-gap:2px; }
+/* Keep the hover gutter inside the clipped viewport; message content stays at the body edge. */
+${OPEN_QUEUE} [data-queued-messages-scroll-frame] { width:calc(100% + 16px) !important; margin-left:-8px; margin-right:-8px; }
+${OPEN_QUEUE} [data-queued-messages-scroll] { box-sizing:border-box; padding-left:8px !important; padding-right:8px !important; }
 ${MANAGED_QUEUE} [data-queued-message-row] > .flex {
   width: 100%;
   flex-direction: row;

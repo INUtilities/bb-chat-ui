@@ -984,7 +984,8 @@ test("queue and list cards share the same horizontal content gutter as their hea
       const row=f.dom.window.getComputedStyle(card.querySelector(rowSelector)!);
       const inset=(value:string)=>parseFloat(value)||0;
       const scroll=card.querySelector('[data-queued-messages-scroll]');
-      const gutter=inset(outer.paddingLeft)+inset(row.marginLeft)+inset(row.paddingLeft)+(scroll?inset(f.dom.window.getComputedStyle(scroll).paddingLeft):0);
+      const frame=card.querySelector('[data-queued-messages-scroll-frame]');
+      const gutter=inset(outer.paddingLeft)+inset(row.marginLeft)+inset(row.paddingLeft)+(scroll?inset(f.dom.window.getComputedStyle(scroll).paddingLeft):0)+(frame?inset(f.dom.window.getComputedStyle(frame).marginLeft):0);
       assert.equal(gutter,inset(outer.paddingLeft),`${key}: body starts at the same inset as its header`);
       assert.equal(outer.paddingLeft,outer.paddingRight,'left and right card gutters match');
       if (key === 'queue') assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,'8px','queue uses the common title-to-body gap');
