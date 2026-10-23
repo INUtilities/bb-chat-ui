@@ -278,7 +278,7 @@ ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   flex: 1 1 0%;
   max-width: none;
   min-width: 0;
-  padding: 8px 0;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -309,9 +309,6 @@ ${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Q
   min-height: 32px;
   padding: 0 !important;
   border-radius: 999px !important;
-}
-${SMALL_HIT_TARGET} ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
-  padding: 4px 0;
 }
 ${SMALL_HIT_TARGET} ${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Queued message "][aria-label$=" actions"]) {
   width: 24px;

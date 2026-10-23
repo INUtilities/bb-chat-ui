@@ -92,7 +92,7 @@ test("managed queue uses plain list rows and leaves standalone message bubbles i
     assert.equal(style(row.querySelector('.flex')!).flexDirection, 'row', 'text precedes the actions');
     assert.equal(style(text).flex, '1 1 0%');
     assert.equal(style(text).maxWidth, 'none', 'message text uses the available row width');
-    assert.equal(style(text).padding, '8px 0px');
+    assert.equal(style(text).padding, '0px');
     assert.equal(style(text).borderWidth, '0px');
     assert.equal(style(text).backgroundColor, 'rgba(0, 0, 0, 0)');
     assert.equal(style(actions).backgroundColor, 'rgba(0, 0, 0, 0)');
@@ -129,7 +129,7 @@ test("queue actions stay vertically centered in compact rows with appropriate hi
       assert.equal(style(row.querySelector('.flex')!).alignItems,'center','controls follow the entire message row, including wrapped text');
       assert.equal(style(actions).alignSelf,'center');
       assert.equal(style(actions.querySelector('button')!).height,small?'24px':'32px','mobile retains a larger touch target');
-      assert.equal(style(text).padding,small?'4px 0px':'8px 0px','existing message body padding is preserved');
+      assert.equal(style(text).padding,'0px','only the row supplies vertical padding on both hit targets');
       assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'0px 8px','the scroller holds the hover gutter without adding a vertical inset');
       assert.equal(style(f.queue).maxHeight,'var(--bb-chat-ui-info-max-height)');
       assert.equal(actions.parentElement,original,'native action controls retain their parent');
