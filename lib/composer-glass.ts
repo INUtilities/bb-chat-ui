@@ -1,5 +1,6 @@
 import { PHONE_NARROW, NARROW_VIEWPORT, ROOMY_VIEWPORT, SMALL_HIT_TARGET, isDesktopChrome, hasSmallHitTarget } from "./device-chrome.ts";
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
+import { COMPOSER_HANDOFF_RESIZING, injectComposerHandoff } from "./composer-handoff.ts";
 
 const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
 // JS-set markers replace :has() where the rule subject is generic (measured: those make every
@@ -56,6 +57,7 @@ const COLLAPSE_TRANSITION = `height ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_
 
 export const composerGlassCss = `
 ${glassSurfaceScopeCss}
+[${COMPOSER_HANDOFF_RESIZING}] { overflow:clip !important; }
 @keyframes bb-chat-ui-composer-radius {
   from { border-radius: var(${COMPOSER_RADIUS_FROM}) !important; }
   to { border-radius: var(${COMPOSER_RADIUS_TO}) !important; }
@@ -620,6 +622,7 @@ export function composerControlsLayout(input: {
   };
 }
 
+// Mount composer glass styling and scoped native layout transitions.
 export function injectComposerGlass(document: Document): () => void {
   const style = document.createElement("style");
   style.id = COMPOSER_GLASS_STYLE_ID;
@@ -633,8 +636,10 @@ export function injectComposerGlass(document: Document): () => void {
   const idleHeights = new WeakMap<HTMLElement, number>();
   const animating = new WeakSet<HTMLElement>();
 
+  // Bind native compact sizing and handoff motion to each composer lifecycle.
   const bindComposerRadius = (composer: HTMLElement) => {
     if (radiusWatches.has(composer) || typeof MutationObserver === "undefined") return;
+    const stopHandoff = injectComposerHandoff(composer);
     let compact = composer.hasAttribute("data-promptbox-compact");
     let generation = 0;
     let motion: ComposerHeightMotion | null = null;
@@ -850,6 +855,7 @@ export function injectComposerGlass(document: Document): () => void {
       attributeFilter: ["data-promptbox-compact", "style"],
     });
     radiusWatches.set(composer, () => {
+      stopHandoff();
       changes.disconnect();
       if (radiusEnd) {
         composer.removeEventListener("animationend", radiusEnd);

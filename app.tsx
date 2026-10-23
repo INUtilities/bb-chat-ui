@@ -8,6 +8,7 @@ import { DeviceChromeBridge } from "./lib/device-chrome";
 import { QuoteMentionBridge } from "./lib/quote-bridge";
 import { injectComposerViewport } from "./lib/composer-viewport";
 import { injectComposerGlass } from "./lib/composer-glass";
+import { injectComposerMenuGlass } from "./lib/composer-menu-glass";
 import { injectQuoteMentions } from "./lib/quote-mention";
 import { injectQuotePill } from "./lib/quote-pill";
 import { injectMentionPills } from "./lib/mention-pill";
@@ -75,6 +76,13 @@ export default definePluginApp((app) => {
       const stopGlass=injectComposerGlass(document);
       const stopViewport=injectComposerViewport(document);
       return ()=>{stopViewport();stopGlass();};
+    },
+  });
+  app.contentScripts.register({
+    id: "composer-menu-glass",
+    // Style the native attachment and model popovers for this plugin generation.
+    mount() {
+      return injectComposerMenuGlass(document);
     },
   });
   app.contentScripts.register({
