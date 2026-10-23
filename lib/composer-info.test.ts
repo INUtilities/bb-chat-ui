@@ -342,7 +342,7 @@ test("PR header shows the SDK title on one line and keeps a separate GitHub link
     assert.equal(link.getAttribute('title'),'GitHub에서 PR 열기');
     const iconRule=[...f.document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).find(rule=>'selectorText' in rule && rule.selectorText.endsWith('a[aria-label^="Pull request "]::after')) as CSSStyleRule;
     assert.equal(iconRule.style.content,'""');
-    assert.equal(iconRule.style.width,'16px');
+    assert.equal(iconRule.style.width,'14px');
     assert.match(iconRule.style.getPropertyValue('mask'),/data:image\/svg\+xml/);
     assert.equal(f.dom.window.getComputedStyle(link).fontSize,'0px');
     source.setAttribute('data-bb-chat-ui-info-pr-title','갱신된 PR 제목');await f.tick();

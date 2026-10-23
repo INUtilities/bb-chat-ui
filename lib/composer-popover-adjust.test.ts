@@ -29,6 +29,20 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
   } finally { f.dom.window.close(); }
 });
 
+test("the GitHub mask uses the common fourteen-pixel glyph inside its action", () => {
+  const f = surface("pullRequest", '<div data-bb-chat-ui-info-pr-heading><a aria-label="Pull request 12: Open">PR</a></div>');
+  try {
+    const link = f.document.querySelector('a')!;
+    const rule = Array.from(f.document.styleSheets[0].cssRules).find(rule => {
+      const css = rule as CSSStyleRule;
+      return css.selectorText?.endsWith('::after') && link.matches(css.selectorText.slice(0, -7));
+    }) as CSSStyleRule;
+    assert.ok(rule, 'the original PR link paints a GitHub mask');
+    assert.equal(rule.style.width, '14px'); assert.equal(rule.style.height, '14px');
+    assert.match(rule.style.getPropertyValue('mask'), /contain/);
+  } finally { f.dom.window.close(); }
+});
+
 test("Diff expansion controls are secondary list rows with the common gutter", () => {
   const f = surface("diff", '<div data-bb-chat-ui-info-diff><button data-bb-chat-ui-info-diff-toggle="files" aria-expanded="false"><span>7개 더 보기</span><svg /></button></div>', "large");
   try {
