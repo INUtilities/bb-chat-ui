@@ -76,6 +76,104 @@ function fixture(options: { selected?: number; labels?: string[]; disabled?: num
   return { dom, document, card, clicks, group, radios, range, settle, restore };
 }
 
+// Advance the real waveform controller without depending on wall-clock timing.
+function animationClock(f: ReturnType<typeof fixture>, reduced = false) {
+  let now = 0, sequence = 0;
+  const pending = new Map<number, FrameRequestCallback>();
+  // Queue each requested visual frame until the test advances its clock.
+  f.dom.window.requestAnimationFrame = callback => { pending.set(++sequence, callback); return sequence; };
+  // Remove cancelled work so disposal can be checked at the animation boundary.
+  f.dom.window.cancelAnimationFrame = id => { pending.delete(id); };
+  // Use one clock for both wave impulses and frame integration.
+  Object.defineProperty(f.dom.window.performance, "now", { value: () => now });
+  // Supply the user's motion preference before the gauge mounts.
+  f.dom.window.matchMedia = () => ({ matches: reduced } as MediaQueryList);
+  // Deliver a deterministic animation frame and retain newly scheduled work.
+  function advance(milliseconds = 16): void {
+    now += milliseconds;
+    const callbacks = [...pending.values()];
+    pending.clear();
+    for (const callback of callbacks) callback(now);
+  }
+  // Let the finite spring and ripple finish without leaving an idle animation loop.
+  function finish(): void {
+    for (let count = 0; count < 200 && pending.size; count++) advance();
+    assert.equal(pending.size, 0, "the waveform stops scheduling frames when settled");
+  }
+  return { pending, advance, finish };
+}
+
+// Keep the scale fixed and carry interrupted pin motion smoothly to the final native step.
+test("the compact waveform keeps tick positions fixed and settles interrupted pin motion", () => {
+  const f = fixture();
+  const clock = animationClock(f);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const slider = f.range();
+    const ticks = Array.from(f.card.querySelectorAll<HTMLElement>('[data-effort-tick]'));
+    const pin = f.card.querySelector<HTMLElement>('[data-effort-pin]')!;
+    assert.ok(ticks.length > 70, "dense waveform ticks replace the old filled track");
+    const lefts = ticks.map(tick => tick.style.left);
+    const resting = pin.style.transform;
+    slider.dispatchEvent(new f.dom.window.KeyboardEvent("keydown", { key: "End", bubbles: true }));
+    assert.equal(slider.value, "3", "the native selected value commits immediately");
+    assert.equal(pin.style.transform, resting, "the pin starts from its visible position");
+    clock.advance();
+    const moving = pin.style.transform;
+    assert.notEqual(moving, resting);
+    slider.dispatchEvent(new f.dom.window.KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+    assert.equal(pin.style.transform, moving, "retargeting does not reset the moving pin");
+    clock.finish();
+    assert.equal(pin.style.transform, "translateX(0%)");
+    assert.deepEqual(ticks.map(tick => tick.style.left), lefts);
+    assert.deepEqual(f.clicks, [3, 0]);
+  } finally { stop(); f.restore(); }
+});
+
+// Honor reduced motion and cancel pending work when a provider removes its gauge.
+test("waveform motion respects reduced motion and is released on disposal", () => {
+  for (const reduced of [false, true]) {
+    const f = fixture();
+    const clock = animationClock(f, reduced);
+    const stop = injectComposerMenuGlass(f.document);
+    try {
+      const slider = f.range();
+      const pin = f.card.querySelector<HTMLElement>('[data-effort-pin]')!;
+      assert.ok(pin);
+      slider.dispatchEvent(new f.dom.window.KeyboardEvent("keydown", { key: "End", bubbles: true }));
+      if (reduced) {
+        assert.equal(pin.style.transform, "translateX(100%)");
+        assert.equal(clock.pending.size, 0);
+      } else assert.equal(clock.pending.size, 1);
+      stop();
+      assert.equal(clock.pending.size, 0);
+      clock.advance();
+      assert.equal(f.card.querySelector('[data-effort-pin]'), null);
+    } finally { stop(); f.restore(); }
+  }
+});
+
+// Exercise the real pointer-to-step mapping on the fixed ruler rather than setting range values.
+test("dragging the waveform maps its inset ruler to enabled native options", () => {
+  const f = fixture({ disabled: [2] });
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const track = f.card.querySelector<HTMLElement>('[data-effort-track]')!;
+    // Supply layout geometry that JSDOM cannot measure itself.
+    track.getBoundingClientRect = () => ({ left: 10, width: 288 } as DOMRect);
+    track.dispatchEvent(new f.dom.window.PointerEvent("pointerdown", { bubbles: true, isPrimary: true, button: 0, pointerId: 7, clientX: 114 }));
+    f.dom.window.dispatchEvent(new f.dom.window.PointerEvent("pointermove", { pointerId: 9, clientX: 274 }));
+    assert.deepEqual(f.clicks, [], "another pointer cannot change the current effort");
+    f.dom.window.dispatchEvent(new f.dom.window.PointerEvent("pointermove", { pointerId: 7, clientX: 194 }));
+    assert.deepEqual(f.clicks, [3], "the drag skips the disabled High option");
+    f.dom.window.dispatchEvent(new f.dom.window.PointerEvent("pointermove", { pointerId: 7, clientX: 34 }));
+    assert.deepEqual(f.clicks, [3, 0]);
+    f.dom.window.dispatchEvent(new f.dom.window.PointerEvent("pointercancel", { pointerId: 7 }));
+    assert.equal(f.range().value, "0");
+    assert.equal(track.parentElement!.hasAttribute("data-dragging"), false);
+  } finally { stop(); f.restore(); }
+});
+
 // Add an accessible gauge while leaving the provider's original controls in place.
 test("the effort gauge starts at the native checked option without moving or deleting its source", () => {
   const f = fixture();
@@ -128,7 +226,6 @@ test("dragging keeps the indicator on native steps and pointercancel preserves t
     await f.settle();
     assert.equal(slider.step, "1", "the range exposes discrete supported steps");
     assert.equal(slider.value, "2", "the visible thumb targets the selected native step during dragging");
-    assert.equal((gauge as HTMLElement).style.getPropertyValue("--bb-effort-progress"), String(2 / 3));
     assert.equal(slider.getAttribute("aria-valuetext"), "High");
     assert.equal(f.radios()[2].getAttribute("aria-checked"), "true", "the host commits the nearest supported effort");
     assert.deepEqual(f.clicks, [2]);

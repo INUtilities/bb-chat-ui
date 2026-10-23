@@ -117,19 +117,18 @@ test("model sticky headings use the desktop section frost surface in both native
   }
 });
 
-// Preserve the fill's end radius instead of horizontally compressing its rounded ends.
-test("the effort fill clips a full round cap and keeps drag position transitions", () => {
+// Keep the approved waveform compact and its bars round without a separate filled track.
+test("the effort waveform uses a compact track, rounded bars, and an integrated pin", () => {
   const f = fixture(TRIGGER + GROK);
   const stop = injectComposerMenuGlass(f.document);
   try {
-    const fill = f.document.querySelector('[data-effort-fill]')!;
-    assert.equal(declaration(f.document, fill, "overflow"), "hidden");
-    assert.equal(declaration(f.document, fill, "border-radius"), "999px");
-    assert.equal(declaration(f.document, fill, "transform"), "translateY(-50%)");
-    const gauge = fill.closest('[data-bb-chat-ui-effort]')!;
-    gauge.setAttribute('data-dragging', '');
-    const cursor = gauge.querySelector('[data-effort-cursor]')!;
-    assert.match(declaration(f.document, cursor, "transition"), /^transform 120ms /);
+    const track = f.document.querySelector('[data-effort-track]')!;
+    const bar = track.querySelector('[data-effort-tick]')!;
+    assert.equal(declaration(f.document, track, "height"), "48px");
+    assert.equal(declaration(f.document, bar, "border-radius"), "999px");
+    assert.equal(declaration(f.document, bar, "transform"), "translateY(-50%)");
+    assert.ok(track.querySelector('[data-effort-head]'));
+    assert.equal(track.querySelector('[data-effort-fill]'), null);
   } finally { stop(); f.restore(); }
 });
 

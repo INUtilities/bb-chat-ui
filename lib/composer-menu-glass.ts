@@ -45,29 +45,29 @@ ${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !i
 [data-bb-chat-ui-model-resizing] { overflow:clip !important; }
 [data-bb-chat-ui-effort-source], [data-bb-chat-ui-effort-heading] { display:none !important; }
 [data-bb-chat-ui-effort] { min-width:0; padding:0 4px; color:var(--foreground); }
-[data-bb-chat-ui-effort] [data-effort-caption], [data-bb-chat-ui-effort] [data-effort-ends] { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; line-height:16px; }
-[data-bb-chat-ui-effort] [data-effort-caption] > span, [data-bb-chat-ui-effort] [data-effort-ends] { color:var(--muted-foreground); }
+[data-bb-chat-ui-effort] [data-effort-caption] { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; font-size:12px; line-height:16px; }
+[data-bb-chat-ui-effort] [data-effort-caption] > span { color:var(--muted-foreground); }
 [data-bb-chat-ui-effort] output { font-weight:500; }
-[data-bb-chat-ui-effort] [data-effort-track] { position:relative; height:32px; margin:2px 9px; }
-[data-bb-chat-ui-effort] [data-effort-track]::before, [data-bb-chat-ui-effort] [data-effort-fill] { content:""; position:absolute; top:50%; left:0; width:100%; height:10px; transform:translateY(-50%); border-radius:999px; background:color-mix(in oklab,var(--foreground) 8%,transparent); transition:height 120ms ${EASE.out},transform 120ms ${EASE.out}; }
-[data-bb-chat-ui-effort] [data-effort-fill] { background:transparent; overflow:hidden; }
-[data-bb-chat-ui-effort] [data-effort-fill]::before { content:""; position:absolute; inset:0; border-radius:inherit; background:color-mix(in oklab,var(--foreground) 22%,transparent); transform:translateX(calc((var(--bb-effort-progress) - 1) * 100%)); transition:transform 120ms ${EASE.out}; }
-[data-bb-chat-ui-effort] [data-effort-cursor] { position:absolute; inset:0; pointer-events:none; transform:translateX(calc(var(--bb-effort-progress) * 100%)); transition:transform 120ms ${EASE.out}; }
-[data-bb-chat-ui-effort] [data-effort-thumb] { position:absolute; width:18px; height:18px; left:-9px; top:7px; border-radius:999px; background:var(--foreground); box-shadow:0 1px 3px color-mix(in oklab,var(--background) 22%,transparent); transition:transform 180ms ${EASE.overshoot}; }
-[data-bb-chat-ui-effort] [data-effort-ticks] { position:absolute; inset:0; pointer-events:none; }
-[data-bb-chat-ui-effort] [data-effort-ticks] > span { position:absolute; top:14px; width:4px; height:4px; margin-left:-2px; border-radius:999px; background:color-mix(in oklab,var(--foreground) 22%,transparent); }
-[data-bb-chat-ui-effort] input { position:absolute; inset:0 -9px; width:calc(100% + 18px); height:32px; margin:0; padding:0; opacity:0; cursor:ew-resize; touch-action:pan-y; }
-[data-bb-chat-ui-effort]:focus-within [data-effort-thumb] { outline:2px solid var(--ring); outline-offset:3px; }
-[data-bb-chat-ui-effort][data-dragging] [data-effort-track]::before, [data-bb-chat-ui-effort][data-dragging] [data-effort-fill] { height:14px; transition:height 120ms ${EASE.out}; }
-[data-bb-chat-ui-effort][data-dragging] [data-effort-thumb] { transform:scale(1.25,.85); transition:transform 120ms ${EASE.out}; }
+[data-bb-chat-ui-effort] [data-effort-track] { position:relative; height:48px; user-select:none; -webkit-user-select:none; touch-action:pan-y; cursor:grab; }
+[data-bb-chat-ui-effort][data-dragging] [data-effort-track] { cursor:grabbing; }
+[data-bb-chat-ui-effort] [data-effort-viewport] { position:absolute; inset:0; overflow:hidden; pointer-events:none; mask-image:linear-gradient(to right,transparent,var(--foreground) 5%,var(--foreground) 95%,transparent); }
+[data-bb-chat-ui-effort] [data-effort-scale], [data-bb-chat-ui-effort] [data-effort-pin] { position:absolute; left:24px; right:24px; top:0; height:48px; }
+[data-bb-chat-ui-effort] [data-effort-tick] { position:absolute; top:18px; width:1px; margin-left:-.5px; border-radius:999px; background:var(--foreground); transform:translateY(-50%); }
+[data-bb-chat-ui-effort] [data-effort-tick][data-major] { width:1.5px; margin-left:-.75px; }
+[data-bb-chat-ui-effort] [data-effort-label] { position:absolute; top:32px; max-width:min(48px,calc(100% / var(--bb-effort-intervals))); padding:0 2px; overflow:hidden; text-overflow:ellipsis; text-align:center; transform:translateX(-50%); color:var(--muted-foreground); font-size:10px; line-height:15px; font-weight:550; white-space:nowrap; }
+[data-bb-chat-ui-effort] [data-effort-label][data-current] { color:var(--foreground); }
+[data-bb-chat-ui-effort] [data-effort-head] { position:absolute; left:-.75px; top:6px; height:3px; width:1.5px; border-radius:999px; background:var(--foreground); }
+[data-bb-chat-ui-effort] [data-effort-head]::before { content:""; position:absolute; top:-1px; left:-.5px; width:2.5px; height:2.5px; border-radius:999px; background:var(--foreground); }
+[data-bb-chat-ui-effort] input { position:absolute; top:50%; left:50%; width:1px; height:1px; margin:0; padding:0; opacity:0; pointer-events:none; }
+[data-bb-chat-ui-effort]:has(input:focus-visible) [data-effort-track] { outline:2px solid var(--ring); outline-offset:2px; border-radius:10px; }
 [data-bb-chat-ui-effort][data-disabled] { opacity:.5; }
-[data-bb-chat-ui-effort][data-disabled] input { cursor:default; }
+[data-bb-chat-ui-effort][data-disabled] [data-effort-track] { cursor:default; }
 ${MODELS} button[role="switch"][aria-label="Fast mode"] { width:40px !important; height:24px !important; padding:3px !important; border:0 !important; border-radius:999px !important; background:var(--muted) !important; }
 ${MODELS} button[role="switch"][aria-label="Fast mode"][aria-checked="true"] { background:var(--foreground) !important; }
 ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { width:18px !important; height:18px !important; flex-shrink:0; background:var(--foreground) !important; translate:none !important; transform:translateX(0) !important; transition:transform 160ms ${EASE.out} !important; }
 ${MODELS} button[role="switch"][aria-label="Fast mode"][aria-checked="true"] > span { background:var(--background) !important; transform:translateX(16px) !important; }
 @media (prefers-reduced-motion:reduce) {
-  [data-bb-chat-ui-effort] *, [data-bb-chat-ui-effort] [data-effort-fill]::before, [data-bb-chat-ui-effort] [data-effort-track]::before, ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { transition:none !important; }
+  ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { transition:none !important; }
 }
 `;
 

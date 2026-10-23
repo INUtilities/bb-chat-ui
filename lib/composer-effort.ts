@@ -1,3 +1,5 @@
+import { mountEffortWave } from "./composer-effort-wave.ts";
+
 const GROUP = '[role="radiogroup"][aria-label="Reasoning"]';
 const SOURCE = "data-bb-chat-ui-effort-source";
 const HEADING = "data-bb-chat-ui-effort-heading";
@@ -37,11 +39,11 @@ function mountGauge(group: HTMLElement): Gauge | null {
   const previousHeading = nativeHeading?.getAttribute(HEADING) ?? null;
   const box = document.createElement("div");
   box.setAttribute(GAUGE, "");
-  box.innerHTML = '<div data-effort-caption><span>Effort</span><output></output></div><div data-effort-track><span data-effort-fill></span><span data-effort-ticks aria-hidden="true"></span><span data-effort-cursor aria-hidden="true"><span data-effort-thumb></span></span><input type="range" aria-label="Effort" min="0" step="1"></div><div data-effort-ends aria-hidden="true"><span></span><span></span></div>';
+  box.innerHTML = '<div data-effort-caption><span>Effort</span><output></output></div><div data-effort-track><input type="range" aria-label="Effort" min="0" step="1"></div>';
   const input = box.querySelector("input")!;
   const output = box.querySelector("output")!;
-  const ends = box.querySelector("[data-effort-ends]")!;
-  const ticks = box.querySelector("[data-effort-ticks]")!;
+  const track = box.querySelector<HTMLElement>("[data-effort-track]")!;
+  const wave = mountEffortWave(track);
   let pointer: number | null = null;
   let stopped = false;
 
@@ -55,22 +57,9 @@ function mountGauge(group: HTMLElement): Gauge | null {
     if (input.value !== String(value)) input.value = String(value);
     if (input.getAttribute("aria-valuetext") !== text) input.setAttribute("aria-valuetext", text);
     if (output.textContent !== text) output.textContent = text;
-    const progress = String(value / last);
-    if (box.style.getPropertyValue("--bb-effort-progress") !== progress) box.style.setProperty("--bb-effort-progress", progress);
     input.disabled = group.getAttribute("aria-disabled") === "true" || state.buttons.every(button => button.disabled || button.getAttribute("aria-disabled") === "true");
     box.toggleAttribute("data-disabled", input.disabled);
-    const firstLabel = label(state.buttons[0]);
-    const lastLabel = label(state.buttons[last]);
-    if (ends.children[0].textContent !== firstLabel) ends.children[0].textContent = firstLabel;
-    if (ends.children[1].textContent !== lastLabel) ends.children[1].textContent = lastLabel;
-    if (ticks.childElementCount !== state.buttons.length) {
-      ticks.replaceChildren();
-      for (let i = 0; i <= last; i++) {
-        const tick = document.createElement("span");
-        tick.style.left = `${i / last * 100}%`;
-        ticks.append(tick);
-      }
-    }
+    wave.sync(state.buttons.map(label), value);
   }
 
   // Test availability at the native boundary rather than inventing unsupported values.
@@ -127,16 +116,35 @@ function mountGauge(group: HTMLElement): Gauge | null {
     choose(target, direction, true);
   }
 
-  // Stretch the thumb during primary dragging without taking over native range capture.
-  function down(event: PointerEvent): void {
-    if (input.disabled || !event.isPrimary || event.button !== 0) return;
-    pointer = event.pointerId;
-    box.setAttribute("data-dragging", "");
+  // Map a drag position to a supported step on the fixed, inset ruler.
+  function point(event: PointerEvent): void {
+    const bounds = track.getBoundingClientRect();
+    const width = bounds.width - 48;
+    if (width <= 0) return;
+    const value = (event.clientX - bounds.left - 24) / width * (state.buttons.length - 1);
+    choose(value, value >= state.index ? 1 : -1, false);
   }
 
-  // Settle the morph and align the thumb with the host's committed effort.
+  // Start primary dragging and retain the native range's keyboard focus.
+  function down(event: PointerEvent): void {
+    if (input.disabled || pointer !== null || !event.isPrimary || event.button !== 0) return;
+    pointer = event.pointerId;
+    box.setAttribute("data-dragging", "");
+    input.focus({ preventScroll: true });
+    track.setPointerCapture?.(pointer);
+    point(event);
+  }
+
+  // Follow only the active pointer while keeping native selection on discrete steps.
+  function move(event: PointerEvent): void {
+    if (event.pointerId === pointer) point(event);
+  }
+
+  // Release pointer capture and retain the host's committed effort when dragging ends.
   function settle(): void {
+    const active = pointer;
     pointer = null;
+    if (active !== null && track.hasPointerCapture?.(active)) track.releasePointerCapture(active);
     box.removeAttribute("data-dragging");
     const next = readEffort(group);
     if (next.index >= 0 && next.buttons.length > 1) render(next);
@@ -152,8 +160,7 @@ function mountGauge(group: HTMLElement): Gauge | null {
     const next = readEffort(group);
     if (next.index < 0 || next.buttons.length < 2) return false;
     if (next.buttons.length !== state.buttons.length || next.buttons.some((button, i) => button !== state.buttons[i])) {
-      pointer = null;
-      box.removeAttribute("data-dragging");
+      settle();
     }
     render(next);
     return true;
@@ -166,10 +173,13 @@ function mountGauge(group: HTMLElement): Gauge | null {
     const focused = document.activeElement === input;
     input.removeEventListener("input", changed);
     input.removeEventListener("keydown", keydown);
-    input.removeEventListener("pointerdown", down);
+    track.removeEventListener("pointerdown", down);
+    track.removeEventListener("lostpointercapture", up);
+    view!.removeEventListener("pointermove", move);
     view!.removeEventListener("pointerup", up);
     view!.removeEventListener("pointercancel", up);
     view!.removeEventListener("blur", settle);
+    wave.stop();
     box.remove();
     restoreAttribute(group, SOURCE, previousSource);
     if (nativeHeading) restoreAttribute(nativeHeading, HEADING, previousHeading);
@@ -181,7 +191,9 @@ function mountGauge(group: HTMLElement): Gauge | null {
   group.after(box);
   input.addEventListener("input", changed);
   input.addEventListener("keydown", keydown);
-  input.addEventListener("pointerdown", down);
+  track.addEventListener("pointerdown", down);
+  track.addEventListener("lostpointercapture", up);
+  view.addEventListener("pointermove", move);
   view.addEventListener("pointerup", up);
   view.addEventListener("pointercancel", up);
   view.addEventListener("blur", settle);
