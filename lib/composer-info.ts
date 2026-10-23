@@ -40,6 +40,7 @@ const WORKFLOW_PHASES = `${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area]
 const WORKFLOW_PHASE_ROW = `${WORKFLOW_PHASES} > div > button[aria-expanded], ${WORKFLOW_PHASES} > div[class~="items-center"]`;
 const WORKFLOW_AGENT_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="min-h-7"]:has(> span[class~="truncate"])`;
 const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${WORKFLOW_LIST_ROW}, ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
+const BACKGROUND_SINGLE_ROW = `${DETAIL}[${OPEN}="background"] [aria-label^="Background command:"][class]:not([${cardSlot.head}])`;
 const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"], [${OPEN}="children"])`;
 const NATIVE_BODY = [
   `${DETAIL}[aria-label="Child threads"] ul`,
@@ -200,6 +201,8 @@ ${DETAIL} > section[role="region"] > div[class~="bg-popover"] { background-color
 ${DETAIL} ${LEGACY_ROW} { background-color:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${LIST_ROW} { ${cardStyle.rowBox} margin-top:0 !important; margin-bottom:0 !important; cursor:default; }
 ${LIST_ROW.split(", ").map(selector => `${selector}:hover`).join(", ")} { ${cardStyle.rowHover} }
+${BACKGROUND_SINGLE_ROW} { ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+${BACKGROUND_SINGLE_ROW}:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 /* Match the background activity's row rhythm; native space-y margins must not stack with the gap. */
 ${DETAIL}[${OPEN}="todos"] ul { display:flex; flex-direction:column; row-gap:var(--bb-chat-ui-info-row-gap); }
 ${DETAIL}[${OPEN}="todos"] li { min-width:0; overflow-wrap:anywhere; }

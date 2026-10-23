@@ -28,3 +28,16 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
     assert.equal(f.document.querySelectorAll("[data-queued-message-group-divider] button").length, 1);
   } finally { f.dom.window.close(); }
 });
+
+test("a native single background command shares row geometry without changing its action", () => {
+  const f = surface("background", '<div class="flex"><div role="button" tabindex="0" class="px-3" aria-label="Background command: npm test"><span>npm test</span></div><button data-bb-chat-ui-card-head>Background</button></div>');
+  try {
+    const row = f.css('[role="button"]');
+    assert.equal(row.padding, "8px");
+    assert.equal(row.minHeight, "32px");
+    assert.equal(row.borderRadius, "10px");
+    assert.equal(row.marginLeft, "-8px");
+    assert.equal(row.transition, "background-color 150ms ease-out");
+    assert.equal(f.document.querySelector('[role="button"]')!.getAttribute("tabindex"), "0");
+  } finally { f.dom.window.close(); }
+});
