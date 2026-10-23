@@ -14,7 +14,7 @@
 
 ---
 
-A BB plugin that restyles the thread transcript and composer. Sidebar open/close motion stays in `sidebar`; thread row theming stays in `bb-thread-theme`.
+A BB plugin that restyles the thread transcript and composer. 폰 패널 모션은 Mobile UI (`sidebar`), 스레드 행 테마는 `bb-thread-theme`가 담당한다.
 
 - **composer** — frosted prompt box; quote and mention pills stay as pills
 - **messages** — user attachments, queued messages, and jump/TOC chrome
@@ -28,7 +28,7 @@ Requires [bb](https://getbb.app) with a compatible Plugin SDK (`engines` in `pac
 From a clone:
 
 ```bash
-git clone https://github.com/HIJKM/bb-chat-ui.git
+git clone https://github.com/INUtilities/bb-chat-ui.git
 cd bb-chat-ui
 bb plugin install . --yes
 ```
@@ -36,7 +36,7 @@ bb plugin install . --yes
 Or from GitHub:
 
 ```bash
-bb plugin install 'git:https://github.com/HIJKM/bb-chat-ui.git@main' --yes
+bb plugin install 'git:https://github.com/INUtilities/bb-chat-ui.git@main' --yes
 ```
 
 Plugin id: `bb-chat-ui`.
@@ -65,9 +65,9 @@ Child Thread는 배경 없는 색상 아바타 스택과 상태 점으로 표시
 
 | plugin | role |
 | --- | --- |
-| `sidebar` | open/close depth motion |
+| Mobile UI (`sidebar`) | 폰 패널 모션 |
 | `bb-thread-theme` | thread list look and row chrome |
-| `bb-ribbon` | icon ribbon navigation |
+| BB host | 내비게이션 |
 
 ## license
 
