@@ -37,13 +37,12 @@ function mountGauge(group: HTMLElement): Gauge | null {
   const previousHeading = nativeHeading?.getAttribute(HEADING) ?? null;
   const box = document.createElement("div");
   box.setAttribute(GAUGE, "");
-  box.innerHTML = '<div data-effort-caption><span>Effort</span><output></output></div><div data-effort-track><span data-effort-fill></span><span data-effort-ticks aria-hidden="true"></span><span data-effort-cursor aria-hidden="true"><span data-effort-thumb></span></span><input type="range" aria-label="Effort" min="0" step="any"></div><div data-effort-ends aria-hidden="true"><span></span><span></span></div>';
+  box.innerHTML = '<div data-effort-caption><span>Effort</span><output></output></div><div data-effort-track><span data-effort-fill></span><span data-effort-ticks aria-hidden="true"></span><span data-effort-cursor aria-hidden="true"><span data-effort-thumb></span></span><input type="range" aria-label="Effort" min="0" step="1"></div><div data-effort-ends aria-hidden="true"><span></span><span></span></div>';
   const input = box.querySelector("input")!;
   const output = box.querySelector("output")!;
   const ends = box.querySelector("[data-effort-ends]")!;
   const ticks = box.querySelector("[data-effort-ticks]")!;
   let pointer: number | null = null;
-  let dragValue: number | null = null;
   let stopped = false;
 
   // Update only changed output so the gauge cannot observe its own render forever.
@@ -51,7 +50,7 @@ function mountGauge(group: HTMLElement): Gauge | null {
     state = next;
     const last = state.buttons.length - 1;
     const text = label(state.buttons[state.index]);
-    const value = dragValue === null ? state.index : Math.min(last, Math.max(0, dragValue));
+    const value = state.index;
     if (input.max !== String(last)) input.max = String(last);
     if (input.value !== String(value)) input.value = String(value);
     if (input.getAttribute("aria-valuetext") !== text) input.setAttribute("aria-valuetext", text);
@@ -105,14 +104,13 @@ function mountGauge(group: HTMLElement): Gauge | null {
     state.buttons[target].click();
   }
 
-  // Keep the thumb under the pointer while snapping persisted effort to supported steps.
+  // Keep the indicator and host selection on the same supported step during dragging.
   function changed(): void {
     const value = Number(input.value);
-    if (pointer !== null) dragValue = value;
     choose(value, value >= state.index ? 1 : -1, false);
   }
 
-  // Support discrete keyboard steps even though pointer dragging uses a continuous range.
+  // Move between enabled native steps with standard range keyboard controls.
   function keydown(event: KeyboardEvent): void {
     if (input.disabled) return;
     const index = readEffort(group).index;
@@ -133,14 +131,12 @@ function mountGauge(group: HTMLElement): Gauge | null {
   function down(event: PointerEvent): void {
     if (input.disabled || !event.isPrimary || event.button !== 0) return;
     pointer = event.pointerId;
-    dragValue = Number(input.value);
     box.setAttribute("data-dragging", "");
   }
 
   // Settle the morph and align the thumb with the host's committed effort.
   function settle(): void {
     pointer = null;
-    dragValue = null;
     box.removeAttribute("data-dragging");
     const next = readEffort(group);
     if (next.index >= 0 && next.buttons.length > 1) render(next);
@@ -157,7 +153,6 @@ function mountGauge(group: HTMLElement): Gauge | null {
     if (next.index < 0 || next.buttons.length < 2) return false;
     if (next.buttons.length !== state.buttons.length || next.buttons.some((button, i) => button !== state.buttons[i])) {
       pointer = null;
-      dragValue = null;
       box.removeAttribute("data-dragging");
     }
     render(next);

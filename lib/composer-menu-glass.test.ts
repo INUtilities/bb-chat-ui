@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { COMPOSER_MENU_GLASS_STYLE_ID, injectComposerMenuGlass } from "./composer-menu-glass.ts";
 
 const MARKER = "data-bb-chat-ui-model-menu";
+const SUBMENU = "data-bb-chat-ui-model-submenu";
 const TRIGGER = '<button aria-haspopup="dialog" aria-label="Provider, model and reasoning: Grok Build, Grok 4.7, Medium" aria-controls="radix-_r_2m_">Grok 4.7</button>';
 
 // Reduced from grok-controls-before.html: Grok has plain model buttons and no search input.
@@ -85,6 +86,110 @@ function assertFrost(document: Document, card: Element) {
   assert.equal(radius, "18px", "the provider card keeps the agreed outer radius");
   assert.match(blur, /blur\(14px\)/, "the provider card keeps the frost blur");
 }
+
+// Read the final matching declaration for the native fixture without relying on unsupported DOM CSS rendering.
+function declaration(document: Document, element: Element, property: string): string {
+  const style = document.getElementById(COMPOSER_MENU_GLASS_STYLE_ID) as HTMLStyleElement;
+  let value = "";
+  for (const rule of Array.from(style.sheet!.cssRules)) {
+    const css = rule as CSSStyleRule;
+    if (css.selectorText && element.matches(css.selectorText)) value = css.style.getPropertyValue(property) || value;
+  }
+  return value;
+}
+
+// Capture the alias picker shape rendered by the native More models portal.
+function moreModels(id = "more-models"): string {
+  return `<div id="${id}" role="dialog" data-bb-portaled-overlay data-side="right"><button class="relative rounded-sm hover:bg-state-hover"><span class="truncate" title="Sonnet 5.5 alias">Sonnet 5.5 alias</span><span><svg data-icon="Check"></svg></span></button></div>`;
+}
+
+// Cover Grok's title outside the scroll node and Codex's title inside the listbox.
+test("model sticky headings use the desktop section frost surface in both native layouts", () => {
+  for (const html of [GROK, CODEX]) {
+    const f = fixture(TRIGGER + html);
+    const stop = injectComposerMenuGlass(f.document);
+    try {
+      const heading = f.document.querySelector('.sticky')!;
+      // JSDOM drops srgb color-mix, so verify its scoped declaration alongside the matched native heading rule.
+      assert.match(f.document.getElementById(COMPOSER_MENU_GLASS_STYLE_ID)!.textContent!, /div\[class~="sticky"\] \{\s*background:color-mix\(in srgb,var\(--popover\) 62%,transparent\) !important;/);
+      assert.equal(declaration(f.document, heading, "backdrop-filter"), "blur(24px) saturate(1.5)");
+    } finally { stop(); f.restore(); }
+  }
+});
+
+// Preserve the fill's end radius instead of horizontally compressing its rounded ends.
+test("the effort fill clips a full round cap and keeps drag position transitions", () => {
+  const f = fixture(TRIGGER + GROK);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const fill = f.document.querySelector('[data-effort-fill]')!;
+    assert.equal(declaration(f.document, fill, "overflow"), "hidden");
+    assert.equal(declaration(f.document, fill, "border-radius"), "999px");
+    assert.equal(declaration(f.document, fill, "transform"), "translateY(-50%)");
+    const gauge = fill.closest('[data-bb-chat-ui-effort]')!;
+    gauge.setAttribute('data-dragging', '');
+    const cursor = gauge.querySelector('[data-effort-cursor]')!;
+    assert.match(declaration(f.document, cursor, "transition"), /^transform 120ms /);
+  } finally { stop(); f.restore(); }
+});
+
+// Discover the child portal through the open More models control and preserve its native actions.
+test("More models receives frost and row radius while unrelated alias dialogs stay untouched", async () => {
+  const f = fixture(TRIGGER + GROK);
+  const card = f.document.getElementById('radix-_r_2m_')!;
+  card.insertAdjacentHTML('beforeend', '<button aria-haspopup="menu" aria-expanded="false">More models</button>');
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    f.document.body.insertAdjacentHTML('beforeend', moreModels('unrelated'));
+    await f.settle();
+    assert.equal(f.document.getElementById('unrelated')!.hasAttribute(SUBMENU), false);
+    const more = card.querySelector('[aria-haspopup="menu"]')!;
+    more.setAttribute('aria-expanded', 'true');
+    f.document.body.insertAdjacentHTML('beforeend', moreModels());
+    await f.settle();
+    const child = f.document.getElementById('more-models')!;
+    const button = child.querySelector('button')!;
+    let clicks = 0;
+    // Observe the original native option handler without replacing its button.
+    button.addEventListener('click', () => { clicks++; });
+    assert.equal(child.hasAttribute(SUBMENU), true);
+    assertFrost(f.document, child);
+    assert.equal(declaration(f.document, button, 'border-radius'), '10px');
+    button.click();
+    assert.equal(clicks, 1);
+    more.setAttribute('aria-expanded', 'false');
+    await f.settle();
+    assert.equal(child.hasAttribute(SUBMENU), false, 'closing the native parent releases child ownership');
+    assert.equal(f.document.getElementById('unrelated')!.hasAttribute(SUBMENU), false);
+  } finally { stop(); f.restore(); }
+});
+
+// Preserve an existing child marker through close, reused portal reopen, and plugin disposal.
+test("More models ownership restores previous markers and supports a reused native portal", async () => {
+  const f = fixture(TRIGGER + GROK);
+  const card = f.document.getElementById('radix-_r_2m_')!;
+  card.insertAdjacentHTML('beforeend', '<button aria-haspopup="menu" aria-expanded="true">More models</button>');
+  f.document.body.insertAdjacentHTML('beforeend', moreModels());
+  const child = f.document.getElementById('more-models')!;
+  child.setAttribute(SUBMENU, 'previous-owner');
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const more = card.querySelector('[aria-haspopup="menu"]')!;
+    assert.equal(child.getAttribute(SUBMENU), '');
+    more.setAttribute('aria-expanded', 'false');
+    await f.settle();
+    assert.equal(child.getAttribute(SUBMENU), 'previous-owner');
+    more.setAttribute('aria-expanded', 'true');
+    await f.settle();
+    assert.equal(child.getAttribute(SUBMENU), '');
+    stop();
+    assert.equal(child.getAttribute(SUBMENU), 'previous-owner');
+    child.remove();
+    f.document.body.insertAdjacentHTML('beforeend', moreModels('after-dispose'));
+    await f.settle();
+    assert.equal(f.document.getElementById('after-dispose')!.hasAttribute(SUBMENU), false);
+  } finally { stop(); f.restore(); }
+});
 
 // Reproduce Grok's missing frost when its provider omits the search input.
 test("Grok's trigger-linked dialog gets frost without a Search models input", () => {

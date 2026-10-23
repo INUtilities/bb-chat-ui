@@ -1,10 +1,11 @@
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE } from "./glass-surface.ts";
-import { injectComposerModelMenus, MODEL_MENU_MARK } from "./composer-model-menu.ts";
+import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SUBMENU_MARK } from "./composer-model-menu.ts";
 import { EASE } from "./motion.ts";
 
 const ACTIONS = '[data-bb-portaled-overlay][role="menu"][aria-label="Prompt actions"]';
 const MODELS = `[data-bb-portaled-overlay][role="dialog"][${MODEL_MENU_MARK}]`;
-const CARDS = `:is(${ACTIONS}, ${MODELS})`;
+const SUBMODELS = `[data-bb-portaled-overlay][role="dialog"][${MODEL_SUBMENU_MARK}]`;
+const CARDS = `:is(${ACTIONS}, ${MODELS}, ${SUBMODELS})`;
 
 export const COMPOSER_MENU_GLASS_STYLE_ID = "bb-chat-ui-composer-menu-glass";
 export const composerMenuGlassCss = `
@@ -26,18 +27,19 @@ ${CARDS} {
 }
 /* Match the shared inner-row radius for hover, keyboard focus, and selected states. */
 ${ACTIONS} [role="menuitem"],
+${SUBMODELS} button[class~="hover:bg-state-hover"],
 ${MODELS} :is([role="option"],button[class~="hover:bg-state-hover"]) {
   border-radius:10px !important;
 }
-/* Keep the provider tabs and section headings on the card's single glass face. */
-${MODELS} > div[class~="bg-background"],
-${MODELS} div[class~="sticky"][class~="bg-background"] {
+/* Keep provider tabs on the card's single glass face. */
+${MODELS} > div[class~="bg-background"] {
   background:transparent !important;
 }
-/* Blur models scrolling beneath the native sticky heading without adding a tint. */
-${MODELS} div[class~="overflow-y-auto"] > div[class~="sticky"] {
-  backdrop-filter:blur(14px) saturate(1.25);
-  -webkit-backdrop-filter:blur(14px) saturate(1.25);
+/* Match the desktop Thread Theme header frost on the popover's own theme surface. */
+${MODELS} div[class~="sticky"] {
+  background:color-mix(in srgb,var(--popover) 62%,transparent) !important;
+  backdrop-filter:blur(24px) saturate(1.5);
+  -webkit-backdrop-filter:blur(24px) saturate(1.5);
 }
 ${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !important; }
 [data-bb-chat-ui-model-resizing] { overflow:clip !important; }
@@ -48,7 +50,8 @@ ${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !i
 [data-bb-chat-ui-effort] output { font-weight:500; }
 [data-bb-chat-ui-effort] [data-effort-track] { position:relative; height:32px; margin:2px 9px; }
 [data-bb-chat-ui-effort] [data-effort-track]::before, [data-bb-chat-ui-effort] [data-effort-fill] { content:""; position:absolute; top:50%; left:0; width:100%; height:10px; transform:translateY(-50%); border-radius:999px; background:color-mix(in oklab,var(--foreground) 8%,transparent); transition:height 120ms ${EASE.out},transform 120ms ${EASE.out}; }
-[data-bb-chat-ui-effort] [data-effort-fill] { background:color-mix(in oklab,var(--foreground) 22%,transparent); transform:translateY(-50%) scaleX(var(--bb-effort-progress)); transform-origin:left; }
+[data-bb-chat-ui-effort] [data-effort-fill] { background:transparent; overflow:hidden; }
+[data-bb-chat-ui-effort] [data-effort-fill]::before { content:""; position:absolute; inset:0; border-radius:inherit; background:color-mix(in oklab,var(--foreground) 22%,transparent); transform:translateX(calc((var(--bb-effort-progress) - 1) * 100%)); transition:transform 120ms ${EASE.out}; }
 [data-bb-chat-ui-effort] [data-effort-cursor] { position:absolute; inset:0; pointer-events:none; transform:translateX(calc(var(--bb-effort-progress) * 100%)); transition:transform 120ms ${EASE.out}; }
 [data-bb-chat-ui-effort] [data-effort-thumb] { position:absolute; width:18px; height:18px; left:-9px; top:7px; border-radius:999px; background:var(--foreground); box-shadow:0 1px 3px color-mix(in oklab,var(--background) 22%,transparent); transition:transform 180ms ${EASE.overshoot}; }
 [data-bb-chat-ui-effort] [data-effort-ticks] { position:absolute; inset:0; pointer-events:none; }
@@ -56,7 +59,6 @@ ${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !i
 [data-bb-chat-ui-effort] input { position:absolute; inset:0 -9px; width:calc(100% + 18px); height:32px; margin:0; padding:0; opacity:0; cursor:ew-resize; touch-action:pan-y; }
 [data-bb-chat-ui-effort]:focus-within [data-effort-thumb] { outline:2px solid var(--ring); outline-offset:3px; }
 [data-bb-chat-ui-effort][data-dragging] [data-effort-track]::before, [data-bb-chat-ui-effort][data-dragging] [data-effort-fill] { height:14px; transition:height 120ms ${EASE.out}; }
-[data-bb-chat-ui-effort][data-dragging] [data-effort-cursor] { transition:none; }
 [data-bb-chat-ui-effort][data-dragging] [data-effort-thumb] { transform:scale(1.25,.85); transition:transform 120ms ${EASE.out}; }
 [data-bb-chat-ui-effort][data-disabled] { opacity:.5; }
 [data-bb-chat-ui-effort][data-disabled] input { cursor:default; }
@@ -65,7 +67,7 @@ ${MODELS} button[role="switch"][aria-label="Fast mode"][aria-checked="true"] { b
 ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { width:18px !important; height:18px !important; flex-shrink:0; background:var(--foreground) !important; translate:none !important; transform:translateX(0) !important; transition:transform 160ms ${EASE.out} !important; }
 ${MODELS} button[role="switch"][aria-label="Fast mode"][aria-checked="true"] > span { background:var(--background) !important; transform:translateX(16px) !important; }
 @media (prefers-reduced-motion:reduce) {
-  [data-bb-chat-ui-effort] *, [data-bb-chat-ui-effort] [data-effort-track]::before, ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { transition:none !important; }
+  [data-bb-chat-ui-effort] *, [data-bb-chat-ui-effort] [data-effort-fill]::before, [data-bb-chat-ui-effort] [data-effort-track]::before, ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { transition:none !important; }
 }
 `;
 

@@ -114,8 +114,8 @@ test("input clicks the enabled native radio once and repeated values do not clic
   } finally { stop(); f.restore(); }
 });
 
-// Keep continuous pointer movement visible until the active pointer finishes or cancels it.
-test("a continuous drag keeps its fractional value and pointercancel snaps to the committed native effort", async () => {
+// Keep every drag target on a native step while preserving the active pointer's morph.
+test("dragging keeps the indicator on native steps and pointercancel preserves the committed effort", async () => {
   const f = fixture();
   const stop = injectComposerMenuGlass(f.document);
   try {
@@ -126,14 +126,16 @@ test("a continuous drag keeps its fractional value and pointercancel snaps to th
     slider.value = "1.6";
     slider.dispatchEvent(new f.dom.window.Event("input", { bubbles: true }));
     await f.settle();
-    assert.equal(slider.value, "1.6", "the visible thumb follows the fractional pointer value");
+    assert.equal(slider.step, "1", "the range exposes discrete supported steps");
+    assert.equal(slider.value, "2", "the visible thumb targets the selected native step during dragging");
+    assert.equal((gauge as HTMLElement).style.getPropertyValue("--bb-effort-progress"), String(2 / 3));
     assert.equal(slider.getAttribute("aria-valuetext"), "High");
     assert.equal(f.radios()[2].getAttribute("aria-checked"), "true", "the host commits the nearest supported effort");
     assert.deepEqual(f.clicks, [2]);
     f.dom.window.dispatchEvent(new f.dom.window.PointerEvent("pointerup", { pointerId: 9 }));
     await f.settle();
     assert.ok(gauge.hasAttribute("data-dragging"), "another pointer cannot end the active drag");
-    assert.equal(slider.value, "1.6");
+    assert.equal(slider.value, "2");
     f.dom.window.dispatchEvent(new f.dom.window.PointerEvent("pointercancel", { pointerId: 7 }));
     await f.settle();
     assert.equal(gauge.hasAttribute("data-dragging"), false);
