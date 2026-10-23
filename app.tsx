@@ -4,6 +4,7 @@ import { Fragment, createElement } from "react";
 import { DeviceChromeBridge } from "./lib/device-chrome";
 import { QuoteMentionBridge } from "./lib/quote-bridge";
 import { injectComposerGlass } from "./lib/composer-glass";
+import { injectComposerMenuGlass } from "./lib/composer-menu-glass";
 import { injectQuoteMentions } from "./lib/quote-mention";
 import { injectQuotePill } from "./lib/quote-pill";
 import { injectMentionPills } from "./lib/mention-pill";
@@ -68,6 +69,13 @@ export default definePluginApp((app) => {
     id: "composer-glass",
     mount() {
       return injectComposerGlass(document);
+    },
+  });
+  app.contentScripts.register({
+    id: "composer-menu-glass",
+    // Style the native attachment and model popovers for this plugin generation.
+    mount() {
+      return injectComposerMenuGlass(document);
     },
   });
   app.contentScripts.register({
