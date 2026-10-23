@@ -1,4 +1,4 @@
-import { DARK_GLASS_FACE, LIGHT_GLASS_FACE } from "./glass-surface.ts";
+import { cardFaceCss } from "./info-card.ts";
 import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SUBMENU_MARK } from "./composer-model-menu.ts";
 import { EASE } from "./motion.ts";
 
@@ -9,21 +9,12 @@ const CARDS = `:is(${ACTIONS}, ${MODELS}, ${SUBMODELS})`;
 
 export const COMPOSER_MENU_GLASS_STYLE_ID = "bb-chat-ui-composer-menu-glass";
 export const composerMenuGlassCss = `
+${cardFaceCss(CARDS)}
 ${CARDS} {
-  --bb-chat-ui-menu-face:${LIGHT_GLASS_FACE};
-  --bb-chat-ui-menu-edge:color-mix(in oklab,var(--popover) 35%,transparent);
-  --bb-chat-ui-menu-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent);
-  border-radius:18px !important;
-  border-color:transparent !important;
-  background:var(--bb-chat-ui-menu-face) !important;
-  backdrop-filter:blur(14px) saturate(1.25);
-  -webkit-backdrop-filter:blur(14px) saturate(1.25);
-  box-shadow:0 6px 18px -12px var(--bb-chat-ui-menu-shadow),inset 0 1px 3px var(--bb-chat-ui-menu-edge);
+  box-shadow:0 6px 18px -12px var(--bb-chat-ui-card-shadow),inset 0 1px 3px var(--bb-chat-ui-card-edge) !important;
 }
 .dark ${CARDS} {
-  --bb-chat-ui-menu-face:${DARK_GLASS_FACE};
-  --bb-chat-ui-menu-edge:color-mix(in oklab,var(--foreground) 8%,transparent);
-  --bb-chat-ui-menu-shadow:color-mix(in oklab,var(--background) 60%,transparent);
+  --bb-chat-ui-card-shadow:color-mix(in oklab,var(--background) 60%,transparent);
 }
 /* Match the shared inner-row radius for hover, keyboard focus, and selected states. */
 ${ACTIONS} [role="menuitem"],

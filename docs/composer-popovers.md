@@ -34,6 +34,9 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   160ms 안에 전환한다.
   동작 줄이기 설정에서는 모션을 끈다.
 
+- 컴포저 메뉴의 바깥 면은 `cardFaceCss`를 재사용한다. 작은 메뉴의 기존 그림자
+  `0 6px 18px -12px`와 dark의 `--background` 60% 혼합은 유지한다.
+
 - 카드의 glass 면은 한 겹이다. BB 테마 토큰과 `glass-surface.ts`를 쓰고 안쪽에
   불투명한 native 배경·ring·상단 구분선을 겹치지 않는다.
 - 바깥 radius는 18px, 상세 카드 패딩은 세로 16px·가로 24px다. 짧은 카드는 내용만큼 높아지고,

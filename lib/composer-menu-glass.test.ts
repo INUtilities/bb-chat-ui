@@ -3,6 +3,19 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { COMPOSER_MENU_GLASS_STYLE_ID, injectComposerMenuGlass } from "./composer-menu-glass.ts";
 
+test("composer menus share the card border reset while retaining their shallower shadow", () => {
+  const f = fixture(TRIGGER + GROK);
+  const host = f.document.createElement('style'); host.textContent = '[role="dialog"] { border:1px solid; }'; f.document.head.append(host);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const card = f.document.getElementById('radix-_r_2m_')!;
+    assert.equal(f.dom.window.getComputedStyle(card).borderTopWidth, '0px');
+    assert.equal(declaration(f.document, card, 'border-radius'), '18px');
+    assert.equal(declaration(f.document, card, 'backdrop-filter'), 'blur(14px) saturate(1.25)');
+    assert.match(declaration(f.document, card, 'box-shadow'), /^0 6px 18px -12px/);
+  } finally { stop(); f.restore(); }
+});
+
 const MARKER = "data-bb-chat-ui-model-menu";
 const SUBMENU = "data-bb-chat-ui-model-submenu";
 const TRIGGER = '<button aria-haspopup="dialog" aria-label="Provider, model and reasoning: Grok Build, Grok 4.7, Medium" aria-controls="radix-_r_2m_">Grok 4.7</button>';
