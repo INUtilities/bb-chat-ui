@@ -1,5 +1,5 @@
 import { cardFaceCss, cardStyle } from "./info-card.ts";
-import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SUBMENU_MARK } from "./composer-model-menu.ts";
+import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SUBMENU_MARK, MODEL_SCROLL_MARK } from "./composer-model-menu.ts";
 import { EASE } from "./motion.ts";
 
 const ACTIONS = '[data-bb-portaled-overlay][role="menu"][aria-label="Prompt actions"]';
@@ -26,11 +26,27 @@ ${MODELS} :is([role="option"],button[class~="hover:bg-state-hover"]) {
 ${MODELS} > div[class~="bg-background"] {
   background:transparent !important;
 }
-/* Match the desktop Thread Theme header frost on the popover's own theme surface. */
+/* Add a second frost layer only while model rows pass under their sticky heading. */
 ${MODELS} div[class~="sticky"] {
-  background:color-mix(in srgb,var(--popover) 62%,transparent) !important;
+  background:transparent !important;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  transition:background 160ms ease-out,backdrop-filter 160ms ease-out;
+}
+${MODELS} [${MODEL_SCROLL_MARK}] > div[class~="sticky"] {
+  background:var(--bb-chat-ui-card-face) !important;
   backdrop-filter:blur(24px) saturate(1.5);
   -webkit-backdrop-filter:blur(24px) saturate(1.5);
+}
+${MODELS} div[class~="sticky"]::after {
+  content:""; position:absolute; inset-inline:0; top:100%; height:12px; pointer-events:none;
+  background:linear-gradient(to bottom,var(--bb-chat-ui-card-face),transparent);
+  mask-image:linear-gradient(to bottom,var(--foreground),transparent);
+  -webkit-mask-image:linear-gradient(to bottom,var(--foreground),transparent);
+  opacity:0; transition:opacity 160ms ease-out;
+}
+${MODELS} [${MODEL_SCROLL_MARK}] > div[class~="sticky"]::after {
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); opacity:1;
 }
 ${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !important; }
 [data-bb-chat-ui-model-resizing] { overflow:clip !important; }
@@ -58,6 +74,7 @@ ${MODELS} button[role="switch"][aria-label="Fast mode"][aria-checked="true"] { b
 ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { width:18px !important; height:18px !important; flex-shrink:0; background:var(--foreground) !important; translate:none !important; transform:translateX(0) !important; transition:transform 160ms ${EASE.out} !important; }
 ${MODELS} button[role="switch"][aria-label="Fast mode"][aria-checked="true"] > span { background:var(--background) !important; transform:translateX(16px) !important; }
 @media (prefers-reduced-motion:reduce) {
+  ${MODELS} div[class~="sticky"], ${MODELS} div[class~="sticky"]::after { transition:none !important; }
   ${MODELS} button[role="switch"][aria-label="Fast mode"] > span { transition:none !important; }
 }
 `;

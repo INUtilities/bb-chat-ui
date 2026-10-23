@@ -11,9 +11,14 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 - 컴포저 `+` 메뉴와 모델 선택 팝오버도 `lib/composer-menu-glass.ts`에서 같은
   18px 모서리와 frost 표면을 쓴다. + 메뉴의 접근성 이름과 모델 선택 버튼의 aria-controls 연결로
   범위를 한정하며, 패딩·검색·선택 동작은 native 구현을 유지한다.
-  모델 목록의 고정 제목은 Thread Theme의 desktop 섹션 제목처럼 테마 표면 62%와
-  `blur(24px) saturate(1.5)`를 적용해 스크롤되는 글자와 구분한다. 바탕은 해당 카드의
-  `--popover`를 사용한다. More models의 별도 native 팝오버도 같은 frost와 행 radius를
+  모델 목록의 고정 제목은 스크롤 0에서 배경이 투명하며 backdrop-filter가 없다.
+  실제 모델 목록이 스크롤되어 제목 아래로 지나갈 때만 카드 면
+  `var(--bb-chat-ui-card-face)`와 `blur(24px) saturate(1.5)`를 적용한다.
+  제목 아래에는 카드 면에서 투명으로 사라지는 12px gradient·blur 6px·mask를 둔다.
+  상태 전환은 160ms ease-out이며 동작 줄이기 설정에서는 전환하지 않는다.
+  열린 메뉴의 실제 스크롤 요소에 passive listener 하나를 연결하고 scrollTop만 읽어
+  상태가 달라질 때만 data 속성을 바꾼다. 메뉴 닫기·목록 교체·플러그인 해제 때 정리한다.
+  More models의 별도 native 팝오버도 같은 frost와 행 radius를
   사용하며, 해당 컴포저의 열린 More models에서 새로 열린 모델 목록만 표시 범위에 넣는다.
   목록 행과 모델 카드의 hover 배경이 있는 버튼은 안쪽 모서리를 10px로 통일한다.
   모델 카드 너비는 20rem이며 작은 화면에서는 화면 안으로 제한한다. Provider 변경에
@@ -41,6 +46,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 
 - 카드의 glass 면은 한 겹이다. BB 테마 토큰과 `glass-surface.ts`를 쓰고 안쪽에
   불투명한 native 배경·ring·상단 구분선을 겹치지 않는다.
+  모델 목록의 고정 제목은 스크롤 중 글자가 아래로 지나갈 때만 frost 한 겹 원칙의 예외다.
 - 바깥 radius는 18px, 상세 카드 패딩은 세로 16px·가로 24px다. 짧은 카드는 내용만큼 높아지고,
   긴 카드는 Code Diff와 같은 `--bb-chat-ui-info-max-height`에서 스크롤한다.
 - 상세 카드 제목은 읽기 전용이다. 제목 클릭으로 카드를 접지 않으며 hover 배경·pointer를

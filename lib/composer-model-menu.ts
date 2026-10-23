@@ -3,14 +3,43 @@ import { injectComposerModelSize } from "./composer-model-size.ts";
 
 export const MODEL_MENU_MARK = "data-bb-chat-ui-model-menu";
 export const MODEL_SUBMENU_MARK = "data-bb-chat-ui-model-submenu";
+export const MODEL_SCROLL_MARK = "data-bb-chat-ui-model-scrolled";
 const TRIGGER = 'button[aria-haspopup="dialog"][aria-label^="Provider, model and reasoning"][aria-controls]';
 const DIALOG = '[data-bb-portaled-overlay][role="dialog"]';
 const MORE = 'button[aria-haspopup="menu"][aria-expanded="true"]';
 
+// Native Codex uses a listbox; providers without search use an overflow-y-auto list.
+function trackModelScroll(card: HTMLElement): () => void {
+  let scroller: HTMLElement | null = null;
+  function update(): void {
+    if (!scroller) return;
+    const scrolled = scroller.scrollTop > 0;
+    if (scroller.hasAttribute(MODEL_SCROLL_MARK) !== scrolled) scroller.toggleAttribute(MODEL_SCROLL_MARK, scrolled);
+  }
+  function unbind(): void {
+    scroller?.removeEventListener("scroll", update);
+    scroller?.removeAttribute(MODEL_SCROLL_MARK);
+    scroller = null;
+  }
+  function bind(): void {
+    const next = Array.from(card.querySelectorAll<HTMLElement>('[role="listbox"],div[class~="overflow-y-auto"]'))
+      .find(element => element.querySelector(':scope > div[class~="sticky"]')) ?? null;
+    if (next === scroller) return;
+    unbind();
+    scroller = next;
+    scroller?.addEventListener("scroll", update, { passive: true });
+    update();
+  }
+  const observer = new card.ownerDocument.defaultView!.MutationObserver(bind);
+  observer.observe(card, { childList: true, subtree: true });
+  bind();
+  return () => { observer.disconnect(); unbind(); };
+}
+
 // Track composer-owned model portals independently of optional provider controls.
 export function injectComposerModelMenus(document: Document): () => void {
   const view = document.defaultView;
-  const cards = new Map<HTMLElement, { previous: string | null; stop: () => void }>();
+  const cards = new Map<HTMLElement, { previous: string | null; stop: () => void; trigger: Element }>();
   const submenus = new Map<HTMLElement, { previous: string | null; trigger: Element }>();
   const seen = new WeakSet<Element>();
   const owners = new WeakMap<HTMLElement, Element>();
@@ -58,21 +87,26 @@ export function injectComposerModelMenus(document: Document): () => void {
 
   // Resolve the actual portal through its native trigger's aria-controls relation.
   function discover(): void {
-    for (const [card, previous] of cards) {
-      if (!card.isConnected) release(card, previous);
-    }
+    releaseClosedMenus();
     for (const trigger of Array.from(document.querySelectorAll(TRIGGER))) {
       const id = trigger.getAttribute("aria-controls");
       const card = id ? document.getElementById(id) : null;
-      if (!card || !card.matches(DIALOG) || cards.has(card)) continue;
+      if (!card || !card.matches(DIALOG) || cards.has(card) || trigger.getAttribute("aria-expanded") === "false" || card.getAttribute("data-state") === "closed") continue;
       const previous = card.getAttribute(MODEL_MENU_MARK);
       card.setAttribute(MODEL_MENU_MARK, "");
       const stopEffort = injectComposerEffort(card);
       const stopSize = injectComposerModelSize(card);
+      const stopScroll = trackModelScroll(card);
       // Release size motion before restoring the native effort controls.
-      cards.set(card, { previous, stop: () => { stopSize(); stopEffort(); } });
+      cards.set(card, { previous, trigger, stop: () => { stopScroll(); stopSize(); stopEffort(); } });
     }
     discoverSubmenus();
+  }
+
+  function releaseClosedMenus(): void {
+    for (const [card, record] of cards) {
+      if (!card.isConnected || !record.trigger.isConnected || record.trigger.getAttribute("aria-controls") !== card.id || record.trigger.getAttribute("aria-expanded") === "false" || card.getAttribute("data-state") === "closed") release(card, record);
+    }
   }
 
   // Inspect only newly added candidate subtrees instead of rescanning on chat tokens.
@@ -92,16 +126,14 @@ export function injectComposerModelMenus(document: Document): () => void {
         }
       }
       if (record.removedNodes.length && cards.size) {
-        for (const [card, previous] of cards) {
-          if (!card.isConnected) release(card, previous);
-        }
+        releaseClosedMenus();
         releaseClosedSubmenus();
       }
     }
   }
 
   const observer = view ? new view.MutationObserver(changed) : null;
-  observer?.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-controls", "aria-haspopup", "aria-label", "aria-expanded"] });
+  observer?.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-controls", "aria-haspopup", "aria-label", "aria-expanded", "data-state"] });
   discover();
 
   // Release portal ownership when the plugin reloads or is disabled.

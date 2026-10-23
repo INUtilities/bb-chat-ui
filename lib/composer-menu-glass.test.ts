@@ -129,18 +129,89 @@ function moreModels(id = "more-models"): string {
   return `<div id="${id}" role="dialog" data-bb-portaled-overlay data-side="right"><button class="relative rounded-sm hover:bg-state-hover"><span class="truncate" title="Sonnet 5.5 alias">Sonnet 5.5 alias</span><span><svg data-icon="Check"></svg></span></button></div>`;
 }
 
-// Cover Grok's title outside the scroll node and Codex's title inside the listbox.
-test("model sticky headings use the desktop section frost surface in both native layouts", () => {
+// Match only headings inside the native model scroller, leaving static Reasoning transparent.
+test("model headings frost only while their own list is scrolled", () => {
   for (const html of [GROK, CODEX]) {
     const f = fixture(TRIGGER + html);
     const stop = injectComposerMenuGlass(f.document);
     try {
-      const heading = f.document.querySelector('.sticky')!;
-      // JSDOM drops srgb color-mix, so verify its scoped declaration alongside the matched native heading rule.
-      assert.match(f.document.getElementById(COMPOSER_MENU_GLASS_STYLE_ID)!.textContent!, /div\[class~="sticky"\] \{\s*background:color-mix\(in srgb,var\(--popover\) 62%,transparent\) !important;/);
-      assert.equal(declaration(f.document, heading, "backdrop-filter"), "blur(24px) saturate(1.5)");
+      const scroller = f.document.querySelector<HTMLElement>('[role="listbox"],.overflow-y-auto')!;
+      const heading = scroller.querySelector('.sticky')!;
+      const reasoning = f.document.querySelector('[role="radiogroup"]')!.previousElementSibling!;
+      assert.equal(declaration(f.document, heading, 'background'), 'transparent');
+      assert.equal(declaration(f.document, heading, 'backdrop-filter'), 'none');
+      scroller.scrollTop = 16; scroller.dispatchEvent(new f.dom.window.Event('scroll'));
+      assert.ok(scroller.hasAttribute('data-bb-chat-ui-model-scrolled'));
+      assert.equal(declaration(f.document, heading, 'background'), 'var(--bb-chat-ui-card-face)');
+      assert.equal(declaration(f.document, heading, 'backdrop-filter'), 'blur(24px) saturate(1.5)');
+      assert.equal(declaration(f.document, reasoning, 'backdrop-filter'), 'none');
+      const css = f.document.getElementById(COMPOSER_MENU_GLASS_STYLE_ID)!.textContent!;
+      assert.match(css, /height:12px/);
+      assert.match(css, /linear-gradient\(to bottom,var\(--bb-chat-ui-card-face\),transparent\)/);
+      assert.match(css, /backdrop-filter:blur\(6px\)/);
+      assert.match(css, /mask-image:linear-gradient\(to bottom,var\(--foreground\),transparent\)/);
+      assert.match(css, /transition:background 160ms ease-out,backdrop-filter 160ms ease-out/);
+      assert.match(css, /prefers-reduced-motion:reduce[\s\S]*sticky[\s\S]*transition:none !important/);
+      scroller.scrollTop = 0; scroller.dispatchEvent(new f.dom.window.Event('scroll'));
+      assert.equal(scroller.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+      assert.equal(declaration(f.document, heading, 'backdrop-filter'), 'none');
     } finally { stop(); f.restore(); }
   }
+});
+
+// Scroll handlers may read scrollTop only and must not write unchanged state.
+test("model scroller uses one passive listener and writes only state changes", async () => {
+  const f = fixture(TRIGGER + CODEX);
+  const scroller = f.document.querySelector<HTMLElement>('[role="listbox"]')!;
+  const added: unknown[] = [], removed: unknown[] = [];
+  const add = scroller.addEventListener.bind(scroller), remove = scroller.removeEventListener.bind(scroller);
+  scroller.addEventListener = ((type, listener, options) => { if (type === 'scroll') added.push(options); add(type, listener, options); }) as typeof scroller.addEventListener;
+  scroller.removeEventListener = ((type, listener, options) => { if (type === 'scroll') removed.push(listener); remove(type, listener, options); }) as typeof scroller.removeEventListener;
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    assert.deepEqual(added, [{ passive: true }]);
+    const mutations: MutationRecord[] = [];
+    const observer = new f.dom.window.MutationObserver(records => mutations.push(...records));
+    observer.observe(scroller, { attributes: true, attributeFilter: ['data-bb-chat-ui-model-scrolled'] });
+    for (const key of ['clientHeight', 'scrollHeight', 'offsetTop', 'offsetHeight']) Object.defineProperty(scroller, key, { get() { throw Error('scroll layout read: ' + key); } });
+    scroller.getBoundingClientRect = () => { throw Error('scroll layout read'); };
+    for (const top of [0, 0, 12, 18, 18, 0, 0]) { scroller.scrollTop = top; scroller.dispatchEvent(new f.dom.window.Event('scroll')); }
+    await f.settle();
+    assert.equal(mutations.length, 2);
+    scroller.scrollTop = 10; scroller.dispatchEvent(new f.dom.window.Event('scroll'));
+    stop();
+    assert.equal(scroller.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+    assert.equal(removed.length, 1);
+    scroller.dispatchEvent(new f.dom.window.Event('scroll'));
+    assert.equal(scroller.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+    observer.disconnect();
+  } finally { stop(); f.restore(); }
+});
+
+// Provider changes replace the scroll element without replacing the outer portal.
+test("model scroller rebinds on native list replacement and cleans up on close", async () => {
+  const f = fixture(TRIGGER + CODEX);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const old = f.document.querySelector<HTMLElement>('[role="listbox"]')!;
+    old.scrollTop = 10; old.dispatchEvent(new f.dom.window.Event('scroll'));
+    const next = old.cloneNode(true) as HTMLElement;
+    next.removeAttribute('data-bb-chat-ui-model-scrolled'); next.scrollTop = 4;
+    old.replaceWith(next); await f.settle();
+    assert.equal(old.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+    assert.equal(next.hasAttribute('data-bb-chat-ui-model-scrolled'), true);
+    old.dispatchEvent(new f.dom.window.Event('scroll'));
+    assert.equal(old.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+    const trigger = f.document.querySelector('button[aria-controls]')!;
+    trigger.setAttribute('aria-expanded', 'false'); await f.settle();
+    assert.equal(next.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+    next.dispatchEvent(new f.dom.window.Event('scroll'));
+    assert.equal(next.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+    trigger.setAttribute('aria-expanded', 'true'); await f.settle();
+    assert.equal(next.hasAttribute('data-bb-chat-ui-model-scrolled'), true);
+    f.document.getElementById('radix-_r_2m_')!.remove(); await f.settle();
+    assert.equal(next.hasAttribute('data-bb-chat-ui-model-scrolled'), false);
+  } finally { stop(); f.restore(); }
 });
 
 // Keep the approved waveform compact and its bars round without a separate filled track.
