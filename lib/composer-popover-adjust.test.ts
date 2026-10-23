@@ -29,6 +29,16 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
   } finally { f.dom.window.close(); }
 });
 
+test("the PR GitHub link uses the shared circular action without replacing its URL", () => {
+  const f = surface("pullRequest", '<div data-bb-chat-ui-info-pr-heading><a aria-label="Pull request 12: Open" href="https://example.com/pr/12" class="rounded">PR</a></div>', "small", '.rounded{border-radius:4px}');
+  try {
+    const action = f.css("a");
+    assert.equal(action.borderRadius, "999px");
+    assert.equal(action.width, "24px"); assert.equal(action.height, "24px");
+    assert.equal(f.document.querySelector("a")!.getAttribute("href"), "https://example.com/pr/12");
+  } finally { f.dom.window.close(); }
+});
+
 test("queue icon actions are circular at both hit target sizes while the drag handle stays separate", () => {
   for (const hit of ["small", "large"]) {
     const f = surface("queue", '<div data-queued-message-row><button aria-label="Reorder queued message 1" style="width:20px">Drag</button><button aria-label="Queued message 1 actions">More</button><div data-queued-message-actions><button aria-label="Send queued message">Send</button><button aria-label="Edit queued message">Edit</button><button aria-label="Delete queued message">Delete</button></div></div>', hit);
