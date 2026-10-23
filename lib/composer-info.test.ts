@@ -284,6 +284,7 @@ test("the SDK PR fallback uses the same single row without a family title or fam
     assert.equal(card.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
     assert.equal(card.querySelector('[data-bb-chat-ui-info-title-icon]'),null);
     assert.equal(card.querySelector('[data-bb-chat-ui-info-pr-title]')?.textContent,'SDK PR title');
+    assert.equal(link.nextElementSibling,card.querySelector('[data-bb-chat-ui-info-pr-title]'),'the original SDK link leads the generated title');
     assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).height,'40px');
     assert.ok(link.hasAttribute('data-bb-chat-ui-card-navigation'));
     f.click('[data-bb-chat-ui-card-close]');await f.tick();
@@ -340,6 +341,7 @@ test("PR header shows the SDK title on one line and keeps a separate GitHub link
     assert.equal(f.dom.window.getComputedStyle(title!).whiteSpace,'nowrap');
     assert.equal(link.href,'https://github.com/example/repo/pull/42');
     assert.equal(link.getAttribute('title'),'GitHub에서 PR 열기');
+    assert.equal(link.nextElementSibling,title,'the GitHub link is before the PR title');
     const iconRule=[...f.document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).find(rule=>'selectorText' in rule && rule.selectorText.endsWith('a[aria-label^="Pull request "]::after')) as CSSStyleRule;
     assert.equal(iconRule.style.content,'""');
     assert.equal(iconRule.style.width,'14px');

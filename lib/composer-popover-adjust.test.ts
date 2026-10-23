@@ -78,6 +78,11 @@ test("the PR GitHub link uses the shared circular action without replacing its U
     const action = f.css("a");
     assert.equal(action.borderRadius, "999px");
     assert.equal(action.width, "24px"); assert.equal(action.height, "24px");
+    const mask = Array.from(f.document.styleSheets[0].cssRules).find(rule => {
+      const css = rule as CSSStyleRule;
+      return css.selectorText?.endsWith('::after') && f.document.querySelector('a')!.matches(css.selectorText.slice(0, -7));
+    }) as CSSStyleRule;
+    assert.equal(16 + parseFloat(action.marginLeft) + (parseFloat(action.width) - parseFloat(mask.style.width)) / 2, 16, 'the visible GitHub mask starts at the Parent provider inset');
     assert.equal(f.document.querySelector("a")!.getAttribute("href"), "https://example.com/pr/12");
   } finally { f.dom.window.close(); }
 });

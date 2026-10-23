@@ -173,7 +173,8 @@ ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-weight:400; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { ${cardStyle.action} font-size:0 !important; text-decoration:none; }
+/* Center a 14px mask in its 24px target, but align its visible edge to the 16px Parent icon slot. */
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { ${cardStyle.action} margin-left:-5px; margin-right:-3px; font-size:0 !important; text-decoration:none; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:14px; height:14px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title] { display:none; }
@@ -929,7 +930,7 @@ export function injectComposerInfo(document: Document): () => void {
             const title = stack.querySelector(`[${SOURCE}]`)?.getAttribute(`${MARK}-pr-title`) || link.textContent?.trim() || "Pull request";
             if (prTitle.textContent !== title) prTitle.textContent = title;
             if (prTitle.getAttribute("title") !== title) prTitle.setAttribute("title",title);
-            if (prTitle.nextElementSibling !== link) heading.insertBefore(prTitle, link);
+            if (prTitle.previousElementSibling !== link) link.after(prTitle);
           } else clearPrHeader();
           let actions = heading.querySelector<HTMLElement>('div.inline-flex.overflow-hidden.rounded[class~="border"]');
           if (actions) {
