@@ -338,8 +338,8 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; min-width:0; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 [${MARK}-diff-file]:hover, [${MARK}-diff-commit]:hover { ${cardStyle.rowHover} }
 [${MARK}-diff-file][hidden], [${MARK}-diff-commit][hidden] { display:none !important; }
-[${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; width:100%; min-height:28px; margin:3px 0; padding:4px 8px; border-radius:8px; font-size:13px !important; line-height:16px; color:var(--subtle-foreground); cursor:pointer; text-align:left; }
-[${MARK}-diff] [${MARK}-diff-toggle] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+[${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; margin:0; color:var(--subtle-foreground); font-family:inherit; cursor:pointer; text-align:left; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+[${MARK}-diff] [${MARK}-diff-toggle]:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 [${MARK}-diff-toggle]:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 [${MARK}-diff-toggle] svg { width:12px; height:12px; flex-shrink:0; }
 [${MARK}-diff-toggle][aria-expanded=true] svg { transform:rotate(180deg); }

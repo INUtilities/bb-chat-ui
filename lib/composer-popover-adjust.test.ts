@@ -29,6 +29,18 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
   } finally { f.dom.window.close(); }
 });
 
+test("Diff expansion controls are secondary list rows with the common gutter", () => {
+  const f = surface("diff", '<div data-bb-chat-ui-info-diff><button data-bb-chat-ui-info-diff-toggle="files" aria-expanded="false"><span>7개 더 보기</span><svg /></button></div>', "large");
+  try {
+    const row = f.css("button");
+    assert.equal(row.minHeight, "32px"); assert.equal(row.padding, "8px");
+    assert.equal(row.borderRadius, "10px"); assert.equal(row.marginLeft, "-8px");
+    assert.equal(row.width, "calc(100% + 16px)");
+    assert.equal(row.fontSize, "13px"); assert.equal(row.lineHeight, "16px");
+    assert.equal(f.document.querySelectorAll("button svg").length, 1);
+  } finally { f.dom.window.close(); }
+});
+
 test("Diff rows share the hover gutter while their zero-gap graph spans the padded row", () => {
   const f = surface("diff", '<div data-bb-chat-ui-info-diff-files><div data-bb-chat-ui-info-diff-file><svg/><code>path</code><span>+2</span></div></div><div data-bb-chat-ui-info-diff-commits><div data-bb-chat-ui-info-diff-commit><span data-bb-chat-ui-info-diff-graph><svg/></span><code>Commit</code></div><div data-bb-chat-ui-info-diff-commit><span data-bb-chat-ui-info-diff-graph><svg/></span><code>Next</code></div></div>');
   try {
