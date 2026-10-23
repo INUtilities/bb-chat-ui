@@ -88,6 +88,25 @@ test("the common body removes inherited edge insets while keeping row padding", 
   f.dom.window.close();
 });
 
+test("main card text stays 12px/16px when host mobile utilities grow, without resizing metadata or editors", () => {
+  const f=page(`<section ${CARD}><div ${cardSlot.body}><p class="text-xs leading-relaxed">Goal objective</p><span class="text-xs">Workflow phase</span><p ${cardSlot.meta} class="text-xs">Usage</p><pre><code class="text-xs">code</code></pre><div contenteditable="true"><p class="text-xs">draft</p></div></div></section><p class="text-xs" data-outside>Native paragraph</p>`);
+  const host=f.document.createElement('style');
+  host.textContent='.text-xs { font-size:14px; line-height:20px; } .leading-relaxed { line-height:1.625; }';
+  f.document.head.prepend(host);
+  for(const selector of ['p.leading-relaxed','span.text-xs']){
+    const s=f.style(f.document.querySelector(selector)!);
+    assert.equal(s.fontSize,'12px','host mobile utilities must not enlarge main card content');
+    assert.equal(s.lineHeight,'16px');
+  }
+  assert.equal(f.style(f.document.querySelector(`[${cardSlot.meta}]`)!).fontSize,'11px');
+  for(const selector of ['code','[contenteditable] p','[data-outside]']){
+    const s=f.style(f.document.querySelector(selector)!);
+    assert.equal(s.fontSize,'14px',`${selector}: typography outside the main card text stays native`);
+    assert.equal(s.lineHeight,'20px');
+  }
+  f.dom.window.close();
+});
+
 test("text actions are hairline pills without a second surface", () => {
   const f = page(`<section ${CARD}><div ${cardSlot.head}><button ${cardSlot.button}>Goal 해제</button></div></section>`);
   const s = f.style(f.document.querySelector(`[${cardSlot.button}]`)!);

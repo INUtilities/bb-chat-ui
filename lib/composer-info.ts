@@ -155,6 +155,9 @@ ${DETAIL}[aria-label="Goal"] > button[aria-expanded][aria-controls],
 ${DETAIL}[aria-label="Goal"] > [aria-label="Goal controls"] > button[aria-expanded] { display:none !important; }
 ${DETAIL}[aria-label="Goal"] > #thread-goal-card-body { grid-area:body; border:0 !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[aria-label="Goal"] > #thread-goal-card-body > div { background:transparent !important; box-shadow:none !important; }
+${DETAIL}[aria-label="Goal"] #thread-goal-card-body > div > div > div[class~="text-muted-foreground"],
+${DETAIL}[${MARK}-kind="goal"] [${cardSlot.body}] > p[class~="text-subtle-foreground"],
+${DETAIL}[${MARK}-kind="queue"] [${cardSlot.body}] > p[class~="text-subtle-foreground"] { ${cardStyle.meta} }
 ${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] { grid-area:actions; width:auto; }
 ${DETAIL}[aria-label="Goal"] [aria-label="Clear active Goal"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] { width:auto; }
@@ -184,6 +187,7 @@ ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL} p${PROTECTED_EXCLUDE} { min-width:0; overflow-wrap:anywhere; }
+${DETAIL}[${OPEN}="background"] [aria-label^="Background command:"] > span[class~="flex-1"] > span[class~="whitespace-nowrap"]:not([class~="tabular-nums"]) { min-width:0; flex-shrink:1; overflow:hidden; text-overflow:ellipsis; }
 /* One glass face. Header disclosure sits flat on it; small actions keep the shared face. */
 /* The popup owns its entrance; native outer bodies open without another height reveal. */
 ${DETAIL} > section[role="region"], ${DETAIL}.agentation-staging-shell > .grid { transition:none !important; grid-template-rows:1fr !important; opacity:1 !important; }
@@ -338,7 +342,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-commit]:first-child [${MARK}-diff-graph]::before, [${MARK}-diff-commit]:last-child [${MARK}-diff-graph]::after { display:none; }
 [${MARK}-diff-commits][${MARK}-diff-collapsed] > [${MARK}-diff-commit]:nth-child(5) [${MARK}-diff-graph]::after { display:none; }
 [${MARK}-diff-graph] svg { position:absolute; width:12px; height:12px; left:2px; top:calc(50% - 6px); fill:none; stroke:currentColor; stroke-width:1.5; }
-[${MARK}-diff-file] code, [${MARK}-diff-commit] code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:11px/1.6 var(--font-mono,monospace); }
+[${MARK}-diff-file] code, [${MARK}-diff-commit] code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono,monospace); ${cardStyle.text} }
 [${MARK}-diff-file] > span { flex-shrink:0; font-size:11px; }
 [${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }

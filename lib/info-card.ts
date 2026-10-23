@@ -27,11 +27,13 @@ export const cardSlot = {
 export const NESTED_SURFACE_EXEMPT = "input, textarea, select, pre, code, [contenteditable='true'], .cm-editor, .monaco-editor";
 
 const FLAT = "background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;";
-const TITLE_TYPE = "font-size:12px; line-height:16px; font-weight:600; text-align:left;";
+const TEXT_TYPE = "font-size:12px; line-height:16px;";
+const TITLE_TYPE = `${TEXT_TYPE} font-weight:600; text-align:left;`;
 export const CARD_HOVER = "color-mix(in oklab,var(--foreground) 6%,transparent)";
 
 /** Declaration blocks shared by slots and by native nodes mapped onto a slot. */
 export const cardStyle = {
+  text: TEXT_TYPE,
   face: `--bb-chat-ui-card-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); border:0 !important; border-radius:18px !important; color:var(--foreground); background:var(--bb-chat-ui-card-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow),inset 0 1px 3px var(--bb-chat-ui-card-edge) !important;`,
   faceDark: `--bb-chat-ui-card-face:${DARK_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,black 60%,transparent);`,
   head: `display:flex; align-items:center; gap:8px; box-sizing:border-box; min-width:0; height:28px; min-height:28px; margin:0 0 8px; padding:0 32px 0 0 !important; ${TITLE_TYPE}`,
@@ -45,7 +47,7 @@ export const cardStyle = {
   hover: `color:var(--foreground); background-color:${CARD_HOVER} !important;`,
   list: "display:flex; flex-direction:column; row-gap:2px; margin:0; padding:0; list-style:none;",
   /** Row box: native rows keep their own layout and reuse only this. */
-  rowBox: `box-sizing:border-box; min-height:32px; padding:8px !important; border:0 !important; border-radius:10px !important; font-size:12px; line-height:16px; transition:background-color 150ms ease-out; ${FLAT}`,
+  rowBox: `box-sizing:border-box; min-height:32px; padding:8px !important; border:0 !important; border-radius:10px !important; ${TEXT_TYPE} transition:background-color 150ms ease-out; ${FLAT}`,
   /** Hover paint reaches 8px past the content edge without moving the content. */
   rowGutter: "width:calc(100% + 16px); margin-left:-8px !important; margin-right:-8px !important;",
   rowHover: `background-color:${CARD_HOVER} !important;`,
@@ -62,9 +64,13 @@ export function infoCardCss(root = `[${CARD}]`): string {
   const card = `:is(${root})`;
   const s = Object.fromEntries(Object.entries(cardSlot).map(([key, attr]) => [key, `[${attr}]`])) as { [K in keyof typeof cardSlot]: string };
   const controls = `${s.action}, ${s.button}, ${s.close}, ${s.row}`;
+  const ownType = `${NESTED_SURFACE_EXEMPT}, ${s.meta}, ${s.section}, ${s.action}, ${s.button}, ${s.close}`;
+  const ownTypeTree = `${ownType}, ${ownType.split(", ").map(selector => `${selector} *`).join(", ")}`;
   return `
 ${cardFaceCss(card)}
-${card} { position:relative; box-sizing:border-box; padding:16px 24px !important; font-size:12px; line-height:16px; }
+${card} { position:relative; box-sizing:border-box; padding:16px 24px !important; ${cardStyle.text} }
+/* Host text-xs grows on phones; main content keeps the card scale. */
+${card} :where(p, [class~="text-xs"]):not(:where(${ownTypeTree})) { ${cardStyle.text} }
 ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }

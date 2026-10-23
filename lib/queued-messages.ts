@@ -281,8 +281,11 @@ ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   line-height: 1.5;
 }
 ${MANAGED_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .prompt-mention-pill *) {
-  font-size: 0.75rem !important;
-  line-height: 1.5 !important;
+  /* The host's layered !text-xs takes priority over unlayered !important. */
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  font-size: 12px !important;
+  line-height: 16px !important;
 }
 ${MANAGED_QUEUE} [data-queued-message-actions] {
   display: none !important;

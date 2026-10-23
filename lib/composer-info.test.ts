@@ -45,6 +45,63 @@ function fixture() {
   return { dom, document, tick, click };
 }
 
+test("Goal body text shares the card line height and native/SDK metadata uses the secondary size", async () => {
+  const f=fixture(),goal=f.document.querySelector('section[aria-label="Goal"]')!;
+  goal.innerHTML='<div aria-label="Goal controls"><button id="thread-goal-card-toggle" aria-expanded="false" aria-controls="thread-goal-card-body">Goal</button><button aria-label="Clear active Goal">Clear</button></div><section id="thread-goal-card-body" hidden><div><div><p class="text-xs leading-relaxed">Native goal objective</p><div class="flex text-xs text-muted-foreground"><span>100 tokens</span><span>10s</span></div></div></div></section>';
+  const toggle=goal.querySelector('button[aria-controls]')!;
+  toggle.addEventListener('click',()=>{goal.querySelector<HTMLElement>('#thread-goal-card-body')!.hidden=toggle.getAttribute('aria-expanded')==='true';toggle.setAttribute('aria-expanded',String(toggle.getAttribute('aria-expanded')!=='true'));});
+  const host=f.document.createElement('style');
+  host.textContent='.text-xs { font-size:12px; line-height:16px; } .leading-relaxed { line-height:1.625; } code, textarea { font-size:14px; line-height:20px; }';
+  f.document.head.append(host);
+  const stop=injectComposerInfo(f.document),style=(node:Element)=>f.dom.window.getComputedStyle(node);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
+    const objective=goal.querySelector('p')!,meta=goal.querySelector('.text-muted-foreground')!;
+    assert.equal(style(objective).fontSize,'12px');
+    assert.equal(style(objective).lineHeight,'16px','native leading-relaxed must not enlarge the main body line');
+    assert.equal(style(meta).fontSize,'11px','native Goal usage is secondary information');
+    assert.equal(style(meta).lineHeight,'16px');
+    objective.outerHTML='<p class="text-xs leading-relaxed">Rerendered objective <code>code</code></p><textarea>draft</textarea>';
+    await f.tick();
+    assert.equal(style(goal.querySelector('p')!).lineHeight,'16px','native rerenders keep the shared body type');
+    for(const field of goal.querySelectorAll('code,textarea')){
+      assert.equal(style(field).fontSize,'14px','code and inputs retain their own typography');
+      assert.equal(style(field).lineHeight,'20px');
+    }
+    f.click('[aria-label="Goal 닫기"]');
+    for(const kind of ['goal','queue']){
+      goal.remove();
+      const sdk=f.document.createElement('section');sdk.setAttribute('data-bb-chat-ui-info-kind',kind);sdk.setAttribute('aria-label',kind==='goal'?'Goal':'대기 메시지');
+      sdk.innerHTML='<h3 data-bb-chat-ui-card-head><span data-bb-chat-ui-card-title>Title</span></h3><div data-bb-chat-ui-card-body><p>Main content</p><p class="text-subtle-foreground">Status and usage</p></div>';
+      if(kind==='queue')f.document.querySelector('section[aria-label="Queued messages"]')!.remove();
+      f.document.querySelector('[data-promptbox-shell] > .grid')!.append(sdk);await f.tick();
+      f.click(`[data-bb-chat-ui-info-trigger="${kind}"]`);await f.tick();
+      const paragraphs=sdk.querySelectorAll('p');
+      assert.equal(style(paragraphs[0]).fontSize,'12px',`${kind}: main content keeps the common size`);
+      assert.equal(style(paragraphs[0]).lineHeight,'16px');
+      assert.equal(style(paragraphs[1]).fontSize,'11px',`${kind}: SDK status uses the same secondary size`);
+      assert.equal(style(paragraphs[1]).lineHeight,'16px');
+      f.click(`[aria-label="${kind==='goal'?'Goal':'대기 메시지'} 닫기"]`);sdk.remove();
+    }
+  } finally {stop();}
+  f.document.querySelector('[data-promptbox-shell] > .grid')!.append(goal);
+  assert.equal(style(goal.querySelector('p')!).lineHeight,'1.625','unload restores native paragraph typography');
+  assert.equal(style(goal.querySelector('.text-muted-foreground')!).fontSize,'12px');
+  f.dom.window.close();
+});
+
+test("Diff file paths and commit subjects use the main size while statistics stay secondary", () => {
+  const dom=new JSDOM(`<style>${composerInfoCss}</style><div data-bb-chat-ui-info-diff-file><code>lib/example.ts</code><span>+12</span></div><div data-bb-chat-ui-info-diff-commit><code>Commit subject</code></div>`);
+  for(const text of dom.window.document.querySelectorAll('code')){
+    const s=dom.window.getComputedStyle(text);
+    assert.equal(s.fontSize,'12px');
+    assert.equal(s.lineHeight,'16px');
+    assert.match(s.fontFamily,/mono/,'code labels retain their code font');
+  }
+  assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('span')!).fontSize,'11px');
+  dom.window.close();
+});
+
 test("PR Merge opens the native method menu without merging; only an option executes", async () => {
   const f=fixture();
   const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
