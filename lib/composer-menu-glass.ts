@@ -39,6 +39,8 @@ ${MODELS} div[class~="overflow-y-auto"] > div[class~="sticky"] {
   backdrop-filter:blur(14px) saturate(1.25);
   -webkit-backdrop-filter:blur(14px) saturate(1.25);
 }
+${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !important; }
+[data-bb-chat-ui-model-resizing] { overflow:hidden; border-radius:18px; }
 [data-bb-chat-ui-effort-source], [data-bb-chat-ui-effort-heading] { display:none !important; }
 [data-bb-chat-ui-effort] { min-width:0; padding:0 4px; color:var(--foreground); }
 [data-bb-chat-ui-effort] [data-effort-caption], [data-bb-chat-ui-effort] [data-effort-ends] { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; line-height:16px; }

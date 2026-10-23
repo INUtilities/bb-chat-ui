@@ -1,4 +1,5 @@
 import { injectComposerEffort } from "./composer-effort.ts";
+import { injectComposerModelSize } from "./composer-model-size.ts";
 
 export const MODEL_MENU_MARK = "data-bb-chat-ui-model-menu";
 const TRIGGER = 'button[aria-haspopup="dialog"][aria-label^="Provider, model and reasoning"][aria-controls]';
@@ -29,7 +30,10 @@ export function injectComposerModelMenus(document: Document): () => void {
       if (!card || !card.matches(DIALOG) || cards.has(card)) continue;
       const previous = card.getAttribute(MODEL_MENU_MARK);
       card.setAttribute(MODEL_MENU_MARK, "");
-      cards.set(card, { previous, stop: injectComposerEffort(card) });
+      const stopEffort = injectComposerEffort(card);
+      const stopSize = injectComposerModelSize(card);
+      // Release size motion before restoring the native effort controls.
+      cards.set(card, { previous, stop: () => { stopSize(); stopEffort(); } });
     }
   }
 
