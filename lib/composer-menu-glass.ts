@@ -23,6 +23,11 @@ ${CARDS} {
   --bb-chat-ui-menu-edge:color-mix(in oklab,var(--foreground) 8%,transparent);
   --bb-chat-ui-menu-shadow:color-mix(in oklab,var(--background) 60%,transparent);
 }
+/* Match the shared inner-row radius for hover, keyboard focus, and selected states. */
+${ACTIONS} [role="menuitem"],
+${MODELS} :is([role="option"],button[class~="hover:bg-state-hover"]) {
+  border-radius:10px !important;
+}
 /* Keep the provider tabs and section headings on the card's single glass face. */
 ${MODELS} > div[class~="bg-background"],
 ${MODELS} div[class~="sticky"][class~="bg-background"] {
