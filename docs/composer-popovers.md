@@ -14,17 +14,20 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   긴 카드는 Code Diff와 같은 `--bb-chat-ui-info-max-height`에서 스크롤한다.
 - 상세 카드 제목은 읽기 전용이다. 제목 클릭으로 카드를 접지 않으며 hover 배경·pointer를
   추가하지 않는다. 실제 액션과 본문 내부의 펼치기·접기는 유지한다.
-- 제목 행은 28px, 제목 글자는 12px/16px·굵기 600·왼쪽 정렬이다. native 제목의
+- 제목 행은 28px, 제목 글자는 13px/18px·굵기 600·왼쪽 정렬이다. native 제목의
   가운데 정렬·`font-normal`을 그대로 남기지 않는다. 제목의 아이콘·외부 열기·닫기는
   이 행의 세로 중심선을 공유한다. 32px 터치 액션도 제목 행을 아래로 밀지 않는다.
 - 제목 왼쪽에는 해당 정보 아이콘을 둔다. 전체 정보 목록 제목은 예외다.
 - 제목 영역(아이콘 포함)과 본문은 카드의 같은 왼쪽 시작점을 쓴다. 목록 hover를
   좌우 8px 넓히는 여백을 본문 전체에 적용하지 않는다. 들여쓰기된 하위 목록은
   계층을 유지하되 첫 본문 줄을 제목보다 왼쪽으로 당기지 않는다.
-- 주 본문은 native·SDK, phone·desktop 모두 12px/16px다. 문단과 native `text-xs`도
-  공통 `cardStyle.text`에 연결해 호스트의 모바일 14px·`leading-relaxed`가 섞이지 않게 한다.
-  Diff의 파일 경로·커밋 본문도 같은 크기이며 코드 글꼴은 유지한다.
-- 글자 액션도 12px/16px다. Merge·해제·복구·더 보기의 크기를 본문과 맞추고,
+- 글자가 많은 Goal·Plan 본문과 대기 사용자 메시지, 피드백 본문, 작업 진행 설명은
+  최소 크기 11px/16px다. 문단과 `cardSlot.prose`는 공통 `cardStyle.prose`에 연결한다.
+  native·SDK, phone·desktop 모두 같은 크기를 쓰며 문단 안 강조·링크도 크기를 키우지 않는다.
+- 목록 이름과 일반 안내는 12px/16px다. native `text-xs`·`text-sm`와 목록 행은
+  `cardStyle.text`를 쓰고, Diff의 파일 경로·커밋 목록도 같은 크기로 코드 글꼴만 유지한다.
+  호스트의 모바일 14px·`leading-relaxed`가 이 세 단계에 섞이지 않게 한다.
+- 글자 액션도 12px/16px다. Merge·해제·복구·더 보기의 크기를 목록과 맞추고,
   버튼의 클릭 영역 높이와 글자의 줄 높이를 분리한다.
 - Goal의 사용량·상태, Workflow의 진행 수·대기 상태·시간·모델, 백그라운드 시간,
   Diff의 비교 통계·미푸시 안내와 SDK 대기 메시지 상태는 공통 보조 정보 11px/16px다.
@@ -75,14 +78,17 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 
 | 글자 역할 | 크기 / 줄 높이 | 연결 |
 |---|---|---|
-| 제목 | 12px / 16px, 굵기 600 | `cardSlot.head`, `cardSlot.title` |
-| 본문·목록 이름 | 12px / 16px | `cardStyle.text`, 문단·native `text-xs`·`text-sm` |
+| 제목 | 13px / 18px, 굵기 600 | `cardSlot.head`, `cardSlot.title`, `cardStyle.titleText` |
+| 긴 본문·사용자 메시지 | 11px / 16px | `cardSlot.prose`, `cardStyle.prose`, 일반 문단·native 대기 메시지 preview |
+| 목록 이름·일반 안내 | 12px / 16px | `cardStyle.text`, 목록 행·native `text-xs`·`text-sm` |
 | 글자 액션 | 12px / 16px | `cardStyle.button`, PR Merge, Diff 더 보기 |
 | 상태·시간·개수·모델 등 보조 정보 | 11px / 16px | `cardSlot.meta`, `cardSlot.section`, `cardStyle.secondaryText`, native `text-2xs` |
 
-두 글자 크기는 native·SDK, phone·desktop에 공통이다. 색·굵기·배치는 각 역할을
+세 글자 크기는 native·SDK, phone·desktop에 공통이다. 색·굵기·배치는 각 역할을
 따르고 입력·편집기·코드 본문의 자체 크기는 유지한다. 아이콘 전용 액션과 ×의
 글자는 일반 글자 액션의 줄 높이로 덮지 않는다.
+Parent·PR은 별도 제목이 없는 단일 행 카드이므로 그 행의 제목도 13px/18px이며 기존 굵기 400을 유지한다.
+Child Thread 등 목록 안의 이름은 12px/16px다. 읽기 전용 대기 메시지 preview는 11px지만 편집기는 원래 크기를 유지한다.
 
 | 규격 | 구성과 여백 | 연결 |
 |---|---|---|

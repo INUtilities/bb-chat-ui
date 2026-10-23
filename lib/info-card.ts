@@ -12,6 +12,7 @@ export const cardSlot = {
   layout: `${CARD}-layout`,
   head: `${CARD}-head`,
   body: `${CARD}-body`,
+  prose: `${CARD}-prose`,
   icon: `${CARD}-icon`,
   title: `${CARD}-title`,
   action: `${CARD}-action`,
@@ -32,12 +33,14 @@ export const NESTED_SURFACE_EXEMPT = "input, textarea, select, pre, code, [conte
 const FLAT = "background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;";
 const TEXT_TYPE = "font-size:12px; line-height:16px;";
 const SECONDARY_TYPE = "font-size:11px; line-height:16px;";
-const TITLE_TYPE = `${TEXT_TYPE} font-weight:600; text-align:left;`;
+const TITLE_TYPE = "font-size:13px; line-height:18px; font-weight:600; text-align:left;";
 export const CARD_HOVER = "color-mix(in oklab,var(--foreground) 6%,transparent)";
 
 /** Declaration blocks shared by slots and by native nodes mapped onto a slot. */
 export const cardStyle = {
   text: TEXT_TYPE,
+  prose: SECONDARY_TYPE,
+  titleText: TITLE_TYPE,
   secondaryText: SECONDARY_TYPE,
   face: `--bb-chat-ui-card-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); border:0 !important; border-radius:18px !important; color:var(--foreground); background:var(--bb-chat-ui-card-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow),inset 0 1px 3px var(--bb-chat-ui-card-edge) !important;`,
   faceDark: `--bb-chat-ui-card-face:${DARK_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,black 60%,transparent);`,
@@ -69,14 +72,17 @@ export function infoCardCss(root = `[${CARD}]`): string {
   const card = `:is(${root})`;
   const s = Object.fromEntries(Object.entries(cardSlot).map(([key, attr]) => [key, `[${attr}]`])) as { [K in keyof typeof cardSlot]: string };
   const controls = `${s.action}, ${s.button}, ${s.close}, ${s.row}, ${s.navigation}`;
-  const ownType = `${NESTED_SURFACE_EXEMPT}, ${s.meta}, ${s.section}, ${s.action}, ${s.button}, ${s.close}`;
+  const ownType = `${NESTED_SURFACE_EXEMPT}, ${s.title}, ${s.meta}, ${s.section}, ${s.action}, ${s.button}, ${s.close}`;
   const ownTypeTree = `${ownType}, ${ownType.split(", ").map(selector => `${selector} *`).join(", ")}`;
+  const headingTypeTree = `${ownTypeTree}, ${s.head}, ${s.head} *`;
   return `
 ${cardFaceCss(card)}
 ${card} { position:relative; box-sizing:border-box; padding:16px 24px !important; ${cardStyle.text} }
-/* Host utilities grow on phones; both text roles keep the card scale. */
-${card} :where(p, [class~="text-xs"], [class~="text-sm"]):not(:where(${ownTypeTree})) { ${cardStyle.text} }
+/* Host utilities grow on phones; content roles keep the same three-level scale. */
+${card} :where([class~="text-xs"], [class~="text-sm"]):not(:where(${headingTypeTree})) { ${cardStyle.text} }
 ${card} :where([class~="text-2xs"]):not(:where(${ownTypeTree})) { ${cardStyle.secondaryText} }
+${s.prose}, ${card} :where(p):not(:where(${headingTypeTree})) { ${cardStyle.prose} }
+:is(${s.prose}, ${card} p) :where(span, a, strong, em, b, i, li, [class~="text-xs"], [class~="text-sm"]):not(:where(${headingTypeTree})) { ${cardStyle.prose} }
 ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }
@@ -107,7 +113,7 @@ ${LARGE_HIT_TARGET} ${s.button} { height:32px; min-height:32px; }
 ${s.list} { ${cardStyle.list} }
 ${s.row} { display:flex; align-items:center; gap:8px; min-width:0; margin:0; color:inherit; font-family:inherit; text-align:left; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${s.row}:is(:hover, :focus-visible, :focus-within) { ${cardStyle.rowHover} }
-${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:100%; min-height:40px; margin:0 !important; padding:8px 40px 8px 16px !important; border-radius:18px !important; background:transparent !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:100%; min-height:40px; margin:0 !important; padding:8px 40px 8px 16px !important; border-radius:18px !important; ${cardStyle.titleText} font-weight:400; background:transparent !important; }
 ${card}[${cardSlot.layout}="single-row"] > ${s.close} { top:8px !important; right:8px !important; }
 /* Stretch the original action across the face; sibling close/Merge controls sit above it. */
 ${card}[${cardSlot.layout}="single-row"] ${s.navigation} { position:static !important; overflow:visible !important; cursor:pointer; ${FLAT} }

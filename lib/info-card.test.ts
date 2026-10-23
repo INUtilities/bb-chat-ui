@@ -33,7 +33,8 @@ test("the head line is 28px and reserves the close gutter; icon, title, actions 
   assert.equal(s.minHeight, "28px");
   assert.equal(s.height, "28px", "a larger touch action must not move the common title line");
   assert.equal(s.paddingRight, "32px", "24px close + 8px gap");
-  assert.equal(s.fontSize, "12px");
+  assert.equal(s.fontSize, "13px");
+  assert.equal(s.lineHeight, "18px");
   assert.equal(s.fontWeight, "600");
   const title = head.querySelector(`[${cardSlot.title}]`)!;
   assert.equal(title.textContent, "Goal");
@@ -68,6 +69,8 @@ test("a compact navigation card has one borderless 40px face and a full-card pri
   const row=card.querySelector(`[${cardSlot.row}]`)!;
   assert.equal(f.style(row).width, "100%", "the primary target fills the card");
   assert.equal(f.style(row).minHeight,"40px");
+  assert.equal(f.style(row).fontSize,"13px","the single-row card has a title without a separate heading");
+  assert.equal(f.style(row).lineHeight,"18px");
   assert.equal(f.style(row).paddingLeft,"16px","the leading content matches the close glyph's visible inset");
   assert.equal(f.style(row).paddingRight,"40px","text leaves room for the separate close target");
   assert.equal(f.style(row).borderTopWidth,"0px");
@@ -113,15 +116,15 @@ test("the common body removes inherited edge insets while keeping row padding", 
   f.dom.window.close();
 });
 
-test("main card text stays 12px/16px when host mobile utilities grow, without resizing metadata or editors", () => {
-  const f=page(`<section ${CARD}><div ${cardSlot.body}><p class="text-xs leading-relaxed">Goal objective</p><span class="text-xs">Workflow phase</span><span class="text-sm">Notice</span><span class="text-2xs leading-none">Count</span><p ${cardSlot.meta} class="text-xs">Usage</p><pre><code class="text-xs">code</code></pre><div contenteditable="true"><p class="text-xs">draft</p><span class="text-2xs" data-editor-caption>Editor caption</span></div></div></section><p class="text-xs" data-outside>Native paragraph</p>`);
+test("card type has three levels for long prose, list names and headings across host mobile utilities", () => {
+  const f=page(`<section ${CARD}><header ${cardSlot.head}><span ${cardSlot.title} class="text-xs" data-heading>Goal</span></header><div ${cardSlot.body}><p class="text-xs leading-relaxed" data-prose>Goal objective <strong class="text-sm" data-inline>emphasis</strong></p><div data-bb-chat-ui-card-prose><span class="text-xs" data-prose>User message</span></div><div ${cardSlot.row}><span class="text-xs" data-list>Workflow phase</span></div><span class="text-sm" data-list>Notice</span><span class="text-2xs leading-none">Count</span><p ${cardSlot.meta} class="text-xs">Usage</p><pre><code class="text-xs">code</code></pre><div contenteditable="true"><p class="text-xs">draft</p><span class="text-2xs" data-editor-caption>Editor caption</span></div></div></section><p class="text-xs" data-outside>Native paragraph</p>`);
   const host=f.document.createElement('style');
   host.textContent='.text-xs { font-size:14px; line-height:20px; } .text-sm { font-size:15px; line-height:22px; } .text-2xs { font-size:10px; line-height:14px; } .leading-none { line-height:1; } .leading-relaxed { line-height:1.625; }';
   f.document.head.prepend(host);
-  for(const selector of ['p.leading-relaxed','span.text-xs','span.text-sm']){
-    const s=f.style(f.document.querySelector(selector)!);
-    assert.equal(s.fontSize,'12px','host mobile utilities must not enlarge main card content');
-    assert.equal(s.lineHeight,'16px');
+  for(const node of f.document.querySelectorAll('[data-prose],[data-inline],[data-list],[data-heading]')){
+    const s=f.style(node),heading=node.hasAttribute('data-heading'),list=node.hasAttribute('data-list');
+    assert.equal(s.fontSize,heading?'13px':list?'12px':'11px',`${node.textContent}: the content role determines the size`);
+    assert.equal(s.lineHeight,heading?'18px':'16px');
   }
   assert.equal(f.style(f.document.querySelector(`[${cardSlot.meta}]`)!).fontSize,'11px');
   const caption=f.style(f.document.querySelector('span.leading-none')!);

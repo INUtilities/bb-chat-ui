@@ -120,7 +120,7 @@ ${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"]
 ${NATIVE_DETAIL} > div[class~="p-1"]:not([${cardSlot.head}]), ${NATIVE_DETAIL} > div[class~="p-1"] > div[class~="px-2"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:-8px; margin-right:-8px; width:calc(100% + 16px); box-sizing:border-box; }
 ${DETAIL} [${MARK}-readonly-title] { cursor:default !important; background:transparent !important; box-shadow:none !important; }
-${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; flex:0 1 auto; gap:8px; min-width:0; min-height:28px; height:28px; padding:0 !important; font-size:12px; line-height:16px; font-weight:600; text-align:left; }
+${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; flex:0 1 auto; gap:8px; min-width:0; min-height:28px; height:28px; padding:0 !important; ${cardStyle.titleText} }
 /* Keep native title, live counters and phase bars on their original parents. */
 ${WORKFLOW_HEADING} { height:auto; display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 8px; align-items:center; padding:0 32px 6px 0 !important; }
 ${WORKFLOW_HEADING} > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
@@ -171,7 +171,7 @@ ${DETAIL}[aria-label="Model fallback"][${cardSlot.layout}="with-actions"] > [rol
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-size:12px; font-weight:400; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-weight:400; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { display:inline-flex; align-items:center; justify-content:center; flex:none; width:24px; height:24px; padding:0 !important; font-size:0 !important; text-decoration:none; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:16px; height:16px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
@@ -240,7 +240,7 @@ ${WORKFLOW_AGENT_ROW} > span[class~="truncate"] { grid-column:2; grid-row:1; fon
 ${WORKFLOW_AGENT_ROW} > span[class~="ml-auto"] { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 16px); margin:0 -8px; }
-[${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); font-size:12px; line-height:16px; }
+[${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); ${cardStyle.prose} }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
 [${MARK}-trigger]:active, [${MARK}-stack-kind]:active, [${MARK}-all]:active { transform:scale(.95); }
 [${MARK}-trigger][aria-expanded=true], [${MARK}-stack-kind][aria-expanded=true], [${MARK}-all][aria-expanded=true] { box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge),inset 0 0 0 1px var(--border); }
@@ -390,7 +390,7 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-kind] { font-size:12px; }
 [${MARK}-kind] p { white-space:pre-wrap; margin:6px 0; }
 [${MARK}-parent-row] [${MARK}-provider-icon], [${MARK}-parent-row] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
-[${MARK}-parent-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+[${MARK}-parent-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${cardStyle.titleText} font-weight:400; }
 [${MARK}-child-row] [${MARK}-avatar] { width:27px; height:27px; margin-left:0; }
 [${MARK}-child-main] { flex:1; min-width:0; }
 [${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
@@ -428,7 +428,7 @@ ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span { max-wi
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(1) { grid-area:location; ${cardStyle.meta} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(2) { grid-area:target; ${cardStyle.meta} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(3) { display:none; }
-${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(4) { grid-area:comment; font-size:12px; font-weight:400; white-space:normal; overflow-wrap:anywhere; }
+${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(4) { grid-area:comment; ${cardStyle.prose} font-weight:400; white-space:normal; overflow-wrap:anywhere; }
 ${DETAIL}.agentation-staging-shell li::before { content:""; flex-shrink:0; width:14px; height:14px; background:var(--subtle-foreground); mask:var(--bb-chat-ui-feedback-icon) center/contain no-repeat; }
 @keyframes bb-info-enter { from { opacity:0; translate:0 8px; scale:.98; } to { opacity:1; translate:0 0; scale:1; } }
 @keyframes bb-info-droplet { 0% { transform:translateY(8px) scale(.82,.72); } 35% { transform:translateY(-4px) scale(.94,1.16); } 65% { transform:translateY(0) scale(1.1,.94); } 82% { transform:translateY(-1px) scale(.985,1.015); } 100% { transform:none; } }

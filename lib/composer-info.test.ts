@@ -45,7 +45,7 @@ function fixture() {
   return { dom, document, tick, click };
 }
 
-test("Goal body text shares the card line height and native/SDK metadata uses the secondary size", async () => {
+test("native and SDK Goal and user message prose use the smallest card size below list names and titles", async () => {
   const f=fixture(),goal=f.document.querySelector('section[aria-label="Goal"]')!;
   goal.innerHTML='<div aria-label="Goal controls"><button id="thread-goal-card-toggle" aria-expanded="false" aria-controls="thread-goal-card-body">Goal</button><button aria-label="Clear active Goal">Clear</button></div><section id="thread-goal-card-body" hidden><div><div><p class="text-xs leading-relaxed">Native goal objective</p><div class="flex text-xs text-muted-foreground"><span>100 tokens</span><span>10s</span></div></div></div></section>';
   const toggle=goal.querySelector('button[aria-controls]')!;
@@ -57,8 +57,10 @@ test("Goal body text shares the card line height and native/SDK metadata uses th
   try {
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
     const objective=goal.querySelector('p')!,meta=goal.querySelector('.text-muted-foreground')!;
-    assert.equal(style(objective).fontSize,'12px');
+    assert.equal(style(objective).fontSize,'11px');
     assert.equal(style(objective).lineHeight,'16px','native leading-relaxed must not enlarge the main body line');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,'13px');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-button-label]')!).fontSize,'12px','actions keep the normal tier');
     assert.equal(style(meta).fontSize,'11px','native Goal usage is secondary information');
     assert.equal(style(meta).lineHeight,'16px');
     objective.outerHTML='<p class="text-xs leading-relaxed">Rerendered objective <code>code</code></p><textarea>draft</textarea>';
@@ -77,10 +79,11 @@ test("Goal body text shares the card line height and native/SDK metadata uses th
       f.document.querySelector('[data-promptbox-shell] > .grid')!.append(sdk);await f.tick();
       f.click(`[data-bb-chat-ui-info-trigger="${kind}"]`);await f.tick();
       const paragraphs=sdk.querySelectorAll('p');
-      assert.equal(style(paragraphs[0]).fontSize,'12px',`${kind}: main content keeps the common size`);
+      assert.equal(style(paragraphs[0]).fontSize,'11px',`${kind}: long content uses the smallest tier`);
       assert.equal(style(paragraphs[0]).lineHeight,'16px');
       assert.equal(style(paragraphs[1]).fontSize,'11px',`${kind}: SDK status uses the same secondary size`);
       assert.equal(style(paragraphs[1]).lineHeight,'16px');
+      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,'13px');
       f.click(`[aria-label="${kind==='goal'?'Goal':'대기 메시지'} 닫기"]`);sdk.remove();
     }
   } finally {stop();}

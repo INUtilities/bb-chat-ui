@@ -10,17 +10,17 @@ import {
   shouldFoldQueue,
 } from "./queued-messages.ts";
 
-test("managed queue previews give native important text utilities the card size without resizing editors", () => {
+test("managed user message previews use the smallest card size without resizing editors", () => {
   const dom=new JSDOM(`<style>.truncate { font-size:14px; line-height:20px; } ${queuedMessagesCss}</style><section aria-label="Queued messages" data-bb-chat-ui-info-unit><li data-queued-message-row><span data-preview class="truncate !text-xs">Queued text</span></li><div contenteditable="true"><span class="truncate" data-editor>Draft</span></div></section><section aria-label="Queued messages"><li data-queued-message-row><span class="truncate" data-standalone>Native queue</span></li></section>`);
   const preview=dom.window.getComputedStyle(dom.window.document.querySelector('[data-preview]')!);
-  assert.equal(preview.getPropertyValue('--text-xs'),'12px','native !text-xs reads a local token rather than the phone 14px token');
-  assert.equal(preview.fontSize,'12px');
+  assert.equal(preview.getPropertyValue('--text-xs'),'11px','native !text-xs reads the small prose token rather than the phone 14px token');
+  assert.equal(preview.fontSize,'11px');
   assert.equal(preview.lineHeight,'16px');
   for(const [selector,lineHeight] of [['[data-editor]','20px'],['[data-standalone]','1.625']]){
     const s=dom.window.getComputedStyle(dom.window.document.querySelector(selector)!);
     assert.equal(s.fontSize,'14px');
     assert.equal(s.lineHeight,lineHeight,'existing editor and standalone queue line heights stay unchanged');
-    assert.notEqual(s.getPropertyValue('--text-xs'),'12px');
+    assert.notEqual(s.getPropertyValue('--text-xs'),'11px');
   }
   dom.window.close();
 });
