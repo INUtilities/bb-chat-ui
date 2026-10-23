@@ -82,6 +82,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 - Goal의 `해제`는 이름이 있는 액션으로 유지한다. Agentation의 전체 액션은
   ↑ 전송 → 휴지통 삭제 → × 닫기 순서다. 아이콘만 표시해도 tooltip과 접근성
   이름에는 `Send all` / `Discard all`을 남긴다.
+- Agentation 목록 안 Mention·Send·Discard도 공통 24px 원형 아이콘 액션과 14px glyph를 쓴다.
 - Workflow는 첫 줄에 아이콘·제목·패널 열기·닫기를 둔다. 제목 줄은 28px이며,
   진행 수는 아래 줄의 왼쪽에, 시간은 오른쪽에 둔다. 가운데 구분점은 쓰지 않는다. 전체 너비의 분할 진행 막대는
   요약 아래에 둔다. native 데이터 갱신과 실제 패널 열기는 유지한다.

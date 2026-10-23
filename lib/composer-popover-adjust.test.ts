@@ -29,6 +29,17 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
   } finally { f.dom.window.close(); }
 });
 
+test("Agentation list icon actions share 24px circular hit areas and 14px glyphs", () => {
+  const f = surface("annotations", '<ul><li><button aria-label="Send annotation" class="h-7 w-7"><svg /></button></li></ul>', "large", '.h-7{height:28px}.w-7{width:28px}');
+  f.document.querySelector("section")!.classList.add("agentation-staging-shell");
+  try {
+    const action = f.css("li button");
+    assert.equal(action.width, "24px"); assert.equal(action.height, "24px");
+    assert.equal(action.borderRadius, "999px");
+    assert.equal(f.css("li svg").width, "14px");
+  } finally { f.dom.window.close(); }
+});
+
 test("a native single background command shares row geometry without changing its action", () => {
   const f = surface("background", '<div class="flex"><div role="button" tabindex="0" class="px-3" aria-label="Background command: npm test"><span>npm test</span></div><button data-bb-chat-ui-card-head>Background</button></div>');
   try {

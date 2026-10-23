@@ -426,6 +426,9 @@ ${DETAIL}.agentation-staging-shell ul { max-height:none !important; margin:0 !im
 ${DETAIL}.agentation-staging-shell ul { display:flex; flex-direction:column; row-gap:2px; }
 ${DETAIL}.agentation-staging-shell li { display:flex !important; align-items:center; gap:8px; min-width:0; margin-top:0 !important; margin-bottom:0 !important; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${DETAIL}.agentation-staging-shell li:is(:hover, :focus-within) { ${cardStyle.rowHover} }
+${DETAIL}.agentation-staging-shell li > button { ${cardStyle.action} }
+${DETAIL}.agentation-staging-shell li > button :is(svg, [data-icon-root]) { width:14px; height:14px; }
+${DETAIL}.agentation-staging-shell li > button:not(:disabled):is(:hover, :focus-visible) { ${cardStyle.hover} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] { display:grid !important; grid-template-areas:"comment comment" "location target"; grid-template-columns:auto minmax(0,1fr); gap:0 6px; flex:1; min-width:0; }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span { max-width:none !important; font:inherit; }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(1) { grid-area:location; ${cardStyle.meta} }
