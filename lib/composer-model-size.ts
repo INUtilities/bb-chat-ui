@@ -1,110 +1,96 @@
-import { EASE, heightTo } from "./motion.ts";
+import { heightTo } from "./motion.ts";
 
 const RESIZING = "data-bb-chat-ui-model-resizing";
+const GAUGE = "[data-bb-chat-ui-effort]";
 
-// Smooth natural card height and native placement without moving host-owned nodes.
+// Animate the card itself so native positioning follows the same visible height.
 export function injectComposerModelSize(card: HTMLElement): () => void {
   const view = card.ownerDocument.defaultView;
-  const wrapper = card.closest<HTMLElement>("[data-radix-popper-content-wrapper]");
-  if (!view?.ResizeObserver || !wrapper) {
-    // Keep unsupported hosts on their original sizing path.
+  if (!view || typeof card.animate !== "function") {
+    // Leave unsupported hosts on the original layout path.
     return () => {};
   }
   const media = view.matchMedia?.("(prefers-reduced-motion: reduce)");
-  const previousMarker = wrapper.getAttribute(RESIZING);
+  const previousMarker = card.getAttribute(RESIZING);
   let targetHeight = card.offsetHeight;
-  let nativeY = wrapper.getBoundingClientRect().top;
-  let height: Animation | null = null;
-  let position: Animation | null = null;
-  let frame = 0;
+  let motion: Animation | null = null;
+  let queued = false;
   let disposed = false;
 
-  // Restore the wrapper attribute after temporary clipping is no longer needed.
+  // Restore temporary clipping without changing the host's inline styles.
   function restoreMarker(): void {
-    if (previousMarker === null) wrapper!.removeAttribute(RESIZING);
-    else wrapper!.setAttribute(RESIZING, previousMarker);
+    if (previousMarker === null) card.removeAttribute(RESIZING);
+    else card.setAttribute(RESIZING, previousMarker);
   }
 
-  // Read only the independent translate, leaving the host's transform untouched.
-  function translateY(): number {
-    const parts = view!.getComputedStyle(wrapper!).translate?.split(/\s+/) ?? [];
-    return parts.length > 1 ? parseFloat(parts[1]) || 0 : 0;
-  }
-
-  // Cancel motion when accessibility settings change or the enhancement unloads.
+  // Release the height override immediately when motion is disabled or unloaded.
   function cancel(): void {
-    const oldHeight = height;
-    const oldPosition = position;
-    height = position = null;
-    oldHeight?.cancel();
-    oldPosition?.cancel();
+    const previous = motion;
+    motion = null;
+    previous?.cancel();
     restoreMarker();
+    targetHeight = card.offsetHeight;
   }
 
-  // Coalesce natural-size and native-position updates into one visual transition.
+  // Measure the new intrinsic height and install its motion before the next paint.
   function measure(): void {
-    frame = 0;
+    queued = false;
     if (disposed) return;
-    const rect = wrapper!.getBoundingClientRect();
-    const offsetY = translateY();
-    const nextY = rect.top - offsetY;
+    const previous = motion;
+    const visibleHeight = previous ? card.offsetHeight : targetHeight;
+    const currentTime = previous?.currentTime ?? null;
+    motion = null;
+    previous?.cancel();
     const nextHeight = card.offsetHeight;
-    const resized = nextHeight !== targetHeight;
-    const moved = Math.abs(nextY - nativeY) > .5;
-    const fromHeight = height ? rect.height : targetHeight;
-    const fromY = nativeY + offsetY;
-    const previousHeight = targetHeight;
-    targetHeight = nextHeight;
-    nativeY = nextY;
-    if (media?.matches) { cancel(); return; }
-    if (resized && previousHeight > 0 && nextHeight > 0) {
-      const old = height;
-      height = null;
-      old?.cancel();
-      height = heightTo(wrapper!, fromHeight, nextHeight);
-      if (height) {
-        wrapper!.setAttribute(RESIZING, "");
-        const current = height;
-        // Release clipping after this height target has settled.
-        current.addEventListener("finish", () => {
-          if (height !== current) return;
-          height = null;
-          restoreMarker();
-        }, { once: true });
+    if (media?.matches || nextHeight <= 0 || visibleHeight <= 0) { cancel(); return; }
+    if (nextHeight === targetHeight) {
+      if (previous) {
+        motion = previous;
+        previous.play();
+        previous.currentTime = currentTime;
       }
+      return;
     }
-    if (moved && (resized || height || position) && typeof wrapper!.animate === "function") {
-      position?.cancel();
-      position = wrapper!.animate([
-        { translate: `0px ${fromY - nextY}px` },
-        { translate: "0px 0px" },
-      ], { duration: 320, easing: EASE.out });
-      const current = position;
-      // Forget the position motion once the native anchor has been reached.
-      current.addEventListener("finish", () => {
-        if (position === current) position = null;
-      }, { once: true });
-    }
+    targetHeight = nextHeight;
+    motion = heightTo(card, visibleHeight, nextHeight);
+    if (!motion) { restoreMarker(); return; }
+    motion.playbackRate = 2;
+    card.setAttribute(RESIZING, "");
+    const current = motion;
+    // Return to intrinsic height after this target has settled.
+    current.addEventListener("finish", () => {
+      if (motion !== current) return;
+      motion = null;
+      restoreMarker();
+    }, { once: true });
   }
 
-  // Schedule at most one measurement for a burst of host updates.
+  // Combine host and gauge insertion mutations without delaying them by a frame.
   function schedule(): void {
-    if (!disposed && !frame) frame = view!.requestAnimationFrame(measure);
+    if (disposed || queued) return;
+    queued = true;
+    view!.queueMicrotask(measure);
   }
 
-  const resize = new view.ResizeObserver(schedule);
-  const placement = new view.MutationObserver(schedule);
-  resize.observe(card);
-  placement.observe(wrapper, { attributes: true, attributeFilter: ["style"] });
+  // Ignore changing gauge labels while observing actual provider content changes.
+  function changed(records: MutationRecord[]): void {
+    for (const record of records) {
+      const target = record.target.nodeType === 1 ? record.target as Element : record.target.parentElement;
+      if (!target?.closest(GAUGE)) { schedule(); return; }
+    }
+  }
+
+  const content = new view.MutationObserver(changed);
+  content.observe(card, { childList: true, subtree: true, characterData: true });
+  view.addEventListener("resize", schedule);
   media?.addEventListener?.("change", cancel);
 
-  // Release observers and animations without leaving fixed dimensions behind.
+  // Release queued work, native content observation, and the temporary height motion.
   return () => {
     if (disposed) return;
     disposed = true;
-    resize.disconnect();
-    placement.disconnect();
-    if (frame) view.cancelAnimationFrame(frame);
+    content.disconnect();
+    view.removeEventListener("resize", schedule);
     media?.removeEventListener?.("change", cancel);
     cancel();
   };

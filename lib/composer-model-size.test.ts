@@ -9,11 +9,12 @@ type Motion = {
   target: Element;
   frames: Keyframe[] | PropertyIndexedKeyframes | null;
   options: number | KeyframeAnimationOptions | undefined;
-  cancelled: boolean;
+  cancels: number;
+  plays: number;
   animation: Animation;
 };
 
-// Read a property's endpoints from either form accepted by Element.animate.
+// Read animation endpoints without depending on the array or property-indexed WAAPI form.
 function values(motion: Motion, property: string): string[] {
   if (Array.isArray(motion.frames)) {
     const result: string[] = [];
@@ -25,80 +26,97 @@ function values(motion: Motion, property: string): string[] {
   return Array.isArray(value) ? value.map(String) : [String(value)];
 }
 
-// Provide controlled natural height, visible geometry, observers, animation records, and rAF delivery.
+// Model card-owned WAAPI height while keeping natural height available after cancellation.
 function fixture(options: { wrapper?: boolean; resizeObserver?: boolean; reducedMotion?: boolean } = {}) {
-  const dom = new JSDOM(`<html><head></head><body>${options.wrapper === false ? "" : '<div data-radix-popper-content-wrapper style="transform: translate(24px, 500px)">'}<div role="dialog" data-bb-portaled-overlay><div>Models</div></div>${options.wrapper === false ? "" : "</div>"}</body></html>`, { pretendToBeVisual: true });
+  const dom = new JSDOM(`<html><head></head><body>${options.wrapper === false ? "" : '<div data-radix-popper-content-wrapper style="transform: translate(24px, 500px);">'}<div role="dialog" data-bb-portaled-overlay style="min-width: 256px;"><div data-native-controls>Models</div><div data-bb-chat-ui-effort><output>Low</output></div></div>${options.wrapper === false ? "" : "</div>"}</body></html>`, { pretendToBeVisual: true });
   const { document } = dom.window;
   const card = document.querySelector<HTMLElement>('[role="dialog"]')!;
   const wrapper = card.parentElement!;
-  const state = { naturalHeight: 240, visibleHeight: 240, nativeY: 500, translateY: 0 };
+  const state = { naturalHeight: 240, visibleHeight: 240, reads: 0, reduced: Boolean(options.reducedMotion) };
   const frames = new Map<number, FrameRequestCallback>();
   const motions: Motion[] = [];
-  const observers: SizeObserver[] = [];
+  const mutations: TrackedMutation[] = [];
+  const resizes: SizeObserver[] = [];
   let serial = 0;
-  // Keep the measured source height independent from the animated outer wrapper.
-  Object.defineProperty(card, "offsetHeight", { get: () => state.naturalHeight });
-  // Report the visible wrapper height during an interrupted animation.
-  Object.defineProperty(wrapper, "offsetHeight", { get: () => state.visibleHeight });
-  // Return actual visible popup coordinates including the current independent translate.
-  wrapper.getBoundingClientRect = () => ({ x: 24, y: state.nativeY + state.translateY, left: 24, top: state.nativeY + state.translateY, right: 344, bottom: state.nativeY + state.translateY + state.visibleHeight, width: 320, height: state.visibleHeight, toJSON() {} });
-  // Expose the unmodified natural card geometry inside its clipping wrapper.
-  card.getBoundingClientRect = () => ({ ...wrapper.getBoundingClientRect(), height: state.naturalHeight, bottom: state.nativeY + state.translateY + state.naturalHeight });
-  // Record pending work so bursts can be flushed as a single browser frame.
-  dom.window.requestAnimationFrame = callback => { const id = ++serial; frames.set(id, callback); return id; };
-  // Remove deferred layout work when the enhancement is disposed.
-  dom.window.cancelAnimationFrame = id => { frames.delete(id); };
-  // Return only the requested accessibility preference as a matched media query.
-  dom.window.matchMedia = query => ({ matches: Boolean(options.reducedMotion && query.includes("prefers-reduced-motion")), media: query } as MediaQueryList);
-  const realComputedStyle = dom.window.getComputedStyle.bind(dom.window);
-  // Expose current WAAPI translate separately from the host's original transform.
-  dom.window.getComputedStyle = (element, pseudo) => {
-    const computed = realComputedStyle(element, pseudo);
-    if (element === wrapper) Object.defineProperty(computed, "translate", { value: state.translateY ? `0px ${state.translateY}px` : "none", configurable: true });
-    return computed;
-  };
-  class SizeObserver {
-    targets = new Set<Element>();
-    callback: ResizeObserverCallback;
-    // Retain the browser callback and targets for explicit resize delivery.
-    constructor(callback: ResizeObserverCallback) { this.callback = callback; observers.push(this); }
-    // Track the elements whose natural size the implementation observes.
-    observe(target: Element): void { this.targets.add(target); }
-    // Release an individual observed element.
-    unobserve(target: Element): void { this.targets.delete(target); }
-    // Release all retained elements when the enhancement is disposed.
-    disconnect(): void { this.targets.clear(); }
+  // Return the visible animated card height until its animation has been cancelled.
+  function cardHeight(): number {
+    state.reads++;
+    for (const motion of motions) {
+      if (motion.target === card && ["running", "paused"].includes(motion.animation.playState)) return state.visibleHeight;
+    }
+    return state.naturalHeight;
   }
-  // Record independent height and position motions without running a browser clock.
+  Object.defineProperty(card, "offsetHeight", { get: cardHeight });
+  // Expose card geometry for compatibility with consumers that inspect its visible rectangle.
+  card.getBoundingClientRect = () => ({ x: 24, y: 500, left: 24, top: 500, right: 344, bottom: 500 + cardHeight(), width: 320, height: cardHeight(), toJSON() {} });
+  // Keep native wrapper geometry outside the card animation state.
+  wrapper.getBoundingClientRect = () => ({ x: 24, y: 500, left: 24, top: 500, right: 344, bottom: 500 + state.naturalHeight, width: 320, height: state.naturalHeight, toJSON() {} });
+  // Record any forbidden frame scheduling without advancing the browser paint clock.
+  dom.window.requestAnimationFrame = callback => { const id = ++serial; frames.set(id, callback); return id; };
+  // Allow disposal to clear frame work left by a previous implementation.
+  dom.window.cancelAnimationFrame = id => { frames.delete(id); };
+  const mediaEvents = new dom.window.EventTarget();
+  const media = {
+    // Reflect the current system setting when the implementation checks the media query.
+    get matches() { return state.reduced; },
+    addEventListener: mediaEvents.addEventListener.bind(mediaEvents),
+    removeEventListener: mediaEvents.removeEventListener.bind(mediaEvents),
+  } as unknown as MediaQueryList;
+  // Share one live accessibility query between the implementation and motion helper.
+  dom.window.matchMedia = () => media;
+  class TrackedMutation extends dom.window.MutationObserver {
+    target: Node | null = null;
+    active = false;
+    // Retain observer ownership while using real DOM mutation delivery.
+    constructor(callback: MutationCallback) { super(callback); mutations.push(this); }
+    // Track each observed surface so wrapper style observation cannot return unnoticed.
+    observe(target: Node, settings?: MutationObserverInit): void { this.target = target; this.active = true; super.observe(target, settings); }
+    // Record observer release when a popup closes.
+    disconnect(): void { this.active = false; super.disconnect(); }
+  }
+  class SizeObserver {
+    // Detect use of the obsolete natural-size observer path.
+    constructor(_callback: ResizeObserverCallback) { resizes.push(this); }
+    // Keep the previous implementation executable for a meaningful RED result.
+    observe(_target: Element): void {}
+    // Match the native observer cleanup API.
+    disconnect(): void {}
+  }
+  // Record card or wrapper motions with restartable animation state and a controllable clock.
   function animate(this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null, timing?: number | KeyframeAnimationOptions): Animation {
-    let resolve!: (animation: Animation) => void;
-    let reject!: (reason: Error) => void;
-    // Keep the animation pending until the test finishes or cancels it.
-    const finished = new Promise<Animation>((done, fail) => { resolve = done; reject = fail; });
-    // Browser consumers may omit a finished handler, so consume the original cancellation rejection.
-    finished.catch(() => {});
     const events = new dom.window.EventTarget();
-    const motion = { target: this, frames: keyframes, options: timing, cancelled: false } as Motion;
+    const motion = { target: this, frames: keyframes, options: timing, cancels: 0, plays: 0 } as Motion;
     const animation = {
-      finished,
       playState: "running",
-      onfinish: null,
-      oncancel: null,
+      currentTime: 0 as number | null,
+      playbackRate: 1,
+      onfinish: null as ((event: Event) => void) | null,
+      oncancel: null as ((event: Event) => void) | null,
       addEventListener: events.addEventListener.bind(events),
       removeEventListener: events.removeEventListener.bind(events),
-      // Cancel the current visual interpolation before a replacement starts.
+      // Remove the visible interpolation so the next offsetHeight read sees natural content.
       cancel() {
-        if (motion.cancelled) return;
-        motion.cancelled = true;
+        motion.cancels++;
         animation.playState = "idle";
-        reject(new dom.window.DOMException("The animation was cancelled", "AbortError"));
-        events.dispatchEvent(new dom.window.Event("cancel"));
+        animation.currentTime = null;
+        const event = new dom.window.Event("cancel");
+        events.dispatchEvent(event);
+        animation.oncancel?.(event);
       },
-      // Allow tests to complete a motion without waiting for wall-clock time.
+      // Reuse this exact animation when a measurement confirms its previous target.
+      play() {
+        motion.plays++;
+        animation.playState = "running";
+        if (animation.currentTime === null) animation.currentTime = 0;
+      },
+      // Support either direct playbackRate assignment or the equivalent WAAPI method.
+      updatePlaybackRate(rate: number) { animation.playbackRate = rate; },
+      // Finish synchronously so marker restoration can be checked without a timer.
       finish() {
         animation.playState = "finished";
-        resolve(animation as unknown as Animation);
-        events.dispatchEvent(new dom.window.Event("finish"));
+        const event = new dom.window.Event("finish");
+        events.dispatchEvent(event);
+        animation.onfinish?.(event);
       },
     };
     motion.animation = animation as unknown as Animation;
@@ -107,32 +125,24 @@ function fixture(options: { wrapper?: boolean; resizeObserver?: boolean; reduced
   }
   card.animate = animate;
   wrapper.animate = animate;
-  const observerType = options.resizeObserver === false ? undefined : SizeObserver;
-  Object.defineProperty(dom.window, "ResizeObserver", { configurable: true, value: observerType });
-  const globals = { ResizeObserver: observerType, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, MutationObserver: dom.window.MutationObserver, requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window), cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window), getComputedStyle: dom.window.getComputedStyle.bind(dom.window) };
+  Object.defineProperty(dom.window, "MutationObserver", { configurable: true, value: TrackedMutation });
+  Object.defineProperty(dom.window, "ResizeObserver", { configurable: true, value: options.resizeObserver === false ? undefined : SizeObserver });
+  const globals = { MutationObserver: TrackedMutation, ResizeObserver: options.resizeObserver === false ? undefined : SizeObserver, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window), cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window), getComputedStyle: dom.window.getComputedStyle.bind(dom.window), matchMedia: dom.window.matchMedia.bind(dom.window) };
   const previous = new Map<string, PropertyDescriptor | undefined>();
   for (const [key, value] of Object.entries(globals)) {
     previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
   }
-  // Deliver a natural-size change to each currently active observer.
-  function resize(): void {
-    for (const observer of observers) {
-      const entries: ResizeObserverEntry[] = [];
-      for (const target of observer.targets) entries.push({ target, contentRect: target.getBoundingClientRect() } as ResizeObserverEntry);
-      if (entries.length) observer.callback(entries, observer as unknown as ResizeObserver);
-    }
+  // Change native provider content to trigger a card subtree measurement.
+  function change(): void { card.querySelector("[data-native-controls]")!.append(document.createElement("span")); }
+  // Deliver DOM observers and queued measurements before any requestAnimationFrame callback.
+  async function settle(): Promise<void> {
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   }
-  // Flush observer microtasks and one coalesced browser frame.
-  async function paint(): Promise<void> {
-    await Promise.resolve();
-    await Promise.resolve();
-    const pending = Array.from(frames.entries());
-    for (const [id, callback] of pending) { frames.delete(id); callback(0); }
-    await Promise.resolve();
-    await Promise.resolve();
-  }
-  // Restore host globals after all animation and observer work has been released.
+  // Apply a live system preference change through the MediaQueryList event boundary.
+  function reduce(): void { state.reduced = true; mediaEvents.dispatchEvent(new dom.window.Event("change")); }
+  // Restore host globals after the enhancement and its DOM have been released.
   function restore(): void {
     for (const [key, descriptor] of previous) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -140,194 +150,240 @@ function fixture(options: { wrapper?: boolean; resizeObserver?: boolean; reduced
     }
     dom.window.close();
   }
-  return { dom, document, card, wrapper, state, frames, motions, observers, resize, paint, restore };
+  return { dom, document, card, wrapper, state, frames, motions, mutations, resizes, change, settle, reduce, restore };
 }
 
-// Select only motions that interpolate popup height.
-function heightMotions(motions: Motion[]): Motion[] {
-  const result: Motion[] = [];
-  for (const motion of motions) if (values(motion, "height").length) result.push(motion);
-  return result;
-}
-
-// Preserve the initial position and the host's DOM ownership without an entry resize animation.
-test("installation observes the existing popup without animating or reparenting it", async () => {
+// Preserve initial host geometry and avoid animating the native positioning wrapper.
+test("installation preserves card ownership and inline styles without wrapper observation or an entry motion", async () => {
   const f = fixture();
   const parent = f.card.parentNode;
-  const transform = f.wrapper.style.transform;
+  const cardStyle = f.card.getAttribute("style");
+  const wrapperStyle = f.wrapper.getAttribute("style");
   const stop = injectComposerModelSize(f.card);
   try {
-    await f.paint();
+    await f.settle();
     assert.equal(f.motions.length, 0);
     assert.equal(f.card.parentNode, parent);
-    assert.equal(f.wrapper.style.transform, transform);
+    assert.equal(f.card.getAttribute("style"), cardStyle);
+    assert.equal(f.wrapper.getAttribute("style"), wrapperStyle);
+    for (const observer of f.mutations) assert.notEqual(observer.target, f.wrapper, "the native positioning wrapper is not observed");
+    assert.equal(f.resizes.length, 0, "card content changes do not depend on ResizeObserver");
   } finally { stop(); f.restore(); }
 });
 
-// Animate the measured size and compensate the popup's native y change in one coalesced frame.
-test("resize bursts animate visible height to the new target for 320ms with separate position compensation", async () => {
+// Morph the actual popup card before another paint can expose the final content height.
+test("native child-list bursts start one card height motion in a microtask at twice the 320ms playback rate", async () => {
   const f = fixture();
+  const wrapperStyle = f.wrapper.getAttribute("style");
   const stop = injectComposerModelSize(f.card);
   try {
-    f.state.naturalHeight = 360;
-    f.state.nativeY = 450;
-    f.resize(); f.resize(); f.resize();
-    f.wrapper.style.transform = "translate(24px, 450px)";
-    await Promise.resolve();
-    await Promise.resolve();
-    assert.equal(f.frames.size, 1, "resize and native position updates share one frame");
-    await f.paint();
-    const heights = heightMotions(f.motions);
-    assert.equal(heights.length, 1);
-    assert.equal(heights[0].target, f.wrapper);
-    assert.deepEqual(values(heights[0], "height"), ["240px", "360px"]);
-    const timing = heights[0].options;
+    f.state.naturalHeight = 303;
+    f.change(); f.change(); f.change();
+    await f.settle();
+    assert.equal(f.frames.size, 0, "height measurement does not wait for rAF");
+    assert.equal(f.motions.length, 1);
+    const motion = f.motions[0];
+    assert.equal(motion.target, f.card, "the visible popup and its content use the same height motion");
+    assert.deepEqual(values(motion, "height"), ["240px", "303px"]);
+    const timing = motion.options;
     assert.equal(typeof timing === "number" ? timing : timing?.duration, 320);
-    const translations = f.motions.filter(motion => values(motion, "translate").length || values(motion, "transform").length);
-    assert.equal(translations.length, 1, "height and y compensation use independent animations");
-    const endpoints = values(translations[0], "translate").length ? values(translations[0], "translate") : values(translations[0], "transform");
-    assert.match(endpoints[0], /50px/, "the old visual position is preserved above the new native coordinate");
-    assert.match(endpoints.at(-1)!, /(?:^|[^\d])0(?:px)?(?:\)|$)/, "position compensation returns to the native coordinate");
-    assert.equal(f.wrapper.style.transform, "translate(24px, 450px)", "the host retains its native transform");
-    assert.equal(f.card.offsetHeight, 360, "wrapper motion does not change the natural card height");
+    assert.equal(motion.animation.playbackRate, 2);
+    assert.ok(f.card.hasAttribute(RESIZING));
+    assert.equal(f.wrapper.hasAttribute(RESIZING), false);
+    assert.equal(f.wrapper.getAttribute("style"), wrapperStyle);
+    assert.equal(values(motion, "translate").length, 0);
+    assert.equal(values(motion, "transform").length, 0);
   } finally { stop(); f.restore(); }
 });
 
-// Ignore ResizeObserver callbacks that report the already measured target size.
-test("unchanged natural height does not start or duplicate a height motion", async () => {
+// Leave stationary content alone instead of starting a redundant height animation.
+test("unchanged native card height does not start a height motion", async () => {
   const f = fixture();
   const stop = injectComposerModelSize(f.card);
   try {
-    f.resize(); await f.paint();
+    f.change(); await f.settle();
     assert.equal(f.motions.length, 0);
-    f.state.naturalHeight = 360;
-    f.resize(); await f.paint();
-    assert.equal(heightMotions(f.motions).length, 1);
-    f.resize(); f.resize(); await f.paint();
-    assert.equal(heightMotions(f.motions).length, 1, "callbacks during the active interpolation do not restart the same target");
+    assert.equal(f.frames.size, 0);
   } finally { stop(); f.restore(); }
 });
 
-// Catch native position changes delivered after the popup's height has already changed.
-test("a later native wrapper position update animates translate without repeating the height motion", async () => {
+// Measure natural height by cancelling and then resume the same interpolation if its target remains valid.
+test("the same active target reuses its Animation and restores currentTime after natural-height measurement", async () => {
   const f = fixture();
   const stop = injectComposerModelSize(f.card);
   try {
     f.state.naturalHeight = 360;
-    f.resize(); await f.paint();
-    assert.equal(heightMotions(f.motions).length, 1);
-    f.state.nativeY = 450;
-    f.wrapper.style.transform = "translate(24px, 450px)";
-    await f.paint();
-    assert.equal(heightMotions(f.motions).length, 1);
-    const translations = f.motions.filter(motion => values(motion, "translate").length || values(motion, "transform").length);
-    assert.equal(translations.length, 1, "the native style observer compensates a delayed position update");
-    const endpoints = values(translations[0], "translate").length ? values(translations[0], "translate") : values(translations[0], "transform");
-    assert.match(endpoints[0], /50px/);
+    f.change(); await f.settle();
+    const motion = f.motions[0];
+    assert.ok(motion);
+    motion.animation.currentTime = 88;
+    f.state.visibleHeight = 285;
+    f.change(); f.change(); await f.settle();
+    assert.equal(f.motions.length, 1, "measurement does not replace a motion with an unchanged target");
+    assert.ok(motion.cancels > 0, "natural height is read with the old visual interpolation removed");
+    assert.equal(motion.plays, 1);
+    assert.equal(motion.animation.currentTime, 88);
+    assert.equal(motion.animation.playState, "running");
+    assert.equal(motion.animation.playbackRate, 2);
+    assert.ok(f.card.hasAttribute(RESIZING));
   } finally { stop(); f.restore(); }
 });
 
-// Restart an interrupted transition from the visible result instead of its prior endpoint.
-test("a new target cancels the previous height motion and starts at the currently visible height", async () => {
+// Start a changed target at the actual animated card height, rather than the old endpoint or wrapper height.
+test("a changed active target restarts at the card's visible offsetHeight after cancelling the previous motion", async () => {
   const f = fixture();
   const stop = injectComposerModelSize(f.card);
   try {
     f.state.naturalHeight = 360;
-    f.resize(); await f.paint();
-    const first = heightMotions(f.motions)[0];
+    f.change(); await f.settle();
+    const first = f.motions[0];
     assert.ok(first);
     f.state.visibleHeight = 285;
-    f.state.naturalHeight = 420;
-    f.resize(); await f.paint();
-    const heights = heightMotions(f.motions);
-    assert.equal(heights.length, 2);
-    assert.equal(first.cancelled, true);
-    assert.deepEqual(values(heights[1], "height"), ["285px", "420px"]);
+    f.state.naturalHeight = 418;
+    f.change(); await f.settle();
+    assert.equal(f.motions.length, 2);
+    assert.ok(first.cancels > 0);
+    assert.equal(first.animation.playState, "idle");
+    assert.equal(f.motions[1].target, f.card);
+    assert.deepEqual(values(f.motions[1], "height"), ["285px", "418px"]);
+    assert.equal(f.motions[1].animation.playbackRate, 2);
   } finally { stop(); f.restore(); }
 });
 
-// Clear all pending enhancement work when a popup closes or the plugin unloads.
-test("dispose disconnects observers, cancels queued frames and active motions, and removes its marker", async () => {
+// Keep native popper placement outside the resize enhancement's lifecycle.
+test("native wrapper transform changes do not schedule or create a card or wrapper animation", async () => {
   const f = fixture();
   const stop = injectComposerModelSize(f.card);
   try {
-    f.state.naturalHeight = 360;
-    f.state.nativeY = 450;
-    f.resize(); await f.paint();
-    assert.ok(f.wrapper.hasAttribute(RESIZING));
-    f.state.naturalHeight = 420;
-    f.resize();
-    assert.equal(f.frames.size, 1);
-    stop();
+    f.wrapper.style.transform = "translate(24px, 450px)";
+    await f.settle();
     assert.equal(f.frames.size, 0);
-    for (const observer of f.observers) assert.equal(observer.targets.size, 0);
-    for (const motion of f.motions) assert.equal(motion.cancelled, true);
+    assert.equal(f.motions.length, 0);
+    assert.equal(f.wrapper.style.transform, "translate(24px, 450px)");
     assert.equal(f.wrapper.hasAttribute(RESIZING), false);
-    const count = f.motions.length;
-    f.wrapper.style.transform = "translate(24px, 400px)";
-    f.resize(); await f.paint();
-    assert.equal(f.frames.size, 0);
-    assert.equal(f.motions.length, count, "disposed mutation observers cannot restart motion");
   } finally { stop(); f.restore(); }
 });
 
-// Restore a wrapper attribute owned by a prior host or content-script generation.
-test("dispose restores a pre-existing wrapper resizing marker value", async () => {
+// Remeasure layout changes caused by the browser window using the same pre-paint path.
+test("window resize starts a card height motion without waiting for native content mutations or rAF", async () => {
   const f = fixture();
-  f.wrapper.setAttribute(RESIZING, "native-owner");
+  const stop = injectComposerModelSize(f.card);
+  try {
+    f.state.naturalHeight = 303;
+    f.dom.window.dispatchEvent(new f.dom.window.Event("resize"));
+    await f.settle();
+    assert.equal(f.frames.size, 0);
+    assert.equal(f.motions.length, 1);
+    assert.equal(f.motions[0].target, f.card);
+    assert.deepEqual(values(f.motions[0], "height"), ["240px", "303px"]);
+  } finally { stop(); f.restore(); }
+});
+
+// Exclude the enhancement's own gauge text updates from provider-card measurement.
+test("effort gauge output mutations do not measure or restart card height", async () => {
+  const f = fixture();
+  const stop = injectComposerModelSize(f.card);
+  try {
+    const reads = f.state.reads;
+    f.state.naturalHeight = 303;
+    f.card.querySelector("[data-bb-chat-ui-effort] output")!.textContent = "Extra High";
+    await f.settle();
+    assert.equal(f.state.reads, reads, "gauge-owned output updates are ignored before measuring layout");
+    assert.equal(f.motions.length, 0);
+  } finally { stop(); f.restore(); }
+});
+
+// Release card clipping when a height transition reaches its final native height.
+test("finishing a card motion restores its previous marker and preserves native inline styles", async () => {
+  const f = fixture();
+  f.card.setAttribute(RESIZING, "native-owner");
+  const cardStyle = f.card.getAttribute("style");
+  const wrapperStyle = f.wrapper.getAttribute("style");
+  const stop = injectComposerModelSize(f.card);
+  try {
+    f.state.naturalHeight = 303;
+    f.change(); await f.settle();
+    assert.equal(f.motions.length, 1);
+    f.motions[0].animation.finish();
+    await f.settle();
+    assert.equal(f.card.getAttribute(RESIZING), "native-owner");
+    assert.equal(f.card.getAttribute("style"), cardStyle);
+    assert.equal(f.wrapper.getAttribute("style"), wrapperStyle);
+  } finally { stop(); f.restore(); }
+});
+
+// Stop active animations and prevent queued microtasks or retained listeners from starting more work.
+test("dispose cancels active card motion, restores markers and styles, and releases queued updates", async () => {
+  const f = fixture();
+  const parent = f.card.parentNode;
+  const cardStyle = f.card.getAttribute("style");
+  const wrapperStyle = f.wrapper.getAttribute("style");
   const stop = injectComposerModelSize(f.card);
   try {
     f.state.naturalHeight = 360;
-    f.resize(); await f.paint();
+    f.change(); await f.settle();
+    assert.equal(f.motions.length, 1);
+    assert.ok(f.card.hasAttribute(RESIZING));
+    f.state.naturalHeight = 418;
+    f.dom.window.dispatchEvent(new f.dom.window.Event("resize"));
     stop();
-    assert.equal(f.wrapper.getAttribute(RESIZING), "native-owner");
+    await f.settle();
+    assert.equal(f.motions.length, 1, "queued measurements are ignored after disposal");
+    assert.ok(f.motions[0].cancels > 0);
+    assert.equal(f.card.hasAttribute(RESIZING), false);
+    assert.equal(f.wrapper.hasAttribute(RESIZING), false);
+    assert.equal(f.card.parentNode, parent);
+    assert.equal(f.card.getAttribute("style"), cardStyle);
+    assert.equal(f.wrapper.getAttribute("style"), wrapperStyle);
+    for (const observer of f.mutations) assert.equal(observer.active, false);
+    f.change();
+    f.dom.window.dispatchEvent(new f.dom.window.Event("resize"));
+    await f.settle();
+    assert.equal(f.motions.length, 1);
+    assert.equal(f.frames.size, 0);
   } finally { stop(); f.restore(); }
 });
 
-// Honor the system motion preference for both size and position updates.
-test("prefers-reduced-motion suppresses height and position animations", async () => {
+// Respect reduced motion before creating any visual interpolation.
+test("prefers-reduced-motion suppresses card height animation", async () => {
   const f = fixture({ reducedMotion: true });
   const stop = injectComposerModelSize(f.card);
   try {
-    f.state.naturalHeight = 360;
-    f.state.nativeY = 450;
-    f.wrapper.style.transform = "translate(24px, 450px)";
-    f.resize(); await f.paint();
+    f.state.naturalHeight = 303;
+    f.change();
+    f.dom.window.dispatchEvent(new f.dom.window.Event("resize"));
+    await f.settle();
     assert.equal(f.motions.length, 0);
+    assert.equal(f.card.hasAttribute(RESIZING), false);
+    assert.equal(f.frames.size, 0);
   } finally { stop(); f.restore(); }
 });
 
-// Leave unsupported host layouts untouched instead of creating an artificial wrapper.
-test("a card without a native popper wrapper remains unchanged", async () => {
-  const f = fixture({ wrapper: false });
-  const original = f.card.outerHTML;
+// Apply a live accessibility preference change to an already running card transition.
+test("enabling reduced motion cancels the active card motion and restores its marker", async () => {
+  const f = fixture();
+  const stop = injectComposerModelSize(f.card);
+  try {
+    f.state.naturalHeight = 303;
+    f.change(); await f.settle();
+    assert.equal(f.motions.length, 1);
+    f.reduce(); await f.settle();
+    assert.ok(f.motions[0].cancels > 0);
+    assert.equal(f.card.hasAttribute(RESIZING), false);
+  } finally { stop(); f.restore(); }
+});
+
+// Animate the real card even when the host has no native positioning wrapper or ResizeObserver support.
+test("card height motion works without a popper wrapper or ResizeObserver", async () => {
+  const f = fixture({ wrapper: false, resizeObserver: false });
   const parent = f.card.parentNode;
   const stop = injectComposerModelSize(f.card);
   try {
-    f.state.naturalHeight = 360;
-    f.resize(); await f.paint();
-    assert.equal(f.motions.length, 0);
-    assert.equal(f.card.outerHTML, original);
+    f.state.naturalHeight = 303;
+    f.change(); await f.settle();
+    assert.equal(f.motions.length, 1);
+    assert.equal(f.motions[0].target, f.card);
+    assert.deepEqual(values(f.motions[0], "height"), ["240px", "303px"]);
     assert.equal(f.card.parentNode, parent);
-    assert.equal(f.frames.size, 0);
-  } finally { stop(); f.restore(); }
-});
-
-// Keep browsers without ResizeObserver on their native positioning and sizing path.
-test("missing ResizeObserver support leaves the popup untouched", async () => {
-  const f = fixture({ resizeObserver: false });
-  const original = f.wrapper.outerHTML;
-  const originalStyle = f.wrapper.getAttribute("style")!;
-  const stop = injectComposerModelSize(f.card);
-  try {
-    f.state.naturalHeight = 360;
-    f.wrapper.style.transform = "translate(24px, 450px)";
-    await f.paint();
-    assert.equal(f.motions.length, 0);
-    assert.equal(f.wrapper.hasAttribute(RESIZING), false);
-    assert.equal(f.frames.size, 0);
-    stop();
-    f.wrapper.setAttribute("style", originalStyle);
-    assert.equal(f.wrapper.outerHTML, original);
   } finally { stop(); f.restore(); }
 });
