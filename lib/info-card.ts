@@ -16,6 +16,8 @@ export const cardSlot = {
   title: `${CARD}-title`,
   action: `${CARD}-action`,
   button: `${CARD}-button`,
+  endAction: `${CARD}-end-action`,
+  buttonLabel: `${CARD}-button-label`,
   close: `${CARD}-close`,
   list: `${CARD}-list`,
   row: `${CARD}-row`,
@@ -78,6 +80,9 @@ ${card} :where([class~="text-2xs"]):not(:where(${ownTypeTree})) { ${cardStyle.se
 ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }
+${card}[${cardSlot.layout}="with-actions"] { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-rows:28px auto; grid-template-areas:"heading actions close" "body body body"; align-items:center; gap:8px; }
+${card}[${cardSlot.layout}="with-actions"] > ${s.head} { grid-area:heading; margin-bottom:0; padding-right:0 !important; }
+${card}[${cardSlot.layout}="with-actions"] > :not(${s.head}):not(${s.close}):not(${s.endAction}) { grid-area:body; }
 ${card}[${cardSlot.layout}="heading-only"] > ${s.head} { ${cardStyle.headOnly} }
 ${card}[${cardSlot.layout}="single-row"] { min-height:40px !important; padding:0 !important; box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow) !important; }
 ${card}[${cardSlot.layout}="single-row"] > ${s.head} { position:static; height:40px; min-height:40px; margin:0; padding:4px 40px 4px 16px !important; }
@@ -91,6 +96,10 @@ ${s.title} { ${cardStyle.title} }
 :is(${s.action}, ${s.close}) :is(svg, [data-icon-root]) { width:14px; height:14px; }
 ${s.close} { ${cardStyle.close} }
 ${s.button} { ${cardStyle.button} }
+${s.endAction} { grid-area:actions; margin-left:auto; }
+${s.button}${s.endAction} { gap:0; font-size:0 !important; }
+${s.button}${s.endAction} > :not(${s.buttonLabel}) { display:none !important; }
+${s.button}${s.endAction} > ${s.buttonLabel} { ${cardStyle.text} }
 /* A finger keeps the 32px hit target of the composer pills. */
 ${LARGE_HIT_TARGET} ${s.button} { height:32px; min-height:32px; }
 :is(${s.action}, ${s.close}, ${s.button}):not(:disabled):is(:hover, :focus-visible) { ${cardStyle.hover} }

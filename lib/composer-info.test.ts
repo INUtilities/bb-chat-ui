@@ -206,6 +206,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
     const style=(node:Element)=>f.dom.window.getComputedStyle(node);
     const link=context.querySelector('a')!,group=context.querySelector('.inline-flex')!;
+    assert.equal(style(group.parentElement!).marginLeft,'auto','Merge stays at the close end while the PR detail link follows its title');
     assert.ok(link.hasAttribute('data-bb-chat-ui-card-navigation'),'the original PR link owns the full-card target');
     assert.equal(style(link).position,'static','the stretched target anchors to the card');
     assert.equal(style(link).overflow,'visible','the native icon link must not clip its full-card target');
@@ -941,7 +942,8 @@ test("Goal keeps its native removal action beside the title and close without re
     assert.equal(style(clear).height,'28px','Goal 해제 is the shared text action');
     assert.equal(style(clear).borderTopWidth,'1px');
     assert.equal(style(goal).alignItems,'center');
-    assert.equal(clear.textContent,'Goal 해제');
+    assert.equal(clear.textContent,'해제');
+    assert.ok(clear.hasAttribute('data-bb-chat-ui-card-end-action'));
     assert.equal(style(clear.querySelector('svg')!).display,'none','removal no longer looks like another popup close button');
     assert.equal(clear.parentElement,clearParent);
     assert.equal(goal.querySelectorAll('[aria-label="Goal 닫기"]').length,1);
@@ -950,7 +952,7 @@ test("Goal keeps its native removal action beside the title and close without re
     assert.equal(clear.querySelector('[data-bb-chat-ui-info-goal-clear-label]'),null,'closing restores native removal chrome');
     f.click('[data-bb-chat-ui-info-trigger="goal"]');
     clear.innerHTML='<svg data-native-clear />'; await f.tick();
-    assert.equal(clear.textContent,'Goal 해제','native icon rerender restores the visible action label');
+    assert.equal(clear.textContent,'해제','native icon rerender restores the short action label');
     clear.disabled=true; await f.tick();
     assert.equal(clear.textContent,'해제 중…');
     clear.disabled=false; await f.tick();
@@ -1360,7 +1362,7 @@ test("named native actions stay separate from popover close", async () => {
   f.document.head.append(utilities);
   const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
   stack.insertAdjacentHTML("beforeend", `
-    <section aria-label="Prompt mode"><div role="group" aria-label="Plan mode controls"><button type="button" id="thread-prompt-mode-card-toggle" aria-expanded="false" aria-controls="thread-prompt-mode-card-body" aria-label="Plan">Plan</button><button type="button" aria-label="Exit plan mode"><svg data-plan-exit></svg></button></div><section id="thread-prompt-mode-card-body" hidden><p>Plan steps</p></section></section>
+    <section aria-label="Prompt mode"><div aria-label="Plan mode controls"><button type="button" id="thread-prompt-mode-card-toggle" class="flex-1" aria-expanded="false" aria-controls="thread-prompt-mode-card-body" aria-label="Plan">Plan</button><button type="button" aria-label="Exit plan mode"><svg data-plan-exit></svg></button><button type="button">Open in side panel</button></div><section id="thread-prompt-mode-card-body" hidden><p>Plan steps</p></section></section>
     <section aria-label="Model fallback"><div role="status"><svg data-fallback-icon></svg><span class="font-medium">Model fallback</span><span title="Switched from Opus to Sonnet">Switched from Opus to Sonnet</span><button type="button" aria-label="Dismiss model fallback"><svg data-fallback-dismiss></svg></button></div></section>
     <section aria-label="Machine status"><div class="flex items-center gap-0.5 p-1"><button type="button" id="machine-status-toggle" aria-expanded="false" aria-controls="machine-status-body">Paused</button><div class="ml-auto flex shrink-0 items-center gap-1.5 pr-2"><button type="button">Retry</button></div></div><section id="machine-status-body" hidden><p>detail</p></section></section>
     <section aria-label="Workflow"><button type="button" id="workflow-card-toggle" aria-expanded="false" aria-controls="workflow-card-body">Release</button><div id="workflow-card-body" hidden><button type="button" data-phase="done" aria-expanded="false">코드 감사</button><button type="button" data-phase="active" class="bg-background/70" aria-expanded="false">화면 검증</button><button type="button" data-workflow-action>Retry</button></div></section>
@@ -1399,7 +1401,12 @@ test("named native actions stay separate from popover close", async () => {
     assert.match(sheet, /\[data-bb-chat-ui-card-head\] \{ [^}]*padding:0 32px 0 0 !important;/);
     f.click('[data-bb-chat-ui-info-trigger="plan"]');
     const exit = f.document.querySelector<HTMLButtonElement>('[aria-label="Exit plan mode"]')!;
-    assert.equal(exit.textContent, "Plan 종료");
+    assert.equal(exit.textContent, "종료");
+    assert.equal(paint(exit).marginLeft, "auto", "a state action follows the title's remaining space");
+    const detail=exit.parentElement!.querySelector('[data-bb-chat-ui-info-panel-action]')!;
+    assert.ok(detail,'a native controls row is reused even without a group role');
+    assert.ok(detail.compareDocumentPosition(exit)&f.dom.window.Node.DOCUMENT_POSITION_FOLLOWING,'detail navigation precedes the state action');
+    assert.equal(paint(exit.parentElement!.querySelector('[data-bb-chat-ui-info-readonly-title]')!).flexGrow,'0','a read-only title does not push its detail action away');
     assert.equal(paint(exit.querySelector("svg")!).display, "none");
     assert.equal(paint(exit).getPropertyValue("backdrop-filter"), "none", "Plan 종료 is the shared hairline action, not a second glass");
     assert.equal(paint(exit).borderTopWidth, "1px");
@@ -1421,7 +1428,10 @@ test("named native actions stay separate from popover close", async () => {
     assert.equal(paint(fallback.querySelector("span.font-medium")!).display, "none");
     assert.equal(paint(fallback.querySelector("[data-fallback-icon]")!).display, "none");
     const dismissFallback = fallback.querySelector<HTMLButtonElement>('[aria-label="Dismiss model fallback"]')!;
-    assert.equal(dismissFallback.textContent, "Fallback 해제");
+    assert.equal(dismissFallback.textContent, "해제");
+    assert.equal(fallback.getAttribute('data-bb-chat-ui-card-layout'),'with-actions','a body-owned native action joins the title row without moving its node');
+    assert.equal(paint(dismissFallback).gridArea,'actions');
+    assert.equal(paint(dismissFallback.parentElement!).display,'contents');
     assert.equal(paint(dismissFallback.querySelector("svg")!).display, "none");
     dismissFallback.click();
     assert.equal(fallbackDismisses, 1);
@@ -4248,6 +4258,9 @@ test("archived stack-only composer offers only restore and preserves its native 
   assert.equal(f.dom.window.getComputedStyle(pill).width,'100%');
   const popover=f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-archived-detail]')!;
   assert.ok(popover);
+  const restoreStyle=f.dom.window.getComputedStyle(popover.querySelector('[data-bb-chat-ui-info-unarchive]')!);
+  assert.equal(restoreStyle.width,'100%','the restore button spans the whole content width');
+  assert.equal(restoreStyle.display,'flex');
   assert.equal(popover.querySelectorAll('button').length,2,'only close and restore are present');
   assert.equal(popover.textContent?.includes('Parent thread'),false);
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-archive-catalog]'),null);

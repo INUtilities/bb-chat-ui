@@ -90,6 +90,19 @@ test("a heading-only card leaves no body gap beneath its title", () => {
   f.dom.window.close();
 });
 
+test("state actions sit at the head end while their short label retains the common type", () => {
+  const f=page(`<section ${CARD} data-bb-chat-ui-card-layout="with-actions"><header ${cardSlot.head}>Fallback</header><button data-bb-chat-ui-card-button data-bb-chat-ui-card-end-action aria-label="Dismiss model fallback">Dismiss<span data-bb-chat-ui-card-button-label>해제</span></button><p ${cardSlot.body}>Provider transition</p></section>`);
+  const card=f.document.querySelector(`[${CARD}]`)!,head=card.querySelector('header')!,action=card.querySelector('button')!,label=action.querySelector('span')!;
+  assert.equal(f.style(card).gridTemplateAreas,'"heading actions close" "body body body"');
+  assert.equal(f.style(head).paddingRight,'0px','the action and close columns reserve the end gutter');
+  assert.equal(f.style(action).gridArea,'actions');
+  assert.equal(f.style(action).marginLeft,'auto');
+  assert.equal(f.style(action).fontSize,'0px','original direct native text does not duplicate the short label');
+  assert.equal(f.style(label).fontSize,'12px');
+  assert.equal(f.style(label).lineHeight,'16px');
+  f.dom.window.close();
+});
+
 test("the common body removes inherited edge insets while keeping row padding", () => {
   const f = page(`<section ${CARD}><div data-bb-chat-ui-card-body style="padding:8px 0 10px"><p style="margin:6px 0">Text</p><div ${cardSlot.row}>Row</div></div></section>`);
   const body = f.document.querySelector('[data-bb-chat-ui-card-body]')!;

@@ -94,6 +94,7 @@ ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD}
 [${MARK}-bar][${MARK}-archived] { padding-right:0; }
 [${MARK}-bar][${MARK}-archived] [${MARK}-trigger="status"] { width:100%; max-width:none; justify-content:center; }
 [${MARK}-unarchive]:disabled { opacity:.5; cursor:default; }
+[${MARK}-archived-detail] [${MARK}-unarchive] { display:flex; width:100%; }
 /* Pills only: a card inside the bar keeps its slot sizes. */
 ${PILL}, [${MARK}-jump] { font:inherit; cursor:pointer; color:var(--foreground); }
 [${MARK}-bar] button:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
@@ -119,7 +120,7 @@ ${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"]
 ${NATIVE_DETAIL} > div[class~="p-1"]:not([${cardSlot.head}]), ${NATIVE_DETAIL} > div[class~="p-1"] > div[class~="px-2"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:-8px; margin-right:-8px; width:calc(100% + 16px); box-sizing:border-box; }
 ${DETAIL} [${MARK}-readonly-title] { cursor:default !important; background:transparent !important; box-shadow:none !important; }
-${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; gap:8px; min-width:0; min-height:28px; height:28px; padding:0 !important; font-size:12px; line-height:16px; font-weight:600; text-align:left; }
+${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; flex:0 1 auto; gap:8px; min-width:0; min-height:28px; height:28px; padding:0 !important; font-size:12px; line-height:16px; font-weight:600; text-align:left; }
 /* Keep native title, live counters and phase bars on their original parents. */
 ${WORKFLOW_HEADING} { height:auto; display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 8px; align-items:center; padding:0 32px 6px 0 !important; }
 ${WORKFLOW_HEADING} > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
@@ -164,7 +165,9 @@ ${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] { width:auto; 
 ${DETAIL}[aria-label="Prompt mode"] [aria-label="Exit plan mode"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[aria-label="Model fallback"] [role="status"] > :is(svg, [data-icon-root]),
 ${DETAIL}[aria-label="Model fallback"] [role="status"] > span:not([title]) { display:none !important; }
-${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { width:auto; margin-left:8px; }
+${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] { width:auto; }
+${DETAIL}[aria-label="Model fallback"][${cardSlot.layout}="with-actions"] > [role="status"] { display:contents !important; }
+${DETAIL}[aria-label="Model fallback"][${cardSlot.layout}="with-actions"] > [role="status"] > span[title] { grid-area:body; min-width:0; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
@@ -695,6 +698,20 @@ export function injectComposerInfo(document: Document): () => void {
     const goalClearLabels = new Map<HTMLElement, HTMLElement>();
     const planExitLabels = new Map<HTMLElement, HTMLElement>();
     const fallbackDismissLabels = new Map<HTMLElement, HTMLElement>();
+    const endActions = new Map<HTMLElement, InfoKind>();
+    const actionLayouts = new Map<HTMLElement, string | null>();
+    const markEndAction = (node:HTMLElement, key:InfoKind) => {
+      if (!node.hasAttribute(cardSlot.endAction)) { node.setAttribute(cardSlot.endAction, ""); endActions.set(node, key); }
+      for (const detail of Array.from(node.parentElement?.querySelectorAll<HTMLElement>(`:scope > [${MARK}-panel-action]`) ?? [])) {
+        if (node.compareDocumentPosition(detail) & view!.Node.DOCUMENT_POSITION_FOLLOWING) node.before(detail);
+      }
+    };
+    const restoreActionLayout = (node:HTMLElement) => {
+      if (!actionLayouts.has(node)) return;
+      const original = actionLayouts.get(node)!;
+      if (original === null) node.removeAttribute(cardSlot.layout); else node.setAttribute(cardSlot.layout, original);
+      actionLayouts.delete(node);
+    };
     let prTitle: HTMLElement | null = null;
     let prHeading: HTMLElement | null = null;
     let prLink: HTMLAnchorElement | null = null;
@@ -773,6 +790,10 @@ export function injectComposerInfo(document: Document): () => void {
         if (generatedCloseHeadings.delete(heading)) heading.remove();
       }
       const item = items.find(item => item.node === activeNode && item.key === active);
+      for (const [node, key] of endActions) if (key !== item?.key || !item.node.hasAttribute(OPEN) || !item.node.contains(node)) {
+        node.removeAttribute(cardSlot.endAction); endActions.delete(node);
+      }
+      for (const node of actionLayouts.keys()) if (node !== item?.node || !node.hasAttribute(OPEN)) restoreActionLayout(node);
       for (const card of prSingleRows) if (item?.key !== "pullRequest" || item.node !== card || !card.hasAttribute(OPEN)) {
         card.removeAttribute(cardSlot.layout); prSingleRows.delete(card);
       }
@@ -842,15 +863,16 @@ export function injectComposerInfo(document: Document): () => void {
         const button = item.node.querySelector<HTMLElement>(selector);
         if (!button) return;
         let label = labels.get(button);
-        if (!label) { label = document.createElement("span"); label.setAttribute(mark, ""); labels.set(button, label); }
+        if (!label) { label = document.createElement("span"); label.setAttribute(mark, ""); label.setAttribute(cardSlot.buttonLabel, ""); labels.set(button, label); }
         const text = textFor(button);
         if (label.textContent !== text) label.textContent = text;
         if (label.parentElement !== button) button.append(label);
         if (!button.hasAttribute(cardSlot.button)) button.setAttribute(cardSlot.button, "");
+        markEndAction(button, key);
       };
-      namedAction(goalClearLabels, "goal", '[aria-label="Clear active Goal"]', `${MARK}-goal-clear-label`, button => button.hasAttribute("disabled") ? "해제 중…" : "Goal 해제");
-      namedAction(planExitLabels, "plan", '[aria-label="Exit plan mode"]', `${MARK}-plan-exit-label`, button => button.hasAttribute("disabled") ? "종료 중…" : "Plan 종료");
-      namedAction(fallbackDismissLabels, "fallback", '[aria-label="Dismiss model fallback"]', `${MARK}-fallback-dismiss-label`, () => "Fallback 해제");
+      namedAction(goalClearLabels, "goal", '[aria-label="Clear active Goal"]', `${MARK}-goal-clear-label`, button => button.hasAttribute("disabled") ? "해제 중…" : "해제");
+      namedAction(planExitLabels, "plan", '[aria-label="Exit plan mode"]', `${MARK}-plan-exit-label`, button => button.hasAttribute("disabled") ? "종료 중…" : "종료");
+      namedAction(fallbackDismissLabels, "fallback", '[aria-label="Dismiss model fallback"]', `${MARK}-fallback-dismiss-label`, () => "해제");
       syncBulkActions(item?.key === "annotations" && item.node.hasAttribute(OPEN) ? item.node : null);
       for (const button of agentationCloses) if (!(item?.key === "annotations" && item.node.hasAttribute(OPEN) && item.node.contains(button))) { button.removeAttribute(cardSlot.close); agentationCloses.delete(button); }
       if (item?.key === "annotations" && item.node.hasAttribute(OPEN)) {
@@ -891,6 +913,11 @@ export function injectComposerInfo(document: Document): () => void {
             if (prTitle.getAttribute("title") !== title) prTitle.setAttribute("title",title);
             if (prTitle.nextElementSibling !== link) heading.insertBefore(prTitle, link);
           } else clearPrHeader();
+          let actions = heading.querySelector<HTMLElement>('div.inline-flex.overflow-hidden.rounded[class~="border"]');
+          if (actions) {
+            while (actions.parentElement && actions.parentElement !== heading) actions = actions.parentElement;
+            markEndAction(actions, item.key);
+          }
         }
         const title = item.trigger;
         if (title?.matches('button[aria-expanded][aria-controls]') && heading.contains(title) && item.key !== "pullRequest") {
@@ -900,6 +927,13 @@ export function injectComposerInfo(document: Document): () => void {
           if (title.getAttribute("aria-disabled") !== "true") title.setAttribute("aria-disabled","true");
         }
       }
+      const stateAction = item.node.querySelector<HTMLElement>(`[${cardSlot.button}][${cardSlot.endAction}]`);
+      if (heading && stateAction && !heading.contains(stateAction)) {
+        const goalControls = stateAction.closest<HTMLElement>('[aria-label="Goal controls"]');
+        if (goalControls?.parentElement === item.node) markEndAction(goalControls, item.key);
+        if (!actionLayouts.has(item.node)) actionLayouts.set(item.node, item.node.getAttribute(cardSlot.layout));
+        if (item.node.getAttribute(cardSlot.layout) !== "with-actions") item.node.setAttribute(cardSlot.layout, "with-actions");
+      } else restoreActionLayout(item.node);
       let dismiss = nativeDismisses.get(item.node);
       if (!dismiss) {
         dismiss = createCardClose(document, `${item.label} 닫기`);
@@ -928,7 +962,8 @@ export function injectComposerInfo(document: Document): () => void {
           current.add(source);
           let heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading], [${MARK}-title-heading], h3, h4, header`);
           if (!heading || heading.closest("button, a")) {
-            const group = source.closest<HTMLElement>('[role="group"]');
+            const parent = item.trigger?.parentElement;
+            const group = source.closest<HTMLElement>('[role="group"]') ?? (item.key !== "goal" && item.key !== "queue" && parent !== item.node && parent?.contains(source) ? parent : null);
             heading = group && item.node.contains(group) ? group : null;
             if (!heading) {
               heading = document.createElement("h3"); heading.textContent = item.label;
@@ -943,7 +978,8 @@ export function injectComposerInfo(document: Document): () => void {
             action = panelAction(label, () => { if (close()) source.click(); });
             panelActions.set(source, action); source.setAttribute(`${MARK}-panel-source`, "");
           }
-          if (action.parentElement !== heading) heading.insertBefore(action, heading.querySelector(`[${MARK}-dismiss]`));
+          const end = heading.querySelector(`:scope > [${cardSlot.endAction}], :scope > [${MARK}-dismiss]`);
+          if (action.parentElement !== heading || end && !(action.compareDocumentPosition(end) & view!.Node.DOCUMENT_POSITION_FOLLOWING)) heading.insertBefore(action, end);
           if (action.title !== label) action.title = label;
           if (action.getAttribute("aria-label") !== label) action.setAttribute("aria-label", label);
           const disabled = source.hasAttribute("disabled") || source.getAttribute("aria-disabled") === "true";
@@ -2438,6 +2474,8 @@ export function injectComposerInfo(document: Document): () => void {
       for (const heading of generatedCloseHeadings) heading.remove();
       for (const card of prSingleRows) card.removeAttribute(cardSlot.layout);
       clearPrHeader();
+      for (const node of endActions.keys()) node.removeAttribute(cardSlot.endAction);
+      for (const node of actionLayouts.keys()) restoreActionLayout(node);
       backgroundAccordions.stop();
       for (const node of owned) { node.removeAttribute(UNIT); node.removeAttribute(OPEN); }
       for (const node of wrappers) node.removeAttribute(WRAP);

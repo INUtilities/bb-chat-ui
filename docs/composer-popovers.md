@@ -34,6 +34,12 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 - 패널·플러그인 페이지·GitHub 등 외부 열기 버튼은 제목 텍스트 바로 오른쪽에
   둔다. 짧은 제목 뒤에 빈 공간을 늘려 버튼을 카드 오른쪽 끝으로 밀지 않는다.
   긴 제목은 버튼과 닫기 영역을 남긴 뒤 한 줄 말줄임한다.
+- 제목 바로 오른쪽은 상세 화면을 여는 액션 전용이다. Goal·fallback의 `해제`,
+  Plan의 `종료`와 PR의 Merge처럼 상태를 바꾸는 액션은 제목 줄 오른쪽 끝의 × 왼쪽에 둔다.
+  화면 이름은 버튼에서 반복하지 않고 원래 접근성 이름과 실제 동작은 유지한다.
+  native 버튼이 본문에 있어도 원래 DOM 부모를 유지하며 `with-actions` layout으로 제목 줄에 연결한다.
+- Archived thread의 `Unarchive`와 환경 복구 버튼은 본문 전체 너비로 표시한다.
+  진행 중·비활성·오류 상태와 원래 복구 동작을 유지한다.
 - 제목·액션·닫기의 세로 중앙선을 맞춘다. 닫기는 24px 원형 영역의 ×다.
   액션은 × 왼쪽에 두며, 제목과 겹치지 않게 별도 열 또는 닫기 여백을 확보한다.
 - 닫기는 카드 위에서 18px·오른쪽에서 16px이며 제목에는 32px 닫기 여백을 남긴다.
@@ -44,7 +50,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   통합 전 Parent처럼 높이 40px인 카드 전체가 하나의 클릭 영역이다. 안쪽 행의 별도
   배경·테두리·그림자와 바깥 여백을 없애고, 카드의 inset edge도 표시하지 않는다.
   부모 정보가 아직 없으면 기존 링크로 보완하고, 사라진 부모로 이동하지 않는다.
-- Goal 해제는 이름이 있는 액션으로 유지한다. Agentation의 전체 액션은
+- Goal의 `해제`는 이름이 있는 액션으로 유지한다. Agentation의 전체 액션은
   ↑ 전송 → 휴지통 삭제 → × 닫기 순서다. 아이콘만 표시해도 tooltip과 접근성
   이름에는 `Send all` / `Discard all`을 남긴다.
 - Workflow는 첫 줄에 아이콘·제목·패널 열기·닫기를 둔다. 제목 줄은 28px이며,
@@ -82,6 +88,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 |---|---|---|
 | 기본 상세 카드 | 28px 제목 + 8px 간격 + 본문, 바깥 패딩 16px 24px | `cardSlot.head`, `cardSlot.body` |
 | 제목 단독 카드 (`heading-only`) | 본문 없이 28px 제목만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout |
+| 상태 액션이 있는 카드 (`with-actions`) | 28px 제목·상태 액션·닫기 열, 본문은 아래 전체 너비 | `cardSlot.head`, `cardSlot.endAction`, `cardSlot.body`; native Goal controls와 fallback status는 adapter가 연결 |
 | 단일 행 카드 (`single-row`) | 테두리·안쪽 면 없이 높이 40px인 카드 하나, 바깥 패딩 0, 내용 왼쪽 16px·닫기 여유 40px | Parent는 `cardSlot.row`와 `cardSlot.navigation`, PR은 native/SDK 행을 `cardSlot.head`에, 원래 링크를 `cardSlot.navigation`에 연결, 공통 `cardSlot.layout="single-row"` |
 | 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
 
@@ -93,6 +100,9 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   관계가 제거된 경우의 기존 비활성 처리와 native 복원 동작은 유지한다.
 - native Child 목록, Goal 본문, 백그라운드 목록, Workflow scroll area, Queue scroll/list의
   추가 상하 패딩을 제거한다. 본문 사이의 간격과 목록 행 자체의 8px 패딩은 유지한다.
+- `cardSlot.endAction`은 제목 줄 끝의 액션이다. native 글자 버튼에는
+  `cardSlot.buttonLabel`로 짧은 표시 이름을 연결하고, 원래 글자·아이콘이 중복 표시되지 않게 한다.
+  상세 열기 액션은 이 slot 앞에 배치한다. 닫기·native 재렌더·플러그인 해제 시 추가 layout과 slot을 복원한다.
 - SDK Goal은 기존 `cardSlot.head`를 재사용하고 `cardSlot.body`를 제목 아래 전체 너비에 둔다.
   native Goal의 해제 액션용 grid 열은 SDK 카드에 적용하지 않는다. 닫기·해제 시 SDK가 만든
   제목과 slot은 보존하고 adapter가 추가한 제목·slot만 정리한다.
