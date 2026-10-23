@@ -7,6 +7,26 @@ import { queuedMessagesCss } from "./queued-messages.ts";
 import { publishInfoData, publishDiffData, readInfoData, readDiffData } from "./composer-data.ts";
 
 let pageDocument: PropertyDescriptor | undefined;
+
+test("Machine Retry fixture uses the common text action and restores its native node on close", async () => {
+  const f = fixture(), stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const machine = f.document.createElement('section'); machine.setAttribute('aria-label', 'Machine status');
+  machine.innerHTML = '<button id="machine-status-toggle" aria-expanded="false" aria-controls="retry-body">Machine paused</button><div id="retry-body" hidden><p>Could not resume</p><button data-retry>Retry</button><button aria-expanded="false">Details</button></div>';
+  stack.append(machine);
+  const retry = machine.querySelector<HTMLButtonElement>('[data-retry]')!, parent = retry.parentElement;
+  let calls = 0; retry.addEventListener('click', () => calls++);
+  const stop = injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="machine"]'); await f.tick();
+    const s = f.dom.window.getComputedStyle(retry);
+    assert.equal(s.height, '28px'); assert.equal(s.borderRadius, '999px');
+    assert.equal(s.fontSize, '13px'); assert.equal(s.lineHeight, '16px');
+    assert.equal(retry.parentElement, parent); retry.click(); assert.equal(calls, 1);
+    assert.equal(machine.querySelector('button[aria-expanded="false"]:not(#machine-status-toggle)')!.hasAttribute('data-bb-chat-ui-card-button'), false);
+    machine.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')!.click();
+    assert.equal(retry.hasAttribute('data-bb-chat-ui-card-button'), false);
+  } finally { stop(); f.dom.window.close(); }
+});
 beforeEach(() => { pageDocument = Object.getOwnPropertyDescriptor(globalThis, "document"); });
 afterEach(() => {
   if (pageDocument) Object.defineProperty(globalThis, "document", pageDocument);

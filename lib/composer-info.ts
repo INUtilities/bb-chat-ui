@@ -653,6 +653,7 @@ export function injectComposerInfo(document: Document): () => void {
     const generatedHeadings = new Set<HTMLElement>();
     const nativeDismisses = new Map<HTMLElement, HTMLButtonElement>();
     const readOnlyTitles = new Map<HTMLElement, { tabIndex:string | null; ariaDisabled:string | null }>();
+    const machineRetrySlots = new Set<HTMLElement>();
     let forwardingTitle = false;
     const clickNativeTitle = (button:HTMLElement) => {
       forwardingTitle = true;
@@ -879,6 +880,16 @@ export function injectComposerInfo(document: Document): () => void {
       namedAction(goalClearLabels, "goal", '[aria-label="Clear active Goal"]', `${MARK}-goal-clear-label`, button => button.hasAttribute("disabled") ? "해제 중…" : "해제");
       namedAction(planExitLabels, "plan", '[aria-label="Exit plan mode"]', `${MARK}-plan-exit-label`, button => button.hasAttribute("disabled") ? "종료 중…" : "종료");
       namedAction(fallbackDismissLabels, "fallback", '[aria-label="Dismiss model fallback"]', `${MARK}-fallback-dismiss-label`, () => "해제");
+      for (const button of machineRetrySlots) if (item?.key !== "machine" || !item.node.hasAttribute(OPEN) || !item.node.contains(button)) {
+        button.removeAttribute(cardSlot.button); machineRetrySlots.delete(button);
+      }
+      if (item?.key === "machine" && item.node.hasAttribute(OPEN)) {
+        for (const button of Array.from(item.node.querySelectorAll<HTMLButtonElement>('button:not([aria-expanded])'))) {
+          if (button.textContent?.trim() === "Retry" && !button.hasAttribute(cardSlot.button)) {
+            button.setAttribute(cardSlot.button, ""); machineRetrySlots.add(button);
+          }
+        }
+      }
       syncBulkActions(item?.key === "annotations" && item.node.hasAttribute(OPEN) ? item.node : null);
       for (const button of agentationCloses) if (!(item?.key === "annotations" && item.node.hasAttribute(OPEN) && item.node.contains(button))) { button.removeAttribute(cardSlot.close); agentationCloses.delete(button); }
       if (item?.key === "annotations" && item.node.hasAttribute(OPEN)) {
@@ -2449,6 +2460,8 @@ export function injectComposerInfo(document: Document): () => void {
       stack.removeEventListener("click", blockTitleActivation, true);
       stack.removeEventListener("keydown", blockTitleActivation, true);
       for (const title of readOnlyTitles.keys()) restoreTitle(title);
+      for (const button of machineRetrySlots) button.removeAttribute(cardSlot.button);
+      machineRetrySlots.clear();
       jumpSource?.removeAttribute(`${MARK}-jump-source`);
       stack.removeEventListener("scroll", updateScrollHints, true);
       stack.removeEventListener("animationend", updateScrollHints, true);
