@@ -1,4 +1,4 @@
-import { cardFaceCss } from "./info-card.ts";
+import { cardFaceCss, cardStyle } from "./info-card.ts";
 import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SUBMENU_MARK } from "./composer-model-menu.ts";
 import { EASE } from "./motion.ts";
 
@@ -20,7 +20,7 @@ ${CARDS} {
 ${ACTIONS} [role="menuitem"],
 ${SUBMODELS} button[class~="hover:bg-state-hover"],
 ${MODELS} :is([role="option"],button[class~="hover:bg-state-hover"]) {
-  border-radius:10px !important;
+  ${cardStyle.rowRadius}
 }
 /* Keep provider tabs on the card's single glass face. */
 ${MODELS} > div[class~="bg-background"] {

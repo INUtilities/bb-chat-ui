@@ -34,6 +34,7 @@ const FLAT = "background:transparent !important; box-shadow:none !important; bac
 const TEXT_TYPE = "font-size:13px; line-height:16px;";
 const SECONDARY_TYPE = "font-size:12px; line-height:16px;";
 const TITLE_TYPE = "font-size:14px; line-height:18px; font-weight:600; text-align:left;";
+const ROW_RADIUS = "border-radius:10px !important;";
 export const CARD_HOVER = "color-mix(in oklab,var(--foreground) 6%,transparent)";
 
 /** Declaration blocks shared by slots and by native nodes mapped onto a slot. */
@@ -54,8 +55,9 @@ export const cardStyle = {
   button: `display:inline-flex; align-items:center; justify-content:center; gap:4px; flex:none; box-sizing:border-box; height:28px; min-height:28px; margin:0; padding:0 12px !important; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px !important; color:var(--foreground); font-family:inherit; font-size:13px !important; font-weight:500; line-height:16px !important; white-space:nowrap; cursor:pointer; transition:background-color 150ms ease-out; ${FLAT}`,
   hover: `color:var(--foreground); background-color:${CARD_HOVER} !important;`,
   list: "display:flex; flex-direction:column; row-gap:2px; margin:0; padding:0; list-style:none;",
+  rowRadius: ROW_RADIUS,
   /** Row box: native rows keep their own layout and reuse only this. */
-  rowBox: `box-sizing:border-box; min-height:32px; padding:8px !important; border:0 !important; border-radius:10px !important; ${TEXT_TYPE} transition:background-color 150ms ease-out; ${FLAT}`,
+  rowBox: `box-sizing:border-box; min-height:32px; padding:8px !important; border:0 !important; ${ROW_RADIUS} ${TEXT_TYPE} transition:background-color 150ms ease-out; ${FLAT}`,
   /** Hover paint reaches 8px past the content edge without moving the content. */
   rowGutter: "width:calc(100% + 16px); margin-left:-8px !important; margin-right:-8px !important;",
   rowHover: `background-color:${CARD_HOVER} !important;`,

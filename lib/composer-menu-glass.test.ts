@@ -2,6 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { COMPOSER_MENU_GLASS_STYLE_ID, injectComposerMenuGlass } from "./composer-menu-glass.ts";
+import { cardStyle } from "./info-card.ts";
+
+test("the shared row radius can be reused without replacing native menu row geometry", () => {
+  const f = fixture('<div data-bb-portaled-overlay role="menu" aria-label="Prompt actions"><button role="menuitem" style="min-height:36px;padding:6px 12px">Attach</button></div>');
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    assert.match(cardStyle.rowRadius, /border-radius:10px/);
+    const item = f.document.querySelector('[role="menuitem"]')!;
+    assert.equal(declaration(f.document, item, 'border-radius'), '10px');
+    const s = f.dom.window.getComputedStyle(item);
+    assert.equal(s.padding, '6px 12px'); assert.equal(s.minHeight, '36px');
+  } finally { stop(); f.restore(); }
+});
 
 test("composer menus share the card border reset while retaining their shallower shadow", () => {
   const f = fixture(TRIGGER + GROK);
