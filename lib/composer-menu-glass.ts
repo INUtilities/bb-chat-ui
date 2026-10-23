@@ -1,8 +1,8 @@
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE } from "./glass-surface.ts";
+import { injectComposerModelMenus, MODEL_MENU_MARK } from "./composer-model-menu.ts";
 
 const ACTIONS = '[data-bb-portaled-overlay][role="menu"][aria-label="Prompt actions"]';
-// Limit :has() to native overlay cards, never a generic app-wide subject.
-const MODELS = '[data-bb-portaled-overlay][role="dialog"]:has(input[aria-label="Search models"])';
+const MODELS = `[data-bb-portaled-overlay][role="dialog"][${MODEL_MENU_MARK}]`;
 const CARDS = `:is(${ACTIONS}, ${MODELS})`;
 
 export const COMPOSER_MENU_GLASS_STYLE_ID = "bb-chat-ui-composer-menu-glass";
@@ -34,7 +34,7 @@ ${MODELS} div[class~="sticky"][class~="bg-background"] {
   background:transparent !important;
 }
 /* Blur models scrolling beneath the native sticky heading without adding a tint. */
-${MODELS} [role="listbox"] > div[class~="sticky"] {
+${MODELS} div[class~="overflow-y-auto"] > div[class~="sticky"] {
   backdrop-filter:blur(14px) saturate(1.25);
   -webkit-backdrop-filter:blur(14px) saturate(1.25);
 }
@@ -46,6 +46,10 @@ export function injectComposerMenuGlass(document: Document): () => void {
   style.id = COMPOSER_MENU_GLASS_STYLE_ID;
   style.textContent = composerMenuGlassCss;
   document.head.appendChild(style);
-  // Remove the menu styles when the content script is disposed.
-  return () => style.remove();
+  const stopMenus = injectComposerModelMenus(document);
+  // Restore native portal markers and remove this generation's menu styles.
+  return () => {
+    stopMenus();
+    style.remove();
+  };
 }
