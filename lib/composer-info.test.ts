@@ -753,6 +753,38 @@ test("native and custom card titles use one family icon without changing native 
   f.dom.window.close();
 });
 
+test("SDK Goal reuses its shared heading and keeps the body below it without native action columns", async () => {
+  const f=fixture(),source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+  source.insertAdjacentHTML('beforeend','<span data-bb-chat-ui-info-icon="goal"><svg /></span>');
+  f.document.querySelector('section[aria-label="Goal"]')!.remove();
+  const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  stack.insertAdjacentHTML('beforeend','<div data-bb-chat-ui-info-supplements><section data-bb-chat-ui-info-kind="goal" aria-label="Goal"><h3 data-bb-chat-ui-card-head><span data-bb-chat-ui-card-icon><svg /></span><span data-bb-chat-ui-card-title>Goal</span></h3><div data-bb-chat-ui-card-body><p>A long SDK Goal objective that must use the card width.</p><p>complete · 1234 tokens · 90s</p></div></section></div>');
+  const card=stack.querySelector('[data-bb-chat-ui-info-kind="goal"]')!,head=card.querySelector('h3')!,body=card.querySelector('[data-bb-chat-ui-card-body]')!;
+  const stop=injectComposerInfo(f.document),css=(node:Element)=>f.dom.window.getComputedStyle(node);
+  try {
+    for(let pass=0;pass<2;pass++){
+      f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
+      assert.equal(card.querySelectorAll('[data-bb-chat-ui-card-head]').length,1,'the SDK heading is not duplicated');
+      assert.equal(card.querySelector('h3'),head,'reuse the React-owned heading');
+      assert.equal(css(card).display,'block','SDK content must not fall into native Goal action columns');
+      assert.equal(css(card).gridTemplateColumns,'none');
+      assert.equal(css(head).marginBottom,'8px','the common title/body gap remains');
+      assert.equal(css(head).paddingRight,'32px','the common close-button gutter remains');
+      assert.equal(body.previousElementSibling,head);
+      assert.equal(body.parentElement,card);
+      assert.equal(card.querySelectorAll('[data-bb-chat-ui-card-close]').length,1);
+      f.click('[data-bb-chat-ui-card-close]');await f.tick();
+      assert.equal(card.querySelector('h3'),head,'closing does not remove the SDK heading');
+    }
+  } finally {stop();}
+  assert.equal(card.querySelector('h3'),head);
+  assert.equal(head.hasAttribute('data-bb-chat-ui-card-head'),true,'unload preserves the SDK slot');
+  assert.equal(body.hasAttribute('data-bb-chat-ui-card-body'),true);
+  assert.equal(card.querySelectorAll('h3').length,1);
+  assert.equal(card.querySelector('[data-bb-chat-ui-card-close]'),null);
+  f.dom.window.close();
+});
+
 test("Goal keeps its native removal action beside the title and close without reparenting", async () => {
   const f=fixture();
   const goal=f.document.querySelector<HTMLElement>('section[aria-label="Goal"]')!;

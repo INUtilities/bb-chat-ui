@@ -67,6 +67,9 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   관계가 제거된 경우의 기존 비활성 처리와 native 복원 동작은 유지한다.
 - native Child 목록, Goal 본문, 백그라운드 목록, Workflow scroll area, Queue scroll/list의
   추가 상하 패딩을 제거한다. 본문 사이의 간격과 목록 행 자체의 8px 패딩은 유지한다.
+- SDK Goal은 기존 `cardSlot.head`를 재사용하고 `cardSlot.body`를 제목 아래 전체 너비에 둔다.
+  native Goal의 해제 액션용 grid 열은 SDK 카드에 적용하지 않는다. 닫기·해제 시 SDK가 만든
+  제목과 slot은 보존하고 adapter가 추가한 제목·slot만 정리한다.
 - Queue 제목 아래도 8px 간격을 쓴다. 빈 정보 안내는 본문의 끝에 추가 margin을 남기지 않는다.
   Queue의 마지막 그룹 경계가 잘리지 않도록 확보한 하단 12px는 기능 여백이므로 유지한다.
 - 닫기·해제하면 Parent·PR의 layout 표식과 추가 표시를 제거하고 원래 native DOM을 복원한다.

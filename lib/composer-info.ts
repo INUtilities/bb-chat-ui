@@ -302,9 +302,9 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
 [${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; order:0 !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
 /* Keep native actions on their original parents while sharing one title row. */
-${DETAIL}[aria-label="Goal"] { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; grid-template-rows:28px auto; align-items:center; gap:8px; outline:0 !important; }
-${DETAIL}[aria-label="Goal"] > * { min-width:0; flex-shrink:0; }
-${DETAIL}[aria-label="Goal"] > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
+${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; grid-template-rows:28px auto; align-items:center; gap:8px; outline:0 !important; }
+${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > * { min-width:0; flex-shrink:0; }
+${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
 [${MARK}-menu] > p { margin:0 0 8px; }
 /* The catalog is a list of rows laid out in columns: the grid owns the hover gutter. */
@@ -682,6 +682,7 @@ export function injectComposerInfo(document: Document): () => void {
     const collapseRows = new Set<HTMLElement>();
     // A shared host card (diff · PR · parent) keeps one head per family.
     const closeHeadings = new Map<HTMLElement, InfoKind | "all" | null>();
+    const addedHeadSlots = new Set<HTMLElement>();
     const generatedCloseHeadings = new Set<HTMLElement>();
     const prSingleRows = new Set<HTMLElement>();
     const goalClearLabels = new Map<HTMLElement, HTMLElement>();
@@ -755,7 +756,9 @@ export function injectComposerInfo(document: Document): () => void {
         button.remove(); nativeDismisses.delete(node);
       }
       for (const [heading, family] of closeHeadings) if (!activeNode?.contains(heading) || !activeNode.hasAttribute(OPEN) || family !== active) {
-        heading.removeAttribute(`${MARK}-close-heading`); heading.removeAttribute(cardSlot.head); closeHeadings.delete(heading);
+        heading.removeAttribute(`${MARK}-close-heading`);
+        if (addedHeadSlots.delete(heading)) heading.removeAttribute(cardSlot.head);
+        closeHeadings.delete(heading);
         if (generatedCloseHeadings.delete(heading)) heading.remove();
       }
       const item = items.find(item => item.node === activeNode && item.key === active);
@@ -845,7 +848,7 @@ export function injectComposerInfo(document: Document): () => void {
       if (!item || !item.node.hasAttribute(OPEN) || item.key === "diff" || item.node.matches(".agentation-staging-shell") || item.node.querySelector(`[${MARK}-dismiss]:not([${MARK}-native-dismiss])`)) return;
       let heading:HTMLElement | null = null;
       if (item.key === "pullRequest" || item.node.getAttribute(cardSlot.layout) !== "single-row") {
-        heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading]`);
+        heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading], :scope > [${cardSlot.head}]`);
         if (!heading || heading.closest("button, a")) {
           const parent = item.trigger?.parentElement;
           heading = parent && parent !== item.node && !parent.closest("button, a") && !parent.hasAttribute("data-queued-messages-mode") ? parent : item.trigger;
@@ -857,7 +860,7 @@ export function injectComposerInfo(document: Document): () => void {
           item.node.prepend(heading); generatedCloseHeadings.add(heading);
         }
         if (!heading.hasAttribute(`${MARK}-close-heading`)) heading.setAttribute(`${MARK}-close-heading`, "");
-        if (!heading.hasAttribute(cardSlot.head)) heading.setAttribute(cardSlot.head, "");
+        if (!heading.hasAttribute(cardSlot.head)) { heading.setAttribute(cardSlot.head, ""); addedHeadSlots.add(heading); }
         closeHeadings.set(heading, item.key);
         if (item.key === "pullRequest") {
           if (item.node.getAttribute(cardSlot.layout) !== "single-row") item.node.setAttribute(cardSlot.layout, "single-row");
@@ -2416,7 +2419,8 @@ export function injectComposerInfo(document: Document): () => void {
       for (const button of bulkActions.keys()) restoreBulkAction(button);
       for (const [host, row] of parentRows) { row.remove(); clearParentMarks(host); }
       for (const row of collapseRows) row.removeAttribute(`${MARK}-collapse`);
-      for (const heading of closeHeadings.keys()) { heading.removeAttribute(`${MARK}-close-heading`); heading.removeAttribute(cardSlot.head); }
+      for (const heading of closeHeadings.keys()) heading.removeAttribute(`${MARK}-close-heading`);
+      for (const heading of addedHeadSlots) heading.removeAttribute(cardSlot.head);
       for (const heading of generatedCloseHeadings) heading.remove();
       for (const card of prSingleRows) card.removeAttribute(cardSlot.layout);
       clearPrHeader();
