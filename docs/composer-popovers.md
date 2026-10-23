@@ -68,10 +68,11 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 |---|---|---|
 | 기본 상세 카드 | 28px 제목 + 8px 간격 + 본문, 바깥 패딩 16px 24px | `cardSlot.head`, `cardSlot.body` |
 | 제목 단독 카드 (`heading-only`) | 본문 없이 28px 제목만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout |
-| 단일 행 카드 (`single-row`) | 테두리·안쪽 면 없이 높이 40px인 카드 하나, 바깥 패딩 0, 내용 왼쪽 8px·닫기 여유 40px | Parent는 `cardSlot.row`와 `cardSlot.navigation`, PR은 native/SDK 행을 `cardSlot.head`에, 원래 링크를 `cardSlot.navigation`에 연결, 공통 `cardSlot.layout="single-row"` |
+| 단일 행 카드 (`single-row`) | 테두리·안쪽 면 없이 높이 40px인 카드 하나, 바깥 패딩 0, 내용 왼쪽 16px·닫기 여유 40px | Parent는 `cardSlot.row`와 `cardSlot.navigation`, PR은 native/SDK 행을 `cardSlot.head`에, 원래 링크를 `cardSlot.navigation`에 연결, 공통 `cardSlot.layout="single-row"` |
 | 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
 
 - `single-row`의 닫기는 위 8px·오른쪽 8px로 40px 카드의 중앙에 놓인다.
+  내용 왼쪽 16px는 24px 닫기 영역 안의 × 글자까지 보이는 오른쪽 여백과 맞춘다.
   `cardSlot.navigation`이 카드 전체를 덮고, 닫기·Merge는 그 위의 별도 클릭 영역이다.
   전체 면에 같은 hover·키보드 focus 표시를 쓰고 긴 제목은 닫기·Merge 앞에서 한 줄 말줄임한다.
 - 부모 metadata가 늦게 오거나 native 링크만 있어도 같은 단일 행을 쓴다.

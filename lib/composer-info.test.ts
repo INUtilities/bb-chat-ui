@@ -213,6 +213,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
     assert.equal(style(trigger).padding,'0px');
     assert.equal(context.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
     assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).height,'40px');
+    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).paddingLeft,'16px','the leading content matches the close glyph inset');
     assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom,'0px','a PR header without a body has no trailing body gap');
     const close=context.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(close.hasAttribute('data-bb-chat-ui-card-close'));
@@ -1684,7 +1685,7 @@ test("Parent uses the shared single-row card without a family heading", async ()
     assert.equal(style(title).whiteSpace, "nowrap");
     assert.equal(style(row).cursor, "pointer");
     assert.equal(style(row).borderRadius, "18px");
-    assert.equal(style(row).padding, "8px 40px 8px 8px", "the whole face is clickable while text reserves the close");
+    assert.equal(style(row).padding, "8px 40px 8px 16px", "the whole face is clickable while text reserves the close");
     assert.equal(style(row).minHeight, "40px");
     assert.equal(style(row).width, "100%");
     assert.ok(row.hasAttribute('data-bb-chat-ui-card-navigation'));

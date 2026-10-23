@@ -68,6 +68,7 @@ test("a compact navigation card has one borderless 40px face and a full-card pri
   const row=card.querySelector(`[${cardSlot.row}]`)!;
   assert.equal(f.style(row).width, "100%", "the primary target fills the card");
   assert.equal(f.style(row).minHeight,"40px");
+  assert.equal(f.style(row).paddingLeft,"16px","the leading content matches the close glyph's visible inset");
   assert.equal(f.style(row).paddingRight,"40px","text leaves room for the separate close target");
   assert.equal(f.style(row).borderTopWidth,"0px");
   assert.equal(f.style(row).boxShadow,"none");

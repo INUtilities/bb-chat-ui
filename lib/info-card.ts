@@ -77,7 +77,7 @@ ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { back
 ${s.head} { ${cardStyle.head} }
 ${card}[${cardSlot.layout}="heading-only"] > ${s.head} { ${cardStyle.headOnly} }
 ${card}[${cardSlot.layout}="single-row"] { min-height:40px !important; padding:0 !important; box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow) !important; }
-${card}[${cardSlot.layout}="single-row"] > ${s.head} { position:static; height:40px; min-height:40px; margin:0; padding:4px 40px 4px 8px !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.head} { position:static; height:40px; min-height:40px; margin:0; padding:4px 40px 4px 16px !important; }
 ${s.body} { ${cardStyle.body} }
 ${s.body} > :first-child { margin-top:0 !important; }
 ${s.body} > :last-child { margin-bottom:0 !important; }
@@ -95,7 +95,7 @@ ${LARGE_HIT_TARGET} ${s.button} { height:32px; min-height:32px; }
 ${s.list} { ${cardStyle.list} }
 ${s.row} { display:flex; align-items:center; gap:8px; min-width:0; margin:0; color:inherit; font-family:inherit; text-align:left; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${s.row}:is(:hover, :focus-visible, :focus-within) { ${cardStyle.rowHover} }
-${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:100%; min-height:40px; margin:0 !important; padding:8px 40px 8px 8px !important; border-radius:18px !important; background:transparent !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:100%; min-height:40px; margin:0 !important; padding:8px 40px 8px 16px !important; border-radius:18px !important; background:transparent !important; }
 ${card}[${cardSlot.layout}="single-row"] > ${s.close} { top:8px !important; right:8px !important; }
 /* Stretch the original action across the face; sibling close/Merge controls sit above it. */
 ${card}[${cardSlot.layout}="single-row"] ${s.navigation} { position:static !important; overflow:visible !important; cursor:pointer; ${FLAT} }
