@@ -331,9 +331,9 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-scroll-hint="bottom"] { border-radius:0 0 18px 18px; background:linear-gradient(to top,var(--bb-chat-ui-info-face),transparent); mask-image:linear-gradient(to top,black,transparent); -webkit-mask-image:linear-gradient(to top,black,transparent); }
 [${MARK}-diff] p { white-space:pre-wrap; }
 [${MARK}-diff-content] { display:block !important; }
-[${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; padding:7px 0; font-size:12px; min-width:0; }
+[${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; padding:7px 0; ${cardStyle.text} min-width:0; }
 [${MARK}-diff-file][hidden], [${MARK}-diff-commit][hidden] { display:none !important; }
-[${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; width:100%; min-height:28px; margin:3px 0; padding:4px 8px; border-radius:8px; font-size:12px !important; line-height:16px; color:var(--subtle-foreground); cursor:pointer; text-align:left; }
+[${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; width:100%; min-height:28px; margin:3px 0; padding:4px 8px; border-radius:8px; font-size:13px !important; line-height:16px; color:var(--subtle-foreground); cursor:pointer; text-align:left; }
 [${MARK}-diff] [${MARK}-diff-toggle] { background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 [${MARK}-diff-toggle]:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 [${MARK}-diff-toggle] svg { width:12px; height:12px; flex-shrink:0; }
@@ -348,10 +348,10 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-commits][${MARK}-diff-collapsed] > [${MARK}-diff-commit]:nth-child(5) [${MARK}-diff-graph]::after { display:none; }
 [${MARK}-diff-graph] svg { position:absolute; width:12px; height:12px; left:2px; top:calc(50% - 6px); fill:none; stroke:currentColor; stroke-width:1.5; }
 [${MARK}-diff-file] code, [${MARK}-diff-commit] code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono,monospace); ${cardStyle.text} }
-[${MARK}-diff-file] > span { flex-shrink:0; font-size:11px; }
+[${MARK}-diff-file] > span { flex-shrink:0; ${cardStyle.secondaryText} }
 [${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }
-[${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:11px !important; color:var(--subtle-foreground); }
+[${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:12px !important; color:var(--subtle-foreground); }
 [${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
 ${DETAIL}[aria-label="Queued messages"] > :not([${cardSlot.head}]) { min-height:0; }
@@ -387,13 +387,13 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [data-promptbox-shell]:has(> [${MARK}-request]) [data-follow-up-composer-anchor] { display:none !important; }
 [data-scroll-footer]:has([${MARK}-request]) button[aria-label="Scroll to latest event"] { display:none !important; }
 [${MARK}-stack] [${MARK}-supplements] { display:contents; }
-[${MARK}-kind] { font-size:12px; }
+[${MARK}-kind] { ${cardStyle.text} }
 [${MARK}-kind] p { white-space:pre-wrap; margin:6px 0; }
 [${MARK}-parent-row] [${MARK}-provider-icon], [${MARK}-parent-row] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-parent-title] { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${cardStyle.titleText} font-weight:400; }
 [${MARK}-child-row] [${MARK}-avatar] { width:27px; height:27px; margin-left:0; }
 [${MARK}-child-main] { flex:1; min-width:0; }
-[${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+[${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${cardStyle.text} }
 [${MARK}-child-meta], [${MARK}-child-status] { ${cardStyle.meta} }
 [${MARK}-child-meta] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 [${MARK}-child-status] { flex:none; white-space:nowrap; }

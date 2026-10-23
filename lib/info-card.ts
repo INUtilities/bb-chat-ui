@@ -31,9 +31,9 @@ export const cardSlot = {
 export const NESTED_SURFACE_EXEMPT = "input, textarea, select, pre, code, [contenteditable='true'], .cm-editor, .monaco-editor";
 
 const FLAT = "background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;";
-const TEXT_TYPE = "font-size:12px; line-height:16px;";
-const SECONDARY_TYPE = "font-size:11px; line-height:16px;";
-const TITLE_TYPE = "font-size:13px; line-height:18px; font-weight:600; text-align:left;";
+const TEXT_TYPE = "font-size:13px; line-height:16px;";
+const SECONDARY_TYPE = "font-size:12px; line-height:16px;";
+const TITLE_TYPE = "font-size:14px; line-height:18px; font-weight:600; text-align:left;";
 export const CARD_HOVER = "color-mix(in oklab,var(--foreground) 6%,transparent)";
 
 /** Declaration blocks shared by slots and by native nodes mapped onto a slot. */
@@ -51,7 +51,7 @@ export const cardStyle = {
   action: `display:inline-flex; align-items:center; justify-content:center; align-self:center; flex:none; box-sizing:border-box; width:24px; height:24px; min-width:24px; min-height:24px; margin:0; padding:0 !important; border:0 !important; border-radius:999px !important; color:var(--subtle-foreground); font-family:inherit; font-size:12px; font-weight:400; line-height:1; cursor:pointer; transition:background-color 150ms ease-out, color 150ms ease-out; ${FLAT}`,
   close: "position:absolute !important; top:18px !important; right:16px !important; z-index:1;",
   body: "min-width:0; margin-top:0 !important; margin-bottom:0 !important; padding-top:0 !important; padding-bottom:0 !important;",
-  button: `display:inline-flex; align-items:center; justify-content:center; gap:4px; flex:none; box-sizing:border-box; height:28px; min-height:28px; margin:0; padding:0 12px !important; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px !important; color:var(--foreground); font-family:inherit; font-size:12px !important; font-weight:500; line-height:16px !important; white-space:nowrap; cursor:pointer; transition:background-color 150ms ease-out; ${FLAT}`,
+  button: `display:inline-flex; align-items:center; justify-content:center; gap:4px; flex:none; box-sizing:border-box; height:28px; min-height:28px; margin:0; padding:0 12px !important; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px !important; color:var(--foreground); font-family:inherit; font-size:13px !important; font-weight:500; line-height:16px !important; white-space:nowrap; cursor:pointer; transition:background-color 150ms ease-out; ${FLAT}`,
   hover: `color:var(--foreground); background-color:${CARD_HOVER} !important;`,
   list: "display:flex; flex-direction:column; row-gap:2px; margin:0; padding:0; list-style:none;",
   /** Row box: native rows keep their own layout and reuse only this. */

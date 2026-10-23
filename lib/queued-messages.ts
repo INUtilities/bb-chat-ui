@@ -281,9 +281,9 @@ ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
 }
 ${MANAGED_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .prompt-mention-pill *) {
   /* The host's layered !text-xs takes priority over unlayered !important. */
-  --text-xs: 11px;
+  --text-xs: 12px;
   --text-xs--line-height: 16px;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 16px !important;
 }
 ${MANAGED_QUEUE} [data-queued-message-actions] {
@@ -353,7 +353,7 @@ ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-messages-scroll
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-messages-scroll-frame] > :not([data-queued-messages-scroll]),
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-queued-message-inline-editor] > [data-overflow-fade] { display:none !important; }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-inline-message-editor-frame] > div:first-child {
-  display:flex; align-items:center; flex:none; min-height:28px; padding:0; margin-bottom:12px; font-size:12px;
+  display:flex; align-items:center; flex:none; min-height:28px; padding:0; margin-bottom:12px; ${cardStyle.text}
 }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-inline-message-editor-frame] > div:first-child button { margin-inline-start:auto; }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-inline-message-editor-frame] > div:first-child > span { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

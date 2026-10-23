@@ -57,11 +57,11 @@ test("native and SDK Goal and user message prose use the smallest card size belo
   try {
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
     const objective=goal.querySelector('p')!,meta=goal.querySelector('.text-muted-foreground')!;
-    assert.equal(style(objective).fontSize,'11px');
+    assert.equal(style(objective).fontSize,'12px');
     assert.equal(style(objective).lineHeight,'16px','native leading-relaxed must not enlarge the main body line');
-    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,'13px');
-    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-button-label]')!).fontSize,'12px','actions keep the normal tier');
-    assert.equal(style(meta).fontSize,'11px','native Goal usage is secondary information');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,'14px');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-button-label]')!).fontSize,'13px','actions keep the normal tier');
+    assert.equal(style(meta).fontSize,'12px','native Goal usage is secondary information');
     assert.equal(style(meta).lineHeight,'16px');
     objective.outerHTML='<p class="text-xs leading-relaxed">Rerendered objective <code>code</code></p><textarea>draft</textarea>';
     await f.tick();
@@ -79,11 +79,11 @@ test("native and SDK Goal and user message prose use the smallest card size belo
       f.document.querySelector('[data-promptbox-shell] > .grid')!.append(sdk);await f.tick();
       f.click(`[data-bb-chat-ui-info-trigger="${kind}"]`);await f.tick();
       const paragraphs=sdk.querySelectorAll('p');
-      assert.equal(style(paragraphs[0]).fontSize,'11px',`${kind}: long content uses the smallest tier`);
+      assert.equal(style(paragraphs[0]).fontSize,'12px',`${kind}: long content uses the smallest tier`);
       assert.equal(style(paragraphs[0]).lineHeight,'16px');
-      assert.equal(style(paragraphs[1]).fontSize,'11px',`${kind}: SDK status uses the same secondary size`);
+      assert.equal(style(paragraphs[1]).fontSize,'12px',`${kind}: SDK status uses the same secondary size`);
       assert.equal(style(paragraphs[1]).lineHeight,'16px');
-      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,'13px');
+      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,'14px');
       f.click(`[aria-label="${kind==='goal'?'Goal':'대기 메시지'} 닫기"]`);sdk.remove();
     }
   } finally {stop();}
@@ -109,7 +109,7 @@ test("Workflow and background metadata keep one secondary size across host devic
     try{
       for(const node of dom.window.document.querySelectorAll('[data-main],[data-meta]')){
         const s=dom.window.getComputedStyle(node),meta=node.hasAttribute('data-meta');
-        assert.equal(s.fontSize,meta?'11px':'12px',`${phone?'phone':'desktop'}: ${node.textContent}`);
+        assert.equal(s.fontSize,meta?'12px':'13px',`${phone?'phone':'desktop'}: ${node.textContent}`);
         assert.equal(s.lineHeight,'16px',`${node.textContent}: one line-height for both roles`);
       }
     } finally {dom.window.close();}
@@ -120,11 +120,11 @@ test("Diff file paths and commit subjects use the main size while statistics sta
   const dom=new JSDOM(`<style>${composerInfoCss}</style><div data-bb-chat-ui-info-diff-file><code>lib/example.ts</code><span>+12</span></div><div data-bb-chat-ui-info-diff-commit><code>Commit subject</code></div>`);
   for(const text of dom.window.document.querySelectorAll('code')){
     const s=dom.window.getComputedStyle(text);
-    assert.equal(s.fontSize,'12px');
+    assert.equal(s.fontSize,'13px');
     assert.equal(s.lineHeight,'16px');
     assert.match(s.fontFamily,/mono/,'code labels retain their code font');
   }
-  assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('span')!).fontSize,'11px');
+  assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('span')!).fontSize,'12px');
   dom.window.close();
 });
 
@@ -232,7 +232,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
       assert.equal(style(button).borderRadius,'0px');
     }
     const [label,trigger]=Array.from(group.querySelectorAll('button'));
-    assert.equal(style(label).fontSize,'12px','Merge shares the common text action size');
+    assert.equal(style(label).fontSize,'13px','Merge shares the common text action size');
     assert.equal(style(label).lineHeight,'16px');
     assert.equal(style(label).pointerEvents,'none');
     assert.equal(style(label).height,'20px');
@@ -4233,7 +4233,7 @@ test("restore action text keeps the compact size when desktop button defaults ar
       f.click('[data-bb-chat-ui-info-trigger="status"]');
       const action=f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-unarchive]')!;
       const css=f.dom.window.getComputedStyle(action);
-      assert.equal(css.fontSize,'12px',`${text}: desktop button defaults do not enlarge the shared text action`);
+      assert.equal(css.fontSize,'13px',`${text}: desktop button defaults do not enlarge the shared text action`);
       assert.equal(css.lineHeight,'16px','compact text keeps its matching line height');
       assert.equal(css.minHeight,'28px','a pointer uses the shared 28px text action');
       f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
@@ -6169,7 +6169,7 @@ test("compact information lists share the background row density without native 
       const card=stack.querySelector(`[data-bb-chat-ui-info-open="${kind}"]`)!;
       assert.equal(paint(stack).getPropertyValue('--bb-chat-ui-info-row-gap'),'2px','the background row gap is the shared reference');
       for(const row of card.querySelectorAll(rowSelector)){
-        const css=paint(row);assert.equal(css.minHeight,kind==='workflow'?'28px':'32px');assert.equal(css.padding,kind==='workflow'?'6px 8px':'8px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'16px');
+        const css=paint(row);assert.equal(css.minHeight,kind==='workflow'?'28px':'32px');assert.equal(css.padding,kind==='workflow'?'6px 8px':'8px');assert.equal(css.fontSize,'13px');assert.equal(css.lineHeight,'16px');
         assert.equal(css.marginTop,'0px');assert.equal(css.marginBottom,'0px','native space-y margins do not add another gap');
       }
       for(const selector of groups)assert.equal(paint(card.querySelector(selector)!).rowGap,'var(--bb-chat-ui-info-row-gap)',`${kind}: peers use one gap`);

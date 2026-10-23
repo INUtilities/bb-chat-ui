@@ -101,7 +101,7 @@ test("managed queue uses plain list rows and leaves standalone message bubbles i
       assert.equal(style(text).boxShadow, 'none');
       assert.equal(style(actions).boxShadow, 'none');
     }
-    assert.equal(style(text.querySelector('.truncate')!).fontSize, '11px', 'user message prose uses the smallest tier');
+    assert.equal(style(text.querySelector('.truncate')!).fontSize, '12px', 'user message prose uses the smallest tier');
     assert.equal(actions.querySelector('[data-send]'), send, 'native actions remain on their original nodes');
     f.click('[data-send]'); assert.equal(f.sent(), 1);
     stopInfo();

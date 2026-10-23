@@ -33,7 +33,7 @@ test("the head line is 28px and reserves the close gutter; icon, title, actions 
   assert.equal(s.minHeight, "28px");
   assert.equal(s.height, "28px", "a larger touch action must not move the common title line");
   assert.equal(s.paddingRight, "32px", "24px close + 8px gap");
-  assert.equal(s.fontSize, "13px");
+  assert.equal(s.fontSize, "14px");
   assert.equal(s.lineHeight, "18px");
   assert.equal(s.fontWeight, "600");
   const title = head.querySelector(`[${cardSlot.title}]`)!;
@@ -69,7 +69,7 @@ test("a compact navigation card has one borderless 40px face and a full-card pri
   const row=card.querySelector(`[${cardSlot.row}]`)!;
   assert.equal(f.style(row).width, "100%", "the primary target fills the card");
   assert.equal(f.style(row).minHeight,"40px");
-  assert.equal(f.style(row).fontSize,"13px","the single-row card has a title without a separate heading");
+  assert.equal(f.style(row).fontSize,"14px","the single-row card has a title without a separate heading");
   assert.equal(f.style(row).lineHeight,"18px");
   assert.equal(f.style(row).paddingLeft,"16px","the leading content matches the close glyph's visible inset");
   assert.equal(f.style(row).paddingRight,"40px","text leaves room for the separate close target");
@@ -101,7 +101,7 @@ test("state actions sit at the head end while their short label retains the comm
   assert.equal(f.style(action).gridArea,'actions');
   assert.equal(f.style(action).marginLeft,'auto');
   assert.equal(f.style(action).fontSize,'0px','original direct native text does not duplicate the short label');
-  assert.equal(f.style(label).fontSize,'12px');
+  assert.equal(f.style(label).fontSize,'13px');
   assert.equal(f.style(label).lineHeight,'16px');
   f.dom.window.close();
 });
@@ -123,12 +123,12 @@ test("card type has three levels for long prose, list names and headings across 
   f.document.head.prepend(host);
   for(const node of f.document.querySelectorAll('[data-prose],[data-inline],[data-list],[data-heading]')){
     const s=f.style(node),heading=node.hasAttribute('data-heading'),list=node.hasAttribute('data-list');
-    assert.equal(s.fontSize,heading?'13px':list?'12px':'11px',`${node.textContent}: the content role determines the size`);
+    assert.equal(s.fontSize,heading?'14px':list?'13px':'12px',`${node.textContent}: the content role determines the size`);
     assert.equal(s.lineHeight,heading?'18px':'16px');
   }
-  assert.equal(f.style(f.document.querySelector(`[${cardSlot.meta}]`)!).fontSize,'11px');
+  assert.equal(f.style(f.document.querySelector(`[${cardSlot.meta}]`)!).fontSize,'12px');
   const caption=f.style(f.document.querySelector('span.leading-none')!);
-  assert.equal(caption.fontSize,'11px','counts use the secondary scale, regardless of the host utility');
+  assert.equal(caption.fontSize,'12px','counts use the secondary scale, regardless of the host utility');
   assert.equal(caption.lineHeight,'16px');
   assert.equal(f.style(f.document.querySelector('[data-editor-caption]')!).fontSize,'10px','editor captions keep their own type');
   for(const selector of ['code','[contenteditable] p','[data-outside]']){
@@ -142,7 +142,7 @@ test("card type has three levels for long prose, list names and headings across 
 test("text actions are hairline pills without a second surface", () => {
   const f = page(`<section ${CARD}><div ${cardSlot.head}><button ${cardSlot.button}>Goal 해제</button></div></section>`);
   const s = f.style(f.document.querySelector(`[${cardSlot.button}]`)!);
-  assert.equal(s.fontSize, "12px", "text actions use the same readable size as the main content");
+  assert.equal(s.fontSize, "13px", "text actions use the same readable size as the main content");
   assert.equal(s.lineHeight, "16px");
   assert.equal(s.height, "28px");
   assert.equal(s.borderRadius, "999px");
@@ -210,7 +210,7 @@ test("meta and section labels share one secondary size", () => {
   const f = page(`<section ${CARD}><h4 ${cardSlot.section}>커밋</h4><span ${cardSlot.meta}>gpt · high</span></section>`);
   for (const node of f.document.querySelectorAll(`[${cardSlot.section}], [${cardSlot.meta}]`)) {
     const s = f.style(node);
-    assert.equal(s.fontSize, "11px");
+    assert.equal(s.fontSize, "12px");
     assert.equal(s.lineHeight, "16px");
     assert.equal(s.fontWeight, "400");
     assert.equal(s.color, "var(--subtle-foreground)");
