@@ -173,7 +173,7 @@ ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull reques
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:16px; height:16px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title] { display:none; }
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; gap:0; padding:0 22px 0 0 !important; border:0 !important; border-radius:0 !important; cursor:default; }
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; z-index:1; gap:0; padding:0 22px 0 0 !important; border:0 !important; border-radius:0 !important; cursor:default; }
 ${LARGE_HIT_TARGET} ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { height:32px; min-height:32px; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; line-height:20px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
@@ -697,12 +697,16 @@ export function injectComposerInfo(document: Document): () => void {
     let prHeading: HTMLElement | null = null;
     let prLink: HTMLAnchorElement | null = null;
     let prLinkTitle: string | null = null;
+    let prLinkNavigation: string | null = null;
     const backgroundAccordions = createBackgroundAccordions(document);
     const clearPrHeader = () => {
       prTitle?.remove(); prTitle = null;
       prHeading?.removeAttribute(`${MARK}-pr-heading`); prHeading = null;
-      if (prLink) { if (prLinkTitle === null) prLink.removeAttribute("title"); else prLink.setAttribute("title",prLinkTitle); }
-      prLink = null; prLinkTitle = null;
+      if (prLink) {
+        if (prLinkTitle === null) prLink.removeAttribute("title"); else prLink.setAttribute("title",prLinkTitle);
+        if (prLinkNavigation === null) prLink.removeAttribute(cardSlot.navigation); else prLink.setAttribute(cardSlot.navigation,prLinkNavigation);
+      }
+      prLink = null; prLinkTitle = null; prLinkNavigation = null;
     };
     const bulkActions = new Map<HTMLElement, {ariaLabel:string|null; title:string|null; icon:Element; source:string}>();
     const agentationCloses = new Set<HTMLElement>();
@@ -794,6 +798,7 @@ export function injectComposerInfo(document: Document): () => void {
             row = document.createElement("button");
             row.type = "button";
             row.setAttribute(cardSlot.row, "");
+            row.setAttribute(cardSlot.navigation, "");
             const parentRow = row;
             parentRow.addEventListener("click", () => {
               const current = readParent();
@@ -874,7 +879,8 @@ export function injectComposerInfo(document: Document): () => void {
           if (link) {
             if (prHeading !== heading || prLink !== link) clearPrHeader();
             prHeading = heading; prHeading.setAttribute(`${MARK}-pr-heading`, "");
-            if (prLink !== link) { prLink = link; prLinkTitle = link.getAttribute("title"); }
+            if (prLink !== link) { prLink = link; prLinkTitle = link.getAttribute("title"); prLinkNavigation = link.getAttribute(cardSlot.navigation); }
+            if (!link.hasAttribute(cardSlot.navigation)) link.setAttribute(cardSlot.navigation, "");
             if (link.getAttribute("title") !== "GitHub에서 PR 열기") link.setAttribute("title","GitHub에서 PR 열기");
             prTitle ??= document.createElement("span");
             prTitle.setAttribute(`${MARK}-pr-title`, "");

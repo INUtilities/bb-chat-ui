@@ -166,27 +166,30 @@ test("PR method menus stay above the popover and the header reserves its close-b
     caret.setAttribute('aria-expanded','true');await f.tick();
     assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),true);
     assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),true);
-    assert.equal(f.dom.window.getComputedStyle(context.firstElementChild!).paddingRight,'32px','24px close + 8px gap');
+    assert.equal(f.dom.window.getComputedStyle(context.firstElementChild!).paddingRight,'40px','8px inset + 24px close + 8px gap');
   } finally {stop();}
   assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),false);
   assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),false);
   f.dom.window.close();
 });
 
-test("PR uses a single 32px row with a text-and-caret Merge action and the shared close", async () => {
+test("PR uses a compact 40px navigation card with a separate text-and-caret Merge action", async () => {
   const f=fixture();
   const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
-  context.innerHTML='<div class="p-1"><a aria-label="Pull request 12: Open" class="px-2"><span title="Open" class="flex"><svg /></span><span>PR #12</span></a><div><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method" aria-expanded="false"><svg /></button></div></div></div>';
+  context.innerHTML='<div class="p-1"><a aria-label="Pull request 12: Open" href="https://example.com/pr/12" class="px-2"><span title="Open" class="flex"><svg /></span><span>PR #12</span></a><div><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method" aria-expanded="false"><svg /></button></div></div></div>';
   const native=f.document.createElement('style');native.textContent='.px-2 { padding-left:8px; }';f.document.head.append(native);
   const stop=injectComposerInfo(f.document);
   try {
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
     const style=(node:Element)=>f.dom.window.getComputedStyle(node);
     const link=context.querySelector('a')!,group=context.querySelector('.inline-flex')!;
-    assert.equal(style(link).paddingLeft,'8px');
-    assert.equal(style(link).paddingRight,'8px');
-    assert.equal(style(link).paddingTop,'4px');
-    assert.equal(style(link).paddingBottom,'4px');
+    assert.ok(link.hasAttribute('data-bb-chat-ui-card-navigation'),'the original PR link owns the full-card target');
+    assert.equal(style(link).position,'static','the stretched target anchors to the card');
+    assert.equal(style(link).overflow,'visible','the native icon link must not clip its full-card target');
+    assert.equal(style(link).paddingLeft,'0px');
+    assert.equal(style(link).paddingRight,'0px');
+    assert.equal(style(link).paddingTop,'0px');
+    assert.equal(style(link).paddingBottom,'0px');
     assert.equal(style(link.querySelector('span[title]')!).display,'none','hidden native artwork must not leave an empty box');
     assert.equal(style(group).borderTopWidth,'0px','Merge has no outer outline');
     assert.equal(style(group).borderRadius,'0px');
@@ -195,6 +198,7 @@ test("PR uses a single 32px row with a text-and-caret Merge action and the share
     assert.equal(style(group).backgroundColor,'rgba(0, 0, 0, 0)','no second frost inside the card');
     assert.equal(style(group).getPropertyValue('backdrop-filter'),'none');
     assert.equal(style(group).position,'relative');
+    assert.equal(style(group).zIndex,'1','Merge stays above the primary navigation target');
     for(const button of group.querySelectorAll('button')){
       assert.equal(style(button).backgroundColor,'rgba(0, 0, 0, 0)');
       assert.equal(style(button).boxShadow,'none');
@@ -208,11 +212,11 @@ test("PR uses a single 32px row with a text-and-caret Merge action and the share
     assert.equal(style(trigger).height,'100%');
     assert.equal(style(trigger).padding,'0px');
     assert.equal(context.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
-    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).height,'32px');
+    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).height,'40px');
     assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom,'0px','a PR header without a body has no trailing body gap');
     const close=context.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(close.hasAttribute('data-bb-chat-ui-card-close'));
-    assert.equal(style(close).position,'absolute');assert.equal(style(close).top,'20px','the shared close centers on the 32px row');
+    assert.equal(style(close).position,'absolute');assert.equal(style(close).top,'8px','the close centers on the 40px card');
   } finally {stop();f.dom.window.close();}
 });
 
@@ -230,7 +234,8 @@ test("the SDK PR fallback uses the same single row without a family title or fam
     assert.equal(card.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
     assert.equal(card.querySelector('[data-bb-chat-ui-info-title-icon]'),null);
     assert.equal(card.querySelector('[data-bb-chat-ui-info-pr-title]')?.textContent,'SDK PR title');
-    assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).height,'32px');
+    assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).height,'40px');
+    assert.ok(link.hasAttribute('data-bb-chat-ui-card-navigation'));
     f.click('[data-bb-chat-ui-card-close]');await f.tick();
     assert.equal(card.hasAttribute('data-bb-chat-ui-card-layout'),false);
     f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
@@ -239,7 +244,33 @@ test("the SDK PR fallback uses the same single row without a family title or fam
   assert.equal(card.hasAttribute('data-bb-chat-ui-card-layout'),false);
   assert.equal(link.textContent,'SDK PR title');
   assert.equal(link.getAttribute('title'),null);
+  assert.equal(link.hasAttribute('data-bb-chat-ui-card-navigation'),false,'unload restores the SDK-owned link');
   f.dom.window.close();
+});
+
+test("PR navigation follows native link replacement and restores attributes owned by the source", async () => {
+  const f=fixture(),card=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  card.innerHTML='<div class="p-1"><a href="https://example.com/pr/12" aria-label="Pull request 12: Open" data-bb-chat-ui-card-navigation="source" title="Original">#12</a></div>';
+  const original=card.querySelector('a')!,parent=original.parentElement;
+  const stop=injectComposerInfo(f.document);
+  try{
+    f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    assert.equal(original.getAttribute('data-bb-chat-ui-card-navigation'),'source');
+    assert.equal(original.parentElement,parent);
+    card.innerHTML='<div class="p-1"><a href="https://example.com/pr/13" aria-label="Pull request 13: Open">#13</a></div>';
+    await f.tick();
+    const replacement=card.querySelector('a')!;
+    assert.ok(replacement.hasAttribute('data-bb-chat-ui-card-navigation'));
+    assert.equal(replacement.getAttribute('href'),'https://example.com/pr/13');
+    assert.equal(original.getAttribute('title'),'Original');
+    assert.equal(original.getAttribute('data-bb-chat-ui-card-navigation'),'source');
+    let opens=0;replacement.addEventListener('click',e=>{e.preventDefault();opens++;});
+    replacement.click();assert.equal(opens,1);
+    f.click('[data-bb-chat-ui-card-close]');
+    assert.equal(opens,1,'closing never activates navigation');
+    assert.equal(replacement.hasAttribute('data-bb-chat-ui-card-navigation'),false);
+    assert.equal(replacement.getAttribute('title'),null);
+  }finally{stop();f.dom.window.close();}
 });
 
 test("PR header shows the SDK title on one line and keeps a separate GitHub link", async () => {
@@ -1652,11 +1683,12 @@ test("Parent uses the shared single-row card without a family heading", async ()
     assert.equal(style(title).textOverflow, "ellipsis");
     assert.equal(style(title).whiteSpace, "nowrap");
     assert.equal(style(row).cursor, "pointer");
-    assert.equal(style(row).borderRadius, "10px");
-    assert.equal(style(row).padding, "8px", "the shared list row");
-    assert.equal(style(row).minHeight, "32px");
-    assert.equal(style(row).width, "calc(100% - 16px)", "the row leaves the separate close hit target clear");
-    assert.equal(style(card).padding, "16px 24px", "the shared card gutter");
+    assert.equal(style(row).borderRadius, "18px");
+    assert.equal(style(row).padding, "8px 40px 8px 8px", "the whole face is clickable while text reserves the close");
+    assert.equal(style(row).minHeight, "40px");
+    assert.equal(style(row).width, "100%");
+    assert.ok(row.hasAttribute('data-bb-chat-ui-card-navigation'));
+    assert.equal(style(card).padding, "0px", "a compact card has no dead outer gutter");
     assert.match(style(card).backdropFilter, /blur\(14px\)/);
     assert.match(style(card).animation, /bb-info-enter/);
     const dismiss = card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-native-dismiss]")!;
@@ -1664,8 +1696,8 @@ test("Parent uses the shared single-row card without a family heading", async ()
     assert.equal(dismiss.closest("[data-bb-chat-ui-info-parent-row]"), null);
     assert.equal(style(dismiss).width, "24px");
     assert.equal(style(dismiss).height, "24px");
-    assert.equal(style(dismiss).top, "20px", "the close centers on the single 32px navigation row");
-    assert.equal(style(dismiss).right, "16px");
+    assert.equal(style(dismiss).top, "8px", "the close centers on the 40px card");
+    assert.equal(style(dismiss).right, "8px");
     assert.equal(shown("#thread-prompt-banner-parent-thread-body"), false, "the relationship sentence stays out of the popover");
     assert.equal(shown("#thread-prompt-banner-git-toggle"), false);
     assert.equal(shown("#thread-prompt-banner-git-body"), false);
@@ -6365,16 +6397,16 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
       await f.tick();
       const card=f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-menu], [data-bb-chat-ui-info-open]')!;
       assert.ok(card,`${kind}: a card opened`);
-      assert.equal(css(card).padding,'16px 24px',`${kind}: one card gutter`);
+      assert.equal(css(card).padding,kind==='pullRequest'?'0px':'16px 24px',`${kind}: one card gutter`);
       assert.equal(css(card).borderRadius,'18px',`${kind}: one card radius`);
       const closes=Array.from(card.querySelectorAll('[data-bb-chat-ui-card-close]')).filter(node=>css(node).display!=='none');
       assert.equal(closes.length,1,`${kind}: exactly one close slot`);
       assert.equal(css(closes[0]).position,'absolute',`${kind}: close sits on the card, not in a per-card grid`);
-      assert.equal(css(closes[0]).top,kind==='pullRequest'?'20px':'18px',`${kind}: close centers on its row`);
-      assert.equal(css(closes[0]).right,'16px',`${kind}: close uses the common outer inset`);
+      assert.equal(css(closes[0]).top,kind==='pullRequest'?'8px':'18px',`${kind}: close centers on its row`);
+      assert.equal(css(closes[0]).right,kind==='pullRequest'?'8px':'16px',`${kind}: close uses its card inset`);
       const head=card.querySelector('[data-bb-chat-ui-card-head]');
       assert.ok(head,`${kind}: a head slot`);
-      assert.equal(css(head!).minHeight,kind==='pullRequest'?'32px':'28px',`${kind}: one row height`);
+      assert.equal(css(head!).minHeight,kind==='pullRequest'?'40px':'28px',`${kind}: one row height`);
       surfaceFree(card,kind);
       f.click('[data-bb-chat-ui-card-close]');
       await f.tick();

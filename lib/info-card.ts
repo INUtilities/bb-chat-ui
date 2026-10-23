@@ -3,7 +3,7 @@ import { LARGE_HIT_TARGET } from "./device-chrome.ts";
 
 /**
  * One information card for everything that opens above the composer.
- * The card owns one frost face, with a 28px head or a single 32px navigation row. Plugin-built nodes carry the
+ * The card owns one frost face, with a 28px head or a compact 40px navigation face. Plugin-built nodes carry the
  * slot attributes; native nodes that cannot be marked reuse the same declaration blocks
  * through `cardStyle`, so every card reads its geometry from this file.
  */
@@ -19,6 +19,7 @@ export const cardSlot = {
   close: `${CARD}-close`,
   list: `${CARD}-list`,
   row: `${CARD}-row`,
+  navigation: `${CARD}-navigation`,
   meta: `${CARD}-meta`,
   section: `${CARD}-section`,
 } as const;
@@ -63,7 +64,7 @@ export function cardFaceCss(selector: string): string {
 export function infoCardCss(root = `[${CARD}]`): string {
   const card = `:is(${root})`;
   const s = Object.fromEntries(Object.entries(cardSlot).map(([key, attr]) => [key, `[${attr}]`])) as { [K in keyof typeof cardSlot]: string };
-  const controls = `${s.action}, ${s.button}, ${s.close}, ${s.row}`;
+  const controls = `${s.action}, ${s.button}, ${s.close}, ${s.row}, ${s.navigation}`;
   const ownType = `${NESTED_SURFACE_EXEMPT}, ${s.meta}, ${s.section}, ${s.action}, ${s.button}, ${s.close}`;
   const ownTypeTree = `${ownType}, ${ownType.split(", ").map(selector => `${selector} *`).join(", ")}`;
   return `
@@ -75,7 +76,8 @@ ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }
 ${card}[${cardSlot.layout}="heading-only"] > ${s.head} { ${cardStyle.headOnly} }
-${card}[${cardSlot.layout}="single-row"] > ${s.head} { height:32px; min-height:32px; margin-bottom:0; }
+${card}[${cardSlot.layout}="single-row"] { min-height:40px !important; padding:0 !important; box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow) !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.head} { position:static; height:40px; min-height:40px; margin:0; padding:4px 40px 4px 8px !important; }
 ${s.body} { ${cardStyle.body} }
 ${s.body} > :first-child { margin-top:0 !important; }
 ${s.body} > :last-child { margin-bottom:0 !important; }
@@ -93,14 +95,20 @@ ${LARGE_HIT_TARGET} ${s.button} { height:32px; min-height:32px; }
 ${s.list} { ${cardStyle.list} }
 ${s.row} { display:flex; align-items:center; gap:8px; min-width:0; margin:0; color:inherit; font-family:inherit; text-align:left; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${s.row}:is(:hover, :focus-visible, :focus-within) { ${cardStyle.rowHover} }
-${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:calc(100% - 16px); margin-top:0 !important; margin-bottom:0 !important; }
-${card}[${cardSlot.layout}="single-row"] > ${s.close} { top:20px !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.row} { width:100%; min-height:40px; margin:0 !important; padding:8px 40px 8px 8px !important; border-radius:18px !important; background:transparent !important; }
+${card}[${cardSlot.layout}="single-row"] > ${s.close} { top:8px !important; right:8px !important; }
+/* Stretch the original action across the face; sibling close/Merge controls sit above it. */
+${card}[${cardSlot.layout}="single-row"] ${s.navigation} { position:static !important; overflow:visible !important; cursor:pointer; ${FLAT} }
+${card}[${cardSlot.layout}="single-row"] ${s.navigation}::before { content:""; position:absolute; inset:0; z-index:0; border-radius:18px; transition:background-color 150ms ease-out; }
+${card}[${cardSlot.layout}="single-row"] ${s.navigation}:hover::before { background-color:${CARD_HOVER}; }
+${card}[${cardSlot.layout}="single-row"] ${s.navigation}:focus-visible { outline:0; }
+${card}[${cardSlot.layout}="single-row"] ${s.navigation}:focus-visible::before { outline:2px solid var(--ring); outline-offset:-2px; }
 :is(button, a)${s.row} { cursor:pointer; }
 :is(${s.meta}, ${s.section}) { ${cardStyle.meta} }
 ${s.section} { margin:12px 0 4px; }
 ${s.section}:first-child { margin-top:0; }
 ${card} :focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
-@media (prefers-reduced-motion:reduce) { ${card} :is(${controls}) { transition:none !important; } }
+@media (prefers-reduced-motion:reduce) { ${card} :is(${controls}), ${card} ${s.navigation}::before { transition:none !important; } }
 `;
 }
 

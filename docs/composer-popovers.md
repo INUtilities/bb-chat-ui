@@ -10,9 +10,9 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 
 - 카드의 glass 면은 한 겹이다. BB 테마 토큰과 `glass-surface.ts`를 쓰고 안쪽에
   불투명한 native 배경·ring·상단 구분선을 겹치지 않는다.
-- 바깥 radius는 18px, 패딩은 세로 16px·가로 24px다. 짧은 카드는 내용만큼 높아지고,
+- 바깥 radius는 18px, 상세 카드 패딩은 세로 16px·가로 24px다. 짧은 카드는 내용만큼 높아지고,
   긴 카드는 Code Diff와 같은 `--bb-chat-ui-info-max-height`에서 스크롤한다.
-- 제목은 읽기 전용이다. 제목 클릭으로 카드를 접지 않으며 hover 배경·pointer를
+- 상세 카드 제목은 읽기 전용이다. 제목 클릭으로 카드를 접지 않으며 hover 배경·pointer를
   추가하지 않는다. 실제 액션과 본문 내부의 펼치기·접기는 유지한다.
 - 제목 행은 28px, 제목 글자는 12px/16px·굵기 600·왼쪽 정렬이다. native 제목의
   가운데 정렬·`font-normal`을 그대로 남기지 않는다. 제목의 아이콘·외부 열기·닫기는
@@ -38,6 +38,8 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   닫기는 24px이며 추가 frost 면·그림자를 겹치지 않는다.
 - Parent 탐색은 아래의 `single-row` 규격을 쓴다. 별도의 `Parent` 제목·계열 아이콘은
   추가하지 않으며 provider 아이콘·부모 제목·닫기만 한 줄에 둔다.
+  통합 전 Parent처럼 높이 40px인 카드 전체가 하나의 클릭 영역이다. 안쪽 행의 별도
+  배경·테두리·그림자와 바깥 여백을 없애고, 카드의 inset edge도 표시하지 않는다.
   부모 정보가 아직 없으면 기존 링크로 보완하고, 사라진 부모로 이동하지 않는다.
 - Goal 해제는 이름이 있는 액션으로 유지한다. Agentation의 전체 액션은
   ↑ 전송 → 휴지통 삭제 → × 닫기 순서다. 아이콘만 표시해도 tooltip과 접근성
@@ -54,8 +56,9 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
   제목·에이전트 이름·보조 정보는 카드 안쪽 여백에서 한 줄 말줄임한다.
 - Pull request도 Parent와 같은 `single-row` 카드다. 별도 계열 제목·계열 아이콘·상태 본문 없이
   SDK에서 읽은 PR 제목을 한 줄로 표시하고 남는 너비에서 말줄임한다.
-  원래 PR 링크는 제목 옆의 외부 열기 아이콘으로 보이며 GitHub URL과 탐색 동작을
-  유지한다. SDK 제목을 아직 읽지 못했으면 원래 PR 번호를 임시 제목으로 쓴다.
+  원래 PR 링크는 제목 옆의 외부 열기 아이콘으로 보이며 카드 전체를 클릭해도 같은
+  GitHub 링크를 연다. 원래 URL·modifier click·키보드 동작을 유지한다.
+  SDK 제목을 아직 읽지 못했으면 원래 PR 번호를 임시 제목으로 쓴다.
   Merge 메뉴와 닫기는 별도 영역으로 두어 제목과 겹치지 않게 한다. Merge는 테두리·배경 없이
   글자와 캐럿만 표시한다. 글자와 캐럿 모두 같은 머지 방식 메뉴를 열며, 방법을 선택할 때만 실행한다.
 
@@ -65,11 +68,12 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 |---|---|---|
 | 기본 상세 카드 | 28px 제목 + 8px 간격 + 본문, 바깥 패딩 16px 24px | `cardSlot.head`, `cardSlot.body` |
 | 제목 단독 카드 (`heading-only`) | 본문 없이 28px 제목만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout |
-| 단일 행 카드 (`single-row`) | 별도 제목 없이 32px 콘텐츠 행 하나, 바깥 패딩 16px 24px | Parent는 `cardSlot.row`, PR은 제목·외부 열기·Merge를 담은 native/SDK 행을 `cardSlot.head`에 연결, 공통 `cardSlot.layout="single-row"` |
+| 단일 행 카드 (`single-row`) | 테두리·안쪽 면 없이 높이 40px인 카드 하나, 바깥 패딩 0, 내용 왼쪽 8px·닫기 여유 40px | Parent는 `cardSlot.row`와 `cardSlot.navigation`, PR은 native/SDK 행을 `cardSlot.head`에, 원래 링크를 `cardSlot.navigation`에 연결, 공통 `cardSlot.layout="single-row"` |
 | 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
 
-- `single-row`의 닫기는 위 20px·오른쪽 16px로 32px 행의 중앙에 놓인다.
-  탐색 행은 닫기 클릭 영역 앞에서 끝나며 긴 제목은 한 줄 말줄임한다.
+- `single-row`의 닫기는 위 8px·오른쪽 8px로 40px 카드의 중앙에 놓인다.
+  `cardSlot.navigation`이 카드 전체를 덮고, 닫기·Merge는 그 위의 별도 클릭 영역이다.
+  전체 면에 같은 hover·키보드 focus 표시를 쓰고 긴 제목은 닫기·Merge 앞에서 한 줄 말줄임한다.
 - 부모 metadata가 늦게 오거나 native 링크만 있어도 같은 단일 행을 쓴다.
   관계가 제거된 경우의 기존 비활성 처리와 native 복원 동작은 유지한다.
 - native Child 목록, Goal 본문, 백그라운드 목록, Workflow scroll area, Queue scroll/list의
@@ -142,7 +146,7 @@ Workflow는 위의 28px 규격을 적용한다. 그 밖의 32px는 최소 높이
 - 상단 Child Thread 스택은 각 아바타와 `+N` 원에만 표면을 그린다. 공통 pill 배경·그림자를
   스택 전체에 적용하지 않는다. 열기·hover에서도 유지하며, 비활성 Child 아이콘은 일반 원형 pill을 쓴다.
 
-모든 행을 같은 고정 높이로 만들지는 않는다. Child Thread·Parent의 탐색 행,
+모든 행을 같은 고정 높이로 만들지는 않는다. Child Thread의 탐색 행,
 Agentation의 피드백·위치 두 줄, 대기 메시지 본문·편집기는 각각의 정보량에 따라
 높아진다. 이 경우에도 내용과 배경의 padding, 둥근 모서리, 제목과의 정렬 원칙은
 같다. Diff 커밋 연결선과 파일·통계의 정렬도 유지한다.

@@ -57,15 +57,26 @@ test("the head line is 28px and reserves the close gutter; icon, title, actions 
   f.dom.window.close();
 });
 
-test("a single-row navigation card reserves its close and centers it on the row", () => {
-  const f = page(`<section ${CARD} data-bb-chat-ui-card-layout="single-row"><button ${cardSlot.row}>Parent thread</button></section>`);
+test("a compact navigation card has one borderless 40px face and a full-card primary target", () => {
+  const f = page(`<section ${CARD} data-bb-chat-ui-card-layout="single-row"><button ${cardSlot.row} data-bb-chat-ui-card-navigation>Parent thread</button></section>`);
   const card = f.document.querySelector(`[${CARD}]`)!;
   const close = createCardClose(f.document, "Parent 닫기");
   card.append(close);
-  assert.equal(f.style(card).padding, "16px 24px");
-  assert.equal(f.style(card.querySelector(`[${cardSlot.row}]`)!).width, "calc(100% - 16px)", "the navigation row ends before the close hit target");
-  assert.equal(f.style(close).top, "20px", "16px inset + (32px row - 24px close) / 2");
-  assert.equal(f.style(close).right, "16px");
+  assert.equal(f.style(card).padding, "0px", "the card has no padding outside its click target");
+  assert.equal(f.style(card).minHeight, "40px");
+  assert.doesNotMatch(f.style(card).boxShadow,/inset/,"the compact face has no inset edge");
+  const row=card.querySelector(`[${cardSlot.row}]`)!;
+  assert.equal(f.style(row).width, "100%", "the primary target fills the card");
+  assert.equal(f.style(row).minHeight,"40px");
+  assert.equal(f.style(row).paddingRight,"40px","text leaves room for the separate close target");
+  assert.equal(f.style(row).borderTopWidth,"0px");
+  assert.equal(f.style(row).boxShadow,"none");
+  assert.equal(f.style(close).top, "8px");
+  assert.equal(f.style(close).right, "8px");
+  const hitRule=[...f.document.styleSheets].flatMap(s=>[...s.cssRules]).find(r=>'selectorText' in r&&r.selectorText.endsWith('[data-bb-chat-ui-card-navigation]::before')) as CSSStyleRule;
+  assert.ok(hitRule,"a primary action covers the face without wrapping sibling controls");
+  assert.equal(hitRule.style.position,"absolute");
+  assert.equal(hitRule.style.inset,"0px");
   f.dom.window.close();
 });
 
