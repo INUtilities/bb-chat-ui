@@ -307,6 +307,7 @@ ${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Q
   height: 32px;
   min-height: 32px;
   padding: 0 !important;
+  border-radius: 999px !important;
 }
 ${SMALL_HIT_TARGET} ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   padding: 4px 0;
@@ -317,9 +318,6 @@ ${SMALL_HIT_TARGET} ${MANAGED_QUEUE} :is([data-queued-message-actions] button, b
   min-height: 24px;
 }
 ${MANAGED_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] {
-  width:24px;
-  height:24px;
-  min-height:24px;
   margin-top:0;
 }
 ${MANAGED_QUEUE} [data-queued-message-actions]::before {
@@ -334,7 +332,7 @@ ${MANAGED_QUEUE} [data-queued-message-actions],
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] button[aria-label^="Queued message "][aria-label$=" actions"] { display:none !important; }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-actions] { display:flex !important; gap:4px; }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-inline-actions="true"] [data-queued-message-actions] button {
-  border:0 !important; border-radius:10px; background:transparent !important;
+  border:0 !important; background:transparent !important;
   box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
   transition:background-color 150ms ease-out;
 }

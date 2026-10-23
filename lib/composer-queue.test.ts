@@ -350,8 +350,8 @@ test("queue ellipsis is the shared flat icon action in its row, without a displa
         assert.equal(s.borderRadius,'999px','the shared round icon action');
         assert.equal(s.backgroundColor,'rgba(0, 0, 0, 0)');
         assert.equal(s.backgroundImage,'none');
-        assert.equal(s.width,'24px','ellipsis box stays compact on both devices');
-        assert.equal(s.height,'24px');
+        assert.equal(s.width,small?'24px':'32px','ellipsis follows the hit target size');
+        assert.equal(s.height,small?'24px':'32px');
         assert.equal(s.marginTop,'0px','the row centers the action button without first-line offsets');
       }
       for (const sheet of Array.from(f.document.styleSheets)) for (const rule of Array.from(sheet.cssRules)) {
@@ -552,7 +552,7 @@ test('queue row activators use the entire row vertical center on both hit target
     try{
       f.click('[data-bb-chat-ui-info-trigger="queue"]');await f.tick();
       const drag=f.dom.window.getComputedStyle(line.querySelector('[aria-label^="Reorder"]')!),more=f.dom.window.getComputedStyle(line.querySelector('[aria-label$=" actions"]')!);
-      assert.equal(drag.height,more.height);assert.equal(drag.marginTop,more.marginTop);
+      assert.equal(more.height,small?'24px':'32px');assert.equal(drag.marginTop,more.marginTop);
       assert.equal(drag.height,'24px');assert.equal(drag.marginTop,'0px');
       assert.equal(f.dom.window.getComputedStyle(line).alignItems,'center');
       assert.equal(more.alignSelf,'center');

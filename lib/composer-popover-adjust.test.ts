@@ -29,6 +29,22 @@ test("queued message rows keep a padded hover gutter and two-pixel rhythm withou
   } finally { f.dom.window.close(); }
 });
 
+test("queue icon actions are circular at both hit target sizes while the drag handle stays separate", () => {
+  for (const hit of ["small", "large"]) {
+    const f = surface("queue", '<div data-queued-message-row><button aria-label="Reorder queued message 1" style="width:20px">Drag</button><button aria-label="Queued message 1 actions">More</button><div data-queued-message-actions><button aria-label="Send queued message">Send</button><button aria-label="Edit queued message">Edit</button><button aria-label="Delete queued message">Delete</button></div></div>', hit);
+    f.document.querySelector("section")!.setAttribute("data-bb-chat-ui-queue-inline-actions", "true");
+    try {
+      for (const button of f.document.querySelectorAll('button:not([aria-label^="Reorder"])')) {
+        const s = f.dom.window.getComputedStyle(button);
+        assert.equal(s.borderRadius, "999px");
+        assert.equal(s.width, hit === "large" ? "32px" : "24px");
+        assert.equal(s.height, hit === "large" ? "32px" : "24px");
+      }
+      assert.equal(f.css('[aria-label^="Reorder"]').width, "20px");
+    } finally { f.dom.window.close(); }
+  }
+});
+
 test("Agentation list icon actions share 24px circular hit areas and 14px glyphs", () => {
   const f = surface("annotations", '<ul><li><button aria-label="Send annotation" class="h-7 w-7"><svg /></button></li></ul>', "large", '.h-7{height:28px}.w-7{width:28px}');
   f.document.querySelector("section")!.classList.add("agentation-staging-shell");
