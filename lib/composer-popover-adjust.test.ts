@@ -68,7 +68,7 @@ test("Diff rows share the hover gutter while their zero-gap graph spans the padd
     const graph = f.css('[data-bb-chat-ui-info-diff-graph]');
     assert.equal(graph.alignSelf, 'stretch');
     assert.equal(graph.marginTop, '-8px'); assert.equal(graph.marginBottom, '-8px');
-    assert.equal(f.css('code').fontSize, '13px'); assert.equal(f.css('[data-bb-chat-ui-info-diff-file] > span').fontSize, '12px');
+    assert.equal(f.css('code').fontSize, '12px'); assert.equal(f.css('[data-bb-chat-ui-info-diff-file] > span').fontSize, '12px');
   } finally { f.dom.window.close(); }
 });
 

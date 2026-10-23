@@ -351,7 +351,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-commit]:first-child [${MARK}-diff-graph]::before, [${MARK}-diff-commit]:last-child [${MARK}-diff-graph]::after { display:none; }
 [${MARK}-diff-commits][${MARK}-diff-collapsed] > [${MARK}-diff-commit]:nth-child(5) [${MARK}-diff-graph]::after { display:none; }
 [${MARK}-diff-graph] svg { position:absolute; width:12px; height:12px; left:2px; top:calc(50% - 6px); fill:none; stroke:currentColor; stroke-width:1.5; }
-[${MARK}-diff-file] code, [${MARK}-diff-commit] code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono,monospace); ${cardStyle.text} }
+[${MARK}-diff-file] code, [${MARK}-diff-commit] code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono,monospace); ${cardStyle.secondaryText} }
 [${MARK}-diff-file] > span { flex-shrink:0; ${cardStyle.secondaryText} }
 [${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }

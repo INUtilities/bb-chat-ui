@@ -58,7 +58,8 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 - 짧은 안내 문장도 문단이면 12px/16px 본문 규칙을 유지한다. 문장 길이를 이유로
   목록 이름·글자 액션의 13px 규격으로 바꾸지 않는다.
 - 목록 이름과 일반 안내는 13px/16px다. native `text-xs`·`text-sm`와 목록 행은
-  `cardStyle.text`를 쓰고, Diff의 파일 경로·커밋 목록도 같은 크기로 코드 글꼴만 유지한다.
+  `cardStyle.text`를 쓴다. Diff의 파일 경로·커밋 목록은 예외로 `cardStyle.secondaryText`의
+  12px/16px를 쓰며 코드 글꼴은 유지한다.
   호스트의 모바일 14px·`leading-relaxed`가 이 세 단계에 섞이지 않게 한다.
 - 글자 액션도 13px/16px다. Merge·해제·복구·더 보기의 크기를 목록과 맞추고,
   버튼의 클릭 영역 높이와 글자의 줄 높이를 분리한다.
@@ -122,6 +123,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 | 제목 | 14px / 18px, 굵기 600 | `cardSlot.head`, `cardSlot.title`, `cardStyle.titleText` |
 | 긴 본문·사용자 메시지 | 12px / 16px | `cardSlot.prose`, `cardStyle.prose`, 일반 문단·native 대기 메시지 preview |
 | 목록 이름·일반 안내 | 13px / 16px | `cardStyle.text`, 목록 행·native `text-xs`·`text-sm` |
+| Diff 파일 경로·커밋 목록 | 12px / 16px, 코드 글꼴 | `cardStyle.secondaryText` |
 | 글자 액션 | 13px / 16px | `cardStyle.button`, PR Merge, Diff 더 보기 |
 | 상태·시간·개수·모델 등 보조 정보 | 12px / 16px | `cardSlot.meta`, `cardSlot.section`, `cardStyle.secondaryText`, native `text-2xs` |
 

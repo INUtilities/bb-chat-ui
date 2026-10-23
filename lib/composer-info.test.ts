@@ -136,11 +136,11 @@ test("Workflow and background metadata keep one secondary size across host devic
   }
 });
 
-test("Diff file paths and commit subjects use the main size while statistics stay secondary", () => {
+test("Diff file paths and commit subjects share the secondary size while retaining the code font", () => {
   const dom=new JSDOM(`<style>${composerInfoCss}</style><div data-bb-chat-ui-info-diff-file><code>lib/example.ts</code><span>+12</span></div><div data-bb-chat-ui-info-diff-commit><code>Commit subject</code></div>`);
   for(const text of dom.window.document.querySelectorAll('code')){
     const s=dom.window.getComputedStyle(text);
-    assert.equal(s.fontSize,'13px');
+    assert.equal(s.fontSize,'12px');
     assert.equal(s.lineHeight,'16px');
     assert.match(s.fontFamily,/mono/,'code labels retain their code font');
   }
