@@ -210,12 +210,13 @@ ${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Edit"] {
 }
 ${MANAGED_QUEUE} [data-queued-message-row] {
   ${cardStyle.rowBox}
+  padding:6px 8px !important;
   ${cardStyle.rowGutter}
 }
 ${MANAGED_QUEUE} [data-queued-message-row]:is(:hover, :focus-within) {
   ${cardStyle.rowHover}
 }
-${MANAGED_QUEUE} [data-queued-messages-scroll] > ul { display:flex; flex-direction:column; row-gap:2px; }
+${MANAGED_QUEUE} [data-queued-messages-scroll] > ul { display:flex; flex-direction:column; row-gap:0; }
 /* Keep the hover gutter inside the clipped viewport; message content stays at the body edge. */
 ${OPEN_QUEUE} [data-queued-messages-scroll-frame] { width:calc(100% + 16px) !important; margin-left:-8px; margin-right:-8px; }
 ${OPEN_QUEUE} [data-queued-messages-scroll] { box-sizing:border-box; padding-left:8px !important; padding-right:8px !important; }

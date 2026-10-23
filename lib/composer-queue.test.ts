@@ -125,7 +125,7 @@ test("queue actions stay vertically centered in compact rows with appropriate hi
     try {
       f.click('[data-bb-chat-ui-info-trigger="queue"]'); await f.tick();
       const style=(node:Element)=>f.dom.window.getComputedStyle(node);
-      assert.equal(style(row).padding,'8px','message rows use the shared eight-pixel inset');
+      assert.equal(style(row).padding,'6px 8px','message rows use the compact vertical density and shared horizontal gutter');
       assert.equal(style(row.querySelector('.flex')!).alignItems,'center','controls follow the entire message row, including wrapped text');
       assert.equal(style(actions).alignSelf,'center');
       assert.equal(style(actions.querySelector('button')!).height,small?'24px':'32px','mobile retains a larger touch target');
