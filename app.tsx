@@ -1,3 +1,6 @@
+// BB strips license comments; this public export preserves the full icon notices in app.js.
+export { thirdPartyIconNotices } from "./lib/third-party-icon-notices";
+
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import { Fragment, createElement } from "react";
 
@@ -24,14 +27,15 @@ function ComposerBridges() {
     createElement(DeviceChromeBridge), createElement(QuoteMentionBridge), createElement(WorkspaceDiffBridge), createElement(ComposerInfoBridge));
 }
 
+// Register composer bridges, content scripts, and locally attributed icons.
 export default definePluginApp((app) => {
-  // Same pulse glyph as Thread Theme's Status view; register locally without depending on that plugin.
+  // Lucide 0.300.0 icons/activity.svg (ISC), inherited Feather geometry; see THIRD_PARTY_NOTICES.md.
   app.experimental_icons.register({
     name:"bb-chat-ui-status",
     component:({ className }) => createElement("svg", { viewBox:"0 0 24 24", className, fill:"none", stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true },
       createElement("path", { d:"M22 12h-4l-3 9L9 3l-3 9H2" })),
   });
-  // Hugeicons MessageDelay02Icon: a chat bubble with a clock in the upper-right corner.
+  // Hugeicons c1b280d3964e115dfdefb58241f6d93ca68f7b6d icons/message-delay-02.svg (MIT); see THIRD_PARTY_NOTICES.md.
   app.experimental_icons.register({
     name:"bb-chat-ui-queue",
     component:({ className }) => createElement("svg", { viewBox:"0 0 24 24", className, fill:"none", stroke:"currentColor", strokeWidth:1.5, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true },
