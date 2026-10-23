@@ -1,4 +1,5 @@
 import { heightTo } from "./motion.ts";
+import { revealHandoffHeader } from "./composer-handoff.ts";
 
 const RESIZING = "data-bb-chat-ui-model-resizing";
 const GAUGE = "[data-bb-chat-ui-effort]";
@@ -14,6 +15,8 @@ export function injectComposerModelSize(card: HTMLElement): () => void {
   const previousMarker = card.getAttribute(RESIZING);
   let targetHeight = card.offsetHeight;
   let motion: Animation | null = null;
+  let handoff = Boolean(card.querySelector('[aria-label="Exit handoff"]'));
+  let reveal: Animation | null = null;
   let queued = false;
   let disposed = false;
 
@@ -28,6 +31,8 @@ export function injectComposerModelSize(card: HTMLElement): () => void {
     const previous = motion;
     motion = null;
     previous?.cancel();
+    reveal?.cancel();
+    reveal = null;
     restoreMarker();
     targetHeight = card.offsetHeight;
   }
@@ -36,6 +41,12 @@ export function injectComposerModelSize(card: HTMLElement): () => void {
   function measure(): void {
     queued = false;
     if (disposed) return;
+    const nextHandoff = Boolean(card.querySelector('[aria-label="Exit handoff"]'));
+    if (nextHandoff !== handoff) {
+      handoff = nextHandoff;
+      reveal?.cancel();
+      reveal = handoff ? revealHandoffHeader(card) : null;
+    }
     const previous = motion;
     const visibleHeight = previous ? card.offsetHeight : targetHeight;
     const currentTime = previous?.currentTime ?? null;

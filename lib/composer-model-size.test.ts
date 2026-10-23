@@ -387,3 +387,58 @@ test("card height motion works without a popper wrapper or ResizeObserver", asyn
     assert.equal(f.card.parentNode, parent);
   } finally { stop(); f.restore(); }
 });
+
+// Synchronize popup Handoff header entry with the card morph while preserving native wrapper ownership.
+test("popup Handoff header reveal and card height morph share 160ms entry and release their motions on exit or dispose", async () => {
+  const f = fixture();
+  const wrapperStyle = f.wrapper.getAttribute("style");
+  const header = f.document.createElement("div");
+  header.innerHTML = '<span>Handoff to new thread</span><button type="button" aria-label="Exit handoff">Exit</button>';
+  header.animate = f.card.animate;
+  f.card.prepend(header);
+  let stop = injectComposerModelSize(f.card);
+  try {
+    await f.settle();
+    assert.equal(f.motions.length, 0, "an already visible Handoff header has no separate entrance motion");
+    stop();
+    header.remove();
+    stop = injectComposerModelSize(f.card);
+    f.state.naturalHeight = 303;
+    f.card.prepend(header);
+    await f.settle();
+    const heights = f.motions.filter(motion => values(motion, "height").length);
+    const reveals = f.motions.filter(motion => motion.target === header);
+    assert.equal(heights.length, 1);
+    assert.equal(heights[0].target, f.card);
+    assert.deepEqual(values(heights[0], "height"), ["240px", "303px"]);
+    const heightTiming = heights[0].options;
+    assert.equal(typeof heightTiming === "number" ? heightTiming : heightTiming?.duration, 320);
+    assert.equal(heights[0].animation.playbackRate, 2);
+    assert.equal(reveals.length, 1, "the same card update starts the Handoff header reveal");
+    const revealTiming = reveals[0].options;
+    assert.equal(typeof revealTiming === "number" ? revealTiming : revealTiming?.duration, 260);
+    assert.equal(reveals[0].animation.playbackRate, 1.625);
+    assert.deepEqual(values(reveals[0], "opacity"), ["0", "1"]);
+    assert.ok(values(reveals[0], "transform").length);
+    assert.equal(f.wrapper.getAttribute("style"), wrapperStyle);
+    assert.equal(f.motions.some(motion => motion.target === f.wrapper), false);
+    f.state.visibleHeight = 270;
+    f.state.naturalHeight = 240;
+    header.remove();
+    await f.settle();
+    assert.ok(reveals[0].cancels > 0, "removing Handoff cancels its unfinished entrance motion");
+    f.state.visibleHeight = 255;
+    f.state.naturalHeight = 303;
+    f.card.prepend(header);
+    await f.settle();
+    const nextReveal = f.motions.filter(motion => motion.target === header).at(-1)!;
+    assert.notEqual(nextReveal, reveals[0]);
+    stop();
+    await f.settle();
+    assert.ok(nextReveal.cancels > 0, "disposing the popup releases its active header entrance");
+    for (const motion of f.motions) assert.ok(motion.cancels > 0);
+    assert.equal(f.card.hasAttribute(RESIZING), false);
+    assert.equal(f.wrapper.getAttribute("style"), wrapperStyle);
+    assert.equal(f.frames.size, 0);
+  } finally { stop(); f.restore(); }
+});
