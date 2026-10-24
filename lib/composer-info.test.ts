@@ -6486,3 +6486,97 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
     }
   } finally {stop(); f.dom.window.close();}
 });
+
+test("draft editor mutations do not schedule information sync or fit", async () => {
+  const f = fixture();
+  const editor = f.document.createElement('div');
+  editor.setAttribute('data-promptbox-editor-content', '');
+  editor.innerHTML = '<div class="ProseMirror" contenteditable="true"><p>draft</p></div>';
+  f.document.querySelector('[data-follow-up-composer]')!.append(editor);
+  const stop = injectComposerInfo(f.document);
+  try {
+    await f.tick(); await f.tick();
+    let frames = 0;
+    const raf = f.dom.window.requestAnimationFrame.bind(f.dom.window);
+    f.dom.window.requestAnimationFrame = cb => { frames++; return raf(cb); };
+    for (let i = 0; i < 3; i++) {
+      editor.querySelector('p')!.textContent += ' input';
+      editor.querySelector('p')!.setAttribute('aria-label', 'draft ' + i);
+      await f.tick();
+    }
+    assert.equal(frames, 0, 'draft changes have no information or geometry dependency');
+    f.document.querySelector('#thread-prompt-banner-git-toggle')!.textContent = '+20 −4 · 4 files';
+    await f.tick();
+    assert.ok(frames > 0, 'native information changes still sync');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("unchanged information revisions reuse measured pill widths", async () => {
+  const f = fixture();
+  let reads = 0;
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', { configurable:true, get() {
+    if (this.hasAttribute('data-bb-chat-ui-info-trigger')) reads++;
+    return 60;
+  } });
+  const stop = injectComposerInfo(f.document);
+  try {
+    await f.tick(); await f.tick();
+    reads = 0;
+    const source = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+    source.dispatchEvent(new f.dom.window.Event('bb-chat-ui:composer-data', { bubbles:true }));
+    // A native attribute with the same label/revision also needs no width read.
+    f.document.querySelector('#thread-prompt-banner-git-toggle')!.setAttribute('aria-disabled', 'false');
+    await f.tick(); await f.tick();
+    assert.equal(reads, 0, 'same content and scale must not remeasure every pill');
+    f.document.querySelector('#thread-prompt-banner-git-toggle')!.textContent = '+200 −40 · 40 files';
+    await f.tick();
+    assert.ok(reads > 0, 'changed labels invalidate their width');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("unchanged data and open Goal prose skip pill geometry while native summaries stay live", async () => {
+  const f = fixture();
+  let reads = 0;
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', { configurable:true, get() { return 60; } });
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetLeft', { configurable:true, get() { reads++; return 0; } });
+  f.document.querySelector('#goal')!.innerHTML = '<p>Objective</p>';
+  const stop = injectComposerInfo(f.document);
+  try {
+    await f.tick(); await f.tick();
+    f.click('[data-bb-chat-ui-info-trigger="goal"]'); await f.tick(); await f.tick();
+    reads = 0;
+    f.document.querySelector('[data-bb-chat-ui-info-settings]')!.dispatchEvent(new f.dom.window.Event('bb-chat-ui:composer-data', { bubbles:true }));
+    await f.tick();
+    f.document.querySelector('#goal p')!.textContent = 'Updated objective';
+    await f.tick();
+    assert.equal(reads, 0, 'same data and card prose have no pill geometry dependency');
+    f.document.querySelector('#thread-prompt-banner-git-toggle')!.textContent = '+200 −40 · 40 files';
+    await f.tick();
+    assert.ok(reads > 0, 'changed native summary still fits');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+test("a second Diff width change starts at the current animated width", async () => {
+  const f = fixture();
+  const source = f.document.createElement('span'); source.setAttribute('data-bb-chat-ui-head-diff', '');
+  f.document.querySelector('[data-promptbox-shell] > .grid')!.append(source);
+  const live = new WeakSet<HTMLElement>(), widths: Keyframe[][] = [];
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', { configurable:true, get() {
+    if (this.getAttribute('data-bb-chat-ui-info-trigger') !== 'diff') return 60;
+    if (live.has(this)) return 90;
+    return this.textContent?.includes('+70') ? 220 : this.hasAttribute('aria-busy') ? 64 : 180;
+  } });
+  f.dom.window.HTMLElement.prototype.animate = function(frames) {
+    const keyframes = frames as Keyframe[], node = this;
+    if (node.getAttribute('data-bb-chat-ui-info-trigger') === 'diff' && keyframes[0]?.width) { widths.push(keyframes); live.add(node); }
+    return { cancel() { live.delete(node); } } as Animation;
+  };
+  const stop = injectComposerInfo(f.document);
+  const publish = (insertions:number) => source.setAttribute('data-bb-chat-ui-head-diff', JSON.stringify({insertions,deletions:2,files:1,branch:'feature/chat',presentation:{mode:'working',visible:true,branch:'feature/chat',label:`+${insertions} −2 · 1 file`}}));
+  try {
+    await f.tick(); publish(7); await f.tick();
+    assert.deepEqual(widths[0].map(frame => frame.width), ['64px', '180px']);
+    publish(70); await f.tick();
+    assert.deepEqual(widths[1].map(frame => frame.width), ['90px', '220px'], 'an interrupted width animation must not jump back to its cached target');
+  } finally { stop(); f.dom.window.close(); }
+});

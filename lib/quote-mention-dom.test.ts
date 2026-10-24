@@ -157,3 +157,43 @@ test("a new quote still deletes as one editor node with Backspace", async () => 
     assert.deepEqual(sent, [transaction]);
   } finally { stop(); f.cleanup(); }
 });
+
+test("one new quote is decorated once without rescanning its generated subtree", async () => {
+  const f = fixture();
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    let queries = 0;
+    const proto = f.dom.window.Element.prototype, query = proto.querySelector, all = proto.querySelectorAll;
+    proto.querySelector = function(selector: string) { queries++; return query.call(this, selector); };
+    proto.querySelectorAll = function(selector: string) { queries++; return all.call(this, selector); };
+    const quote = f.quote('Quote');
+    await f.tick();
+    const count = queries;
+    assert.equal(quote.contentEditable, 'false');
+    assert.ok(quote.querySelector('[data-bb-chat-ui-quote-glyph]'));
+    assert.ok(count <= 5, `one resource must need at most five selector queries, got ${count}`);
+  } finally { stop(); f.cleanup(); }
+});
+
+test("late Diff source searches only code quotes still waiting for it", async () => {
+  const f = fixture();
+  for (let i = 0; i < 30; i++) f.quote('Quote');
+  const code = f.quote('FileDiff');
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    let scans = 0;
+    const proto = f.dom.window.Element.prototype, all = proto.querySelectorAll;
+    proto.querySelectorAll = function(selector: string) {
+      if (selector === '[data-prompt-mention-resource]') scans++;
+      return all.call(this, selector);
+    };
+    const source = f.document.createElement('button');
+    source.id = 'thread-prompt-banner-git-toggle';
+    source.innerHTML = '<span data-icon="FileDiff">Diff</span>';
+    f.document.body.append(source); await f.tick();
+    assert.equal(scans, 1, 'scan the added source subtree, never the document root');
+    assert.equal(code.querySelector('[data-bb-chat-ui-code-icon]')?.textContent, 'Diff');
+  } finally { stop(); f.cleanup(); }
+});

@@ -31,7 +31,12 @@ export function injectQuoteMentions(doc: Document): () => void {
   const root = doc.documentElement;
   if (!root) return () => {};
 
-  const lock = () => lockQuoteMentions(doc);
+  const pendingCodes = new Set<HTMLElement>();
+  const decorate = (node: HTMLElement) => {
+    if (!node.isConnected) { pendingCodes.delete(node); return; }
+    if (lockQuoteMention(node, doc)) pendingCodes.add(node);
+    else pendingCodes.delete(node);
+  };
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Backspace" && event.key !== "Delete") return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -56,25 +61,37 @@ export function injectQuoteMentions(doc: Document): () => void {
 
   const observer = new MutationObserver(records => {
     const candidates = new Set<HTMLElement>();
-    const collect = (element: Element) => {
-      if (element instanceof HTMLElement && element.hasAttribute(MENTION_RESOURCE)) candidates.add(element);
-      for (const node of Array.from(element.querySelectorAll(`[${MENTION_RESOURCE}]`))) {
-        if (node instanceof HTMLElement) candidates.add(node);
-      }
-    };
+    const subtrees = new Set<Element>();
+    for (const node of pendingCodes) if (!node.isConnected) pendingCodes.delete(node);
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement;
+      // These records are our completed lock/glyph writes, not native changes.
+      if (record.attributeName === "contenteditable" && target instanceof HTMLElement && target.contentEditable === "false") continue;
+      if (record.type === "childList" && record.addedNodes.length && Array.from(record.addedNodes).every(node =>
+        node instanceof Element && (node.hasAttribute(MESSAGE_GLYPH) || node.hasAttribute(CODE_CLONE)))) continue;
       const mention = target?.closest(`[${MENTION_RESOURCE}]`);
       if (mention instanceof HTMLElement) candidates.add(mention);
-      if (record.type === "attributes" && target) collect(target);
-      for (const node of Array.from(record.addedNodes)) {
-        if (!(node instanceof Element)) continue;
-        collect(node);
-        // Code quotes can arrive before the host supplies their source icon.
-        if (node.matches(DIFF_ICON_SOURCE) || node.querySelector(DIFF_ICON_SOURCE)) collect(root);
+      if (record.attributeName === MENTION_RESOURCE && target instanceof HTMLElement) candidates.add(target);
+      const added = Array.from(record.addedNodes).filter((node): node is Element => node instanceof Element);
+      const addedSet = new Set(added);
+      if (target && added.length > 1 && Array.from(target.children).every(node => addedSet.has(node))) subtrees.add(target);
+      else for (const node of added) subtrees.add(node);
+    }
+    // Mutation batches can contain both a newly inserted ancestor and its children.
+    for (const subtree of subtrees) {
+      let parent = subtree.parentElement;
+      while (parent && !subtrees.has(parent)) parent = parent.parentElement;
+      if (parent) continue;
+      if (subtree instanceof HTMLElement && subtree.hasAttribute(MENTION_RESOURCE)) candidates.add(subtree);
+      for (const node of Array.from(subtree.querySelectorAll(`[${MENTION_RESOURCE}]`))) {
+        if (node instanceof HTMLElement) candidates.add(node);
+      }
+      if (pendingCodes.size && (subtree.matches(DIFF_ICON_SOURCE) ||
+        (subtree.id === "thread-prompt-banner-git-toggle" ? subtree.querySelector('[data-icon="FileDiff"]') : subtree.querySelector(DIFF_ICON_SOURCE)))) {
+        for (const node of pendingCodes) candidates.add(node);
       }
     }
-    for (const node of candidates) if (node.isConnected) lockQuoteMention(node, doc);
+    for (const node of candidates) decorate(node);
   });
   observer.observe(root, {
     childList: true, subtree: true, attributes: true,
@@ -90,10 +107,11 @@ export function injectQuoteMentions(doc: Document): () => void {
   doc.addEventListener("pointerdown", onQuoteGesture, true);
   doc.addEventListener("click", onQuoteGesture, true);
   doc.addEventListener("pointerup", onQuoteGesture, true);
-  lock();
+  for (const node of Array.from(doc.querySelectorAll(`[${MENTION_RESOURCE}]`))) if (node instanceof HTMLElement) decorate(node);
 
   return () => {
     observer.disconnect();
+    pendingCodes.clear();
     doc.removeEventListener("keydown", onKeyDown, true);
     doc.removeEventListener("beforeinput", onBeforeInput, true);
     doc.removeEventListener("pointerdown", onQuoteGesture, true);
@@ -114,20 +132,14 @@ function quoteGestureFromTarget(target: EventTarget | null) {
   });
 }
 
-function lockQuoteMentions(doc: Document) {
-  for (const node of Array.from(doc.querySelectorAll(`[${MENTION_RESOURCE}]`))) {
-    if (node instanceof HTMLElement) lockQuoteMention(node, doc);
-  }
-}
-
 function lockQuoteMention(node: HTMLElement, doc: Document) {
   const resource = mentionResource(node);
-  if (!isQuoteMentionResource(resource)) return;
+  if (!isQuoteMentionResource(resource)) return false;
   const root = mentionRoot(node) ?? node;
   if (root.contentEditable !== "false") root.contentEditable = "false";
   if (root.style.maxWidth !== "100%") root.style.maxWidth = "100%";
   if (root.style.whiteSpace !== "nowrap") root.style.whiteSpace = "nowrap";
-  paintMentionIcon(root, resource, doc);
+  return paintMentionIcon(root, resource, doc);
 }
 
 function mentionResource(node: HTMLElement): unknown {
@@ -150,17 +162,17 @@ function paintMentionIcon(root: HTMLElement, resource: unknown, doc: Document) {
   };
   if (code) {
     mark("code");
-    paintCodeIcon(root, doc);
-    return;
+    return paintCodeIcon(root, doc);
   }
   if (record.icon === QUOTE_WHOLE_ICON) {
     mark("whole");
     const icon = iconRoot(root);
     if (icon) clearQuoteGlyph(icon);
-    return;
+    return false;
   }
   mark("selection");
   paintMessageIcon(root);
+  return false;
 }
 
 function iconRoot(root: HTMLElement): Element | null {
@@ -169,16 +181,17 @@ function iconRoot(root: HTMLElement): Element | null {
 
 function paintCodeIcon(root: HTMLElement, doc: Document) {
   const icon = iconRoot(root);
-  if (!icon) return;
+  if (!icon) return true;
   clearQuoteGlyph(icon);
-  if (icon.getAttribute("data-icon") === QUOTE_CODE_ICON) return;
-  if (icon.querySelector(`[${CODE_CLONE}]`)) return;
+  if (icon.getAttribute("data-icon") === QUOTE_CODE_ICON) return false;
+  if (icon.querySelector(`[${CODE_CLONE}]`)) return false;
   const source = doc.querySelector(DIFF_ICON_SOURCE);
-  if (!(source instanceof HTMLElement)) return;
+  if (!(source instanceof HTMLElement)) return true;
   const clone = source.cloneNode(true);
-  if (!(clone instanceof HTMLElement)) return;
+  if (!(clone instanceof HTMLElement)) return true;
   clone.setAttribute(CODE_CLONE, "");
   icon.replaceChildren(clone);
+  return false;
 }
 
 function paintMessageIcon(root: HTMLElement) {

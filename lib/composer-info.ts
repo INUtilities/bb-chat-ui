@@ -496,6 +496,10 @@ export function injectComposerInfo(document: Document): () => void {
   let disposed = false;
   let frame = 0;
   let serial = 0;
+  const dataDirty = new Set<HTMLElement>();
+  const widthDirty = new Set<HTMLElement>();
+  const cardDirty = new Set<HTMLElement>();
+  let discover = true;
 
   function mount(stack: HTMLElement) {
     stack.setAttribute(`${MARK}-stack`, "");
@@ -541,9 +545,9 @@ export function injectComposerInfo(document: Document): () => void {
     // The host keeps its own scroll logic; the visible control forwards to it.
     let jumpSource: HTMLButtonElement | null = null;
     let jumpVisible = false;
-    const jumpWatch = new view!.MutationObserver(() => schedule());
+    const jumpWatch = new view!.MutationObserver(() => schedule(stack));
     let watchedSource: Element | null = null;
-    const sourceWatch = new view!.MutationObserver(() => schedule());
+    const sourceWatch = new view!.MutationObserver(() => schedule(stack));
     const syncJump = () => {
       const host = readOnlyLabel === null && !bar.hidden ? stack.closest("[data-scroll-footer]")?.querySelector<HTMLButtonElement>(HOST_JUMP) ?? null : null;
       if (host !== jumpSource) {
@@ -565,6 +569,8 @@ export function injectComposerInfo(document: Document): () => void {
     const wrappers = new Set<HTMLElement>();
     const buttons = new Map<InfoKind, HTMLButtonElement>();
     const buttonContent = new WeakMap<HTMLElement, string>();
+    let measuredWidths = new WeakMap<HTMLElement, number>();
+    let measuredScale = "";
     const diffHopContent = new WeakMap<HTMLElement, string>();
     const appeared = new Set<InfoKind | "all">();
     const entryAnimations = new Set<Animation>();
@@ -1873,13 +1879,21 @@ export function injectComposerInfo(document: Document): () => void {
     stack.addEventListener("focusin", pinPreview);
     orb.addEventListener("click", () => { open("all", orb); });
     const fit = (motion = true) => {
+      const scale = ["device", "viewport", "hit-target"].map(key => document.documentElement.getAttribute(`data-bb-chat-ui-root-${key}`)).join(":");
+      if (scale !== measuredScale) { measuredScale = scale; measuredWidths = new WeakMap(); }
       const hadStack = appeared.has("all") && !iconStack.hidden && stackIcons.size > 0;
       const previouslyVisible = new Set([...buttons.values()].filter(button => !button.hidden && positions.has(button)));
       // Reveal candidates together so width reads share one layout calculation.
-      for (const button of buttons.values()) button.hidden = false;
+      for (const button of buttons.values()) if (!measuredWidths.has(button)) button.hidden = false;
       const widths = [...buttons].map(([key, button]) => {
         // Entry transforms change visual bounds, but must not change which pills fit.
-        return { key, width:widthAnimations.get(button)?.width ?? (button.offsetWidth || button.getBoundingClientRect().width) };
+        let width = measuredWidths.get(button);
+        if (width === undefined) {
+          width = button.offsetWidth || button.getBoundingClientRect().width;
+          // A hidden ancestor can report zero; retry when it is visible again.
+          if (width > 0) measuredWidths.set(button, width);
+        }
+        return { key, width:widthAnimations.get(button)?.width ?? width };
       });
       for (const [key, exit] of exits) if (!buttons.has(key)) widths.push({ key, width:exit.node.offsetWidth });
       const width = stack.getBoundingClientRect().width;
@@ -1908,7 +1922,10 @@ export function injectComposerInfo(document: Document): () => void {
           if (place().has("children")) break;
         }
         childEntry.width = base + AVATAR_STEP * (circles(cap) - circles(avatarCap));
-        if (cap !== avatarCap) { avatarCap = cap; decorate(buttons.get("children")!, childItem, true); }
+        if (cap !== avatarCap) {
+          avatarCap = cap; decorate(buttons.get("children")!, childItem, true);
+          measuredWidths.set(buttons.get("children")!, childEntry.width);
+        }
       }
       const visible = new Set([...place()].filter(key=>buttons.has(key as InfoKind)));
       const folded = infoStack(readOnlyLabel ? [] : listed,activeKinds,visible,showInactive);
@@ -1938,10 +1955,13 @@ export function injectComposerInfo(document: Document): () => void {
       }
       // The tail follows the last pill, including the closing exit slots.
       const moving = [...buttons.values(), iconStack].filter(button => !button.hidden && !bar.hidden);
-      for (const button of moving) {
-        const before = positions.get(button), after = button.offsetLeft;
+      const offsets = moving.map(button => ({ button, after:button.offsetLeft }));
+      const translations = new Map(offsets.filter(({ button, after }) => positions.get(button) !== after && moves.has(button))
+        .map(({ button }) => [button, parseFloat(view!.getComputedStyle(button).translate) || 0]));
+      for (const { button, after } of offsets) {
+        const before = positions.get(button);
         if (before !== undefined && before !== after && motion && !reduced() && !widthAnimations.size) {
-          const current = moves.has(button) ? parseFloat(view!.getComputedStyle(button).translate) || 0 : 0;
+          const current = translations.get(button) ?? 0;
           moves.get(button)?.cancel();
           const animation = button.animate?.([{ translate:`${before + current - after}px 0` }, { translate:"0px 0" }], { duration:280, easing:"cubic-bezier(.22,1,.36,1)" });
           if (animation) {
@@ -2012,7 +2032,13 @@ export function injectComposerInfo(document: Document): () => void {
         }
       }
     };
-    const resize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(() => fit()) : null;
+    let resizeWidth: number | undefined;
+    const resize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(entries => {
+      const width = entries?.find(entry => entry.target === stack)?.contentRect.width;
+      if (width === undefined || width !== resizeWidth) measuredWidths = new WeakMap();
+      resizeWidth = width;
+      fit();
+    }) : null;
     resize?.observe(stack);
     // Secret shells change height in the same commit that hides the body. Cache the
     // resting box and animate before paint; the shared rAF sync would already be the snapped frame.
@@ -2168,6 +2194,9 @@ export function injectComposerInfo(document: Document): () => void {
     });
     secretObserver.observe(stack, { childList:true, subtree:true, attributes:true, attributeFilter:["data-expanded", "hidden"] });
     let suspended = false;
+    let fitSignature = "";
+    const currentFitSignature = () => JSON.stringify([signature, threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(),
+      ...["device", "viewport", "hit-target"].map(key => document.documentElement.getAttribute(`data-bb-chat-ui-root-${key}`))]);
     const sync = () => {
       pruneDisconnected();
       const source = stack.querySelector(`[${SOURCE}]`);
@@ -2302,6 +2331,10 @@ export function injectComposerInfo(document: Document): () => void {
       const previousSlot = stackContent();
       let signatureChanged = false;
       if (signature !== next) {
+        // An interrupted width animation starts at its current visual width,
+        // rather than the cached resting target. Read before decorating any pill.
+        const animatedWidths = new Map([...widthAnimations.keys()].map(button =>
+          [button, button.offsetWidth || button.getBoundingClientRect().width]));
         signatureChanged = signature !== "";
         signature = next;
         for (const [key, button] of buttons) if (!exposed.includes(key) || !items.some(item => item.key === key)) {
@@ -2324,7 +2357,7 @@ export function injectComposerInfo(document: Document): () => void {
             buttons.set(key, button);
           }
           const previousText = button.textContent;
-          const previousWidth = button.offsetWidth || button.getBoundingClientRect().width;
+          const previousWidth = key === "diff" ? animatedWidths.get(button) ?? measuredWidths.get(button) ?? 0 : 0;
           const wasVisible = button.isConnected && !button.hidden && !bar.hidden && appeared.has(key);
           button.setAttribute("aria-expanded", String(active === key));
           button.removeAttribute(`${MARK}-unavailable`);
@@ -2337,6 +2370,7 @@ export function injectComposerInfo(document: Document): () => void {
           const previousContent = buttonContent.get(button);
           if (previousContent !== content) {
             buttonContent.set(button, content);
+            measuredWidths.delete(button);
             decorate(button, item, true);
             let changedBeyondNumbers = true;
             if (key === "diff") {
@@ -2374,7 +2408,8 @@ export function injectComposerInfo(document: Document): () => void {
         }
         catalogCount = catalog().length;
       }
-      fit(!widthChange);
+      const nextFit = currentFitSignature();
+      if (fitSignature !== nextFit) { fitSignature = nextFit; fit(!widthChange); }
       const queue = items.find(item => item.key === "queue");
       if (queue) {
         const ids = new Set(Array.from(queue.node.querySelectorAll('[data-queued-message-id]')).map(row => row.getAttribute('data-queued-message-id')!));
@@ -2441,7 +2476,7 @@ export function injectComposerInfo(document: Document): () => void {
       prMerge.sync();
       queueControls.sync();
     };
-    return { sync, bar, close, editing, resize, cleanup() {
+    return { sync, fit, invalidateFit() { fitSignature = ""; measuredWidths = new WeakMap(); }, refreshCard:updateScrollHints, bar, close, editing, resize, cleanup() {
       prMerge.cleanup();
       queueControls.cleanup();
       document.removeEventListener("pointerup", releasePress);
@@ -2507,16 +2542,37 @@ export function injectComposerInfo(document: Document): () => void {
     frame = 0;
     if (disposed) return;
     for (const [stack, state] of states) if (!stack.isConnected) { state.cleanup(); states.delete(stack); }
-    for (const stack of Array.from(document.querySelectorAll<HTMLElement>(STACK))) {
-      if (!states.has(stack) && !stack.querySelector(`[${SOURCE}]`)) continue;
-      const state = states.get(stack) ?? mount(stack);
-      states.set(stack, state);
-      state.sync();
+    if (discover) {
+      discover = false;
+      for (const stack of Array.from(document.querySelectorAll<HTMLElement>(STACK))) {
+        if (states.has(stack) || !stack.querySelector(`[${SOURCE}]`)) continue;
+        states.set(stack, mount(stack));
+        dataDirty.add(stack);
+      }
+    }
+    const data = new Set(dataDirty), widths = new Set(widthDirty), cards = new Set(cardDirty);
+    dataDirty.clear(); widthDirty.clear(); cardDirty.clear();
+    for (const [stack, state] of states) {
+      if (widths.has(stack)) state.invalidateFit();
+      if (data.has(stack)) state.sync();
+      else {
+        if (widths.has(stack)) state.fit();
+        if (cards.has(stack)) state.refreshCard();
+      }
     }
   }
-  const schedule = () => { if (!frame && !disposed) frame = view.requestAnimationFrame(sync); };
+  const schedule = (target?: Element, geometry = false, card = false) => {
+    if (disposed) return;
+    const shell = target?.closest("[data-promptbox-shell]");
+    for (const stack of states.keys()) if (!shell || stack.closest("[data-promptbox-shell]") === shell) {
+      (card ? cardDirty : geometry ? widthDirty : dataDirty).add(stack);
+    }
+    if (!frame) frame = view.requestAnimationFrame(sync);
+  };
+  const onResize = () => schedule(undefined, true);
   const onData = (event: Event) => {
-    if ((event.target as Element)?.closest?.("[data-promptbox-shell]")) schedule();
+    const target = event.target as Element;
+    if (target?.closest?.("[data-promptbox-shell]")) schedule(target);
   };
   document.addEventListener(composerDataChanged, onData);
   const discovery = `[data-promptbox-shell], [data-bb-chat-ui-device], ${HOST_JUMP}`;
@@ -2564,24 +2620,33 @@ export function injectComposerInfo(document: Document): () => void {
     const stack = shell.querySelector(":scope > .grid");
     if (stack) guardStack(stack);
   };
+  // Draft text has no information dependency. Do not ignore shell replacements,
+  // handoff controls, queued editors or Secret/interaction forms around it.
+  const draftMutation = (target: Element | null) => !!target?.closest(
+    '[data-promptbox-editor-content], [data-follow-up-composer] textarea, [data-follow-up-composer] .ProseMirror',
+  ) && !target.closest(`${STACK}, [data-testid="plugin-interaction-shell"]`);
+  const cardProseMutation = (record: MutationRecord, target: Element | null) =>
+    record.type !== "attributes" && !!target?.closest(`p`)
+    && !!target.closest(`[${OPEN}="goal"], [${OPEN}="plan"]`)
+    && !target.closest("button, a, input, textarea, [contenteditable]")
+    && [...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].every(node => node.nodeType === view.Node.TEXT_NODE);
   // Composer details (text, labels, attributes) are only observed inside composer shells.
   const shellObserver = new view.MutationObserver(records => {
     const shells = new Set<Element>();
     for (const record of records) {
       const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
       if (record.attributeName === "class" && !target?.matches('form')) continue;
-      if (target?.closest(`[${MARK}-bar]`)) continue;
+      if (target?.closest(`[${MARK}-bar]`) || draftMutation(target) || cardProseMutation(record, target)) continue;
       const shell = target?.closest("[data-promptbox-shell]");
       if (shell) shells.add(shell);
     }
     for (const shell of shells) guardShell(shell);
-    if (records.some(record => {
-      if (record.attributeName === "data-expanded" || record.attributeName === "class") return false;
+    for (const record of records) {
+      if (record.attributeName === "data-expanded" || record.attributeName === "class") continue;
       const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
-      // Counts, labels and popover markup in our bar are output. Re-reading them
-      // would turn each fan/count animation step into another full sync and fit.
-      return !target?.closest(`[${MARK}-bar]`);
-    })) schedule();
+      // Counts, labels and popover markup in our bar are output.
+      if (target && !target.closest(`[${MARK}-bar]`) && !draftMutation(target)) schedule(target, false, cardProseMutation(record, target));
+    }
   });
   const watchedShells = new Set<Element>();
   const watchShells = () => {
@@ -2610,7 +2675,13 @@ export function injectComposerInfo(document: Document): () => void {
       const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
       if (target?.closest("[data-timeline-items]")) return Array.from(record.addedNodes).some(shellIn) || Array.from(record.removedNodes).some(shellIn);
       return Array.from(record.addedNodes).some(discoversInfo) || Array.from(record.removedNodes).some(discoversInfo);
-    })) { watchShells(); schedule(); }
+    })) {
+      watchShells(); discover = true; schedule();
+      const marker = "[data-bb-chat-ui-device]";
+      if (records.some(record => record.attributeName === "data-bb-chat-ui-device" ||
+        [...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some(node =>
+          node instanceof view.Element && (node.matches(marker) || node.querySelector(marker))))) schedule(undefined, true);
+    }
   });
   // Only the plugin's own device marker is watched as an attribute; BB never writes it.
   observer.observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:["data-bb-chat-ui-device"] });
@@ -2634,7 +2705,7 @@ export function injectComposerInfo(document: Document): () => void {
   document.addEventListener("keydown", onKey);
   document.addEventListener("click", onDismiss);
   document.addEventListener("pointerdown", onOutside);
-  view.addEventListener("resize", schedule);
+  view.addEventListener("resize", onResize);
   sync();
   return () => {
     disposed = true;
@@ -2647,7 +2718,7 @@ export function injectComposerInfo(document: Document): () => void {
     document.removeEventListener("keydown", onKey);
     document.removeEventListener("click", onDismiss);
     document.removeEventListener("pointerdown", onOutside);
-    view.removeEventListener("resize", schedule);
+    view.removeEventListener("resize", onResize);
     for (const state of states.values()) state.cleanup();
     states.clear();
     style.remove();

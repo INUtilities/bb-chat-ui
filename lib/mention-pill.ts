@@ -229,16 +229,30 @@ export function injectMentionPills(doc: Document): () => void {
   doc.head.append(style);
   const labels = new Map<HTMLElement, { original: string; display: string }>();
   const titles = new Map<HTMLElement, string>();
-  const compactWrappers = new Set<HTMLElement>();
-
+  const compactWrappers = new Map<HTMLElement, Set<HTMLElement>>();
+  const pillWrappers = new WeakMap<HTMLElement, HTMLElement>();
+  const quotePills = new WeakSet<HTMLElement>();
+  const dirty = new Set<HTMLElement>();
+  const dirtyWrappers = new Set<HTMLElement>();
+  const collect = (node: Element) => {
+    if (node instanceof HTMLElement && node.matches(".prompt-mention-pill")) dirty.add(node);
+    for (const pill of Array.from(node.querySelectorAll<HTMLElement>(".prompt-mention-pill"))) dirty.add(pill);
+  };
   const paint = () => {
-    const wrappers = new Map<HTMLElement, boolean>();
-    for (const pill of Array.from(doc.querySelectorAll<HTMLElement>(PILL))) {
+    for (const pill of dirty) {
+      const previous = pillWrappers.get(pill);
+      if (previous) { compactWrappers.get(previous)?.delete(pill); dirtyWrappers.add(previous); pillWrappers.delete(pill); }
+      if (!pill.isConnected || !pill.matches(PILL)) continue;
       const wrapper = pill.closest<HTMLElement>("[data-promptbox-compact-content]");
       if (!pill.hasAttribute(MARK)) pill.setAttribute(MARK, "");
       const resource = readResource(pill);
-      if (wrapper) wrappers.set(wrapper, (wrappers.get(wrapper) ?? false) ||
-        (resource?.kind === "plugin" && resource.itemId?.startsWith("quote:") === true));
+      if (resource?.kind === "plugin" && resource.itemId?.startsWith("quote:")) quotePills.add(pill);
+      else quotePills.delete(pill);
+      if (wrapper) {
+        let members = compactWrappers.get(wrapper);
+        if (!members) compactWrappers.set(wrapper, members = new Set());
+        members.add(pill); pillWrappers.set(pill, wrapper); dirtyWrappers.add(wrapper);
+      }
       const hash = commitHash(resource);
       const wide = hash !== null || resource?.icon === "FileDiff" ||
         (resource?.kind === "path" && /:\d+(?:[-–]\d+)?$/.test(resource.label ?? ""));
@@ -265,36 +279,52 @@ export function injectMentionPills(doc: Document): () => void {
         pill.append(remove);
       }
     }
-    for (const wrapper of compactWrappers) if (!wrappers.has(wrapper)) { wrapper.removeAttribute(HAS_MENTION); wrapper.removeAttribute(HAS_QUOTE); }
-    compactWrappers.clear();
-    for (const [wrapper, quote] of wrappers) {
-      compactWrappers.add(wrapper);
-      if (!wrapper.hasAttribute(HAS_MENTION)) wrapper.setAttribute(HAS_MENTION, "");
+    dirty.clear();
+    for (const wrapper of dirtyWrappers) {
+      const members = compactWrappers.get(wrapper);
+      const hasMention = !!members?.size && wrapper.isConnected && wrapper.hasAttribute("data-promptbox-compact-content");
+      const quote = hasMention && [...members!].some(pill => quotePills.has(pill));
+      if (wrapper.hasAttribute(HAS_MENTION) !== hasMention) wrapper.toggleAttribute(HAS_MENTION, hasMention);
       if (wrapper.hasAttribute(HAS_QUOTE) !== quote) wrapper.toggleAttribute(HAS_QUOTE, quote);
+      if (!hasMention) compactWrappers.delete(wrapper);
     }
+    dirtyWrappers.clear();
     for (const label of labels.keys()) if (!label.isConnected) labels.delete(label);
     for (const pill of titles.keys()) if (!pill.isConnected) titles.delete(pill);
   };
 
   const observer = new MutationObserver((mutations) => {
-    const relevant = mutations.some((mutation) => {
-      const target = mutation.target instanceof Element
-        ? mutation.target : mutation.target.parentElement;
-      if (target?.closest(".prompt-mention-pill")) return true;
+    const subtrees = new Set<Element>();
+    for (const mutation of mutations) {
+      const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+      if (!target) continue;
       if (mutation.type === "attributes") {
-        if (mutation.attributeName === "data-promptbox-compact-content") return true;
-        return target?.matches('.ProseMirror, [data-promptbox-editor-scroll]') ?? false;
+        if (mutation.attributeName === RESOURCE) {
+          const pill = target.closest<HTMLElement>(".prompt-mention-pill");
+          if (pill) dirty.add(pill);
+        } else if (target.matches('.ProseMirror, [data-promptbox-editor-scroll]') || mutation.attributeName === "data-promptbox-compact-content") {
+          subtrees.add(target);
+          if (target instanceof HTMLElement) dirtyWrappers.add(target);
+        }
+        continue;
       }
-      return Array.from(mutation.addedNodes).some((node) =>
-        node instanceof Element &&
-        (node.matches(PILL) || node.querySelector(PILL) !== null),
-      ) || (compactWrappers.size > 0 && Array.from(mutation.removedNodes).some((node) =>
-        node instanceof Element &&
-        (node.matches(".prompt-mention-pill") || node.querySelector(".prompt-mention-pill") !== null),
-      ));
-    });
+      const pill = target.closest<HTMLElement>(".prompt-mention-pill");
+      // Appending our delete button is already complete; native removals still resync it.
+      const ownAddition = mutation.addedNodes.length > 0 && !mutation.removedNodes.length &&
+        Array.from(mutation.addedNodes).every(node => node instanceof Element && node.hasAttribute(REMOVE));
+      if (pill && !ownAddition) dirty.add(pill);
+      const added = new Set(Array.from(mutation.addedNodes).filter((node): node is Element => node instanceof Element));
+      if (added.size > 1 && Array.from(target.children).every(node => added.has(node))) subtrees.add(target);
+      else for (const node of added) if (!node.hasAttribute(REMOVE)) subtrees.add(node);
+      if (compactWrappers.size) for (const node of Array.from(mutation.removedNodes)) if (node instanceof Element && !node.hasAttribute(REMOVE)) subtrees.add(node);
+    }
+    for (const subtree of subtrees) {
+      let parent = subtree.parentElement;
+      while (parent && !subtrees.has(parent)) parent = parent.parentElement;
+      if (!parent) collect(subtree);
+    }
     // No layout is read here. Decorate before the browser paints the new pill.
-    if (relevant) paint();
+    if (dirty.size || dirtyWrappers.size) paint();
   });
   observer.observe(doc.body, {
     childList: true, subtree: true, characterData: true, attributes: true,
@@ -327,6 +357,7 @@ export function injectMentionPills(doc: Document): () => void {
   doc.addEventListener("mousedown", onPointerDown, true);
   doc.addEventListener("click", onClick, true);
   doc.addEventListener("keydown", onKeyDown, true);
+  collect(doc.body);
   paint();
 
   return () => {
@@ -340,7 +371,7 @@ export function injectMentionPills(doc: Document): () => void {
       pill.removeAttribute(MARK);
       pill.removeAttribute(WIDE);
     }
-    for (const wrapper of compactWrappers) { wrapper.removeAttribute(HAS_MENTION); wrapper.removeAttribute(HAS_QUOTE); }
+    for (const wrapper of compactWrappers.keys()) { wrapper.removeAttribute(HAS_MENTION); wrapper.removeAttribute(HAS_QUOTE); }
     compactWrappers.clear();
     for (const [label, original] of labels) {
       if (label.textContent === original.display) label.textContent = original.original;
