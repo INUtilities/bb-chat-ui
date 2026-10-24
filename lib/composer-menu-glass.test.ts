@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
+import { resolvedStyle } from "./test-style.ts";
 import { COMPOSER_MENU_GLASS_STYLE_ID, injectComposerMenuGlass } from "./composer-menu-glass.ts";
 import { cardStyle } from "./info-card.ts";
 
@@ -11,7 +12,7 @@ test("the shared row radius can be reused without replacing native menu row geom
     assert.match(cardStyle.rowRadius, /border-radius:10px/);
     const item = f.document.querySelector('[role="menuitem"]')!;
     assert.equal(declaration(f.document, item, 'border-radius'), '10px');
-    const s = f.dom.window.getComputedStyle(item);
+    const s = resolvedStyle(item);
     assert.equal(s.padding, '6px 12px'); assert.equal(s.minHeight, '36px');
   } finally { stop(); f.restore(); }
 });
@@ -22,7 +23,7 @@ test("composer menus share the card border reset while retaining their shallower
   const stop = injectComposerMenuGlass(f.document);
   try {
     const card = f.document.getElementById('radix-_r_2m_')!;
-    assert.equal(f.dom.window.getComputedStyle(card).borderTopWidth, '0px');
+    assert.equal(resolvedStyle(card).borderTopWidth, '0px');
     assert.equal(declaration(f.document, card, 'border-radius'), '18px');
     assert.equal(declaration(f.document, card, 'backdrop-filter'), 'blur(14px) saturate(1.25)');
     assert.match(declaration(f.document, card, 'box-shadow'), /^0 6px 18px -12px/);
@@ -332,7 +333,7 @@ test("unrelated search dialogs and non-composer dialog triggers are not styled",
   try {
     for (const card of f.document.querySelectorAll('[role="dialog"]')) {
       assert.equal(card.hasAttribute(MARKER), false);
-      assert.notEqual(f.dom.window.getComputedStyle(card).borderRadius, "18px", "unlinked lookalikes keep their native styling");
+      assert.notEqual(resolvedStyle(card).borderRadius, "18px", "unlinked lookalikes keep their native styling");
     }
   } finally { stop(); f.restore(); }
 });

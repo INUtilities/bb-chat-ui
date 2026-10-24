@@ -1,6 +1,7 @@
 import test, { beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
+import { resolvedStyle } from "./test-style.ts";
 import { injectComposerInfo, fitComposerInfo, composerInfoCss, scrollOverflowEdges } from "./composer-info.ts";
 import { infoKinds } from "./composer-info-settings.ts";
 import { queuedMessagesCss } from "./queued-messages.ts";
@@ -18,9 +19,9 @@ test("Machine Retry fixture uses the common text action and restores its native 
   const stop = injectComposerInfo(f.document);
   try {
     f.click('[data-bb-chat-ui-info-trigger="machine"]'); await f.tick();
-    const s = f.dom.window.getComputedStyle(retry);
-    assert.equal(s.height, '28px'); assert.equal(s.borderRadius, '999px');
-    assert.equal(s.fontSize, '13px'); assert.equal(s.lineHeight, '16px');
+    const s = resolvedStyle(retry);
+    assert.equal(s.height, "24px"); assert.equal(s.borderRadius, '999px');
+    assert.equal(s.fontSize, '12px'); assert.equal(s.lineHeight, '16px');
     assert.equal(retry.parentElement, parent); retry.click(); assert.equal(calls, 1);
     assert.equal(machine.querySelector('button[aria-expanded="false"]:not(#machine-status-toggle)')!.hasAttribute('data-bb-chat-ui-card-button'), false);
     machine.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')!.click();
@@ -66,22 +67,24 @@ function fixture() {
 }
 
 test("native and SDK Goal and user message prose use the smallest card size below list names and titles", async () => {
+  for(const phone of [false,true]) {
   const f=fixture(),goal=f.document.querySelector('section[aria-label="Goal"]')!;
+  f.document.documentElement.setAttribute('data-bb-chat-ui-root-device',phone?'phone':'desktop');
   goal.innerHTML='<div aria-label="Goal controls"><button id="thread-goal-card-toggle" aria-expanded="false" aria-controls="thread-goal-card-body">Goal</button><button aria-label="Clear active Goal">Clear</button></div><section id="thread-goal-card-body" hidden><div><div><p class="text-xs leading-relaxed">Native goal objective</p><div class="flex text-xs text-muted-foreground"><span>100 tokens</span><span>10s</span></div></div></div></section>';
   const toggle=goal.querySelector('button[aria-controls]')!;
   toggle.addEventListener('click',()=>{goal.querySelector<HTMLElement>('#thread-goal-card-body')!.hidden=toggle.getAttribute('aria-expanded')==='true';toggle.setAttribute('aria-expanded',String(toggle.getAttribute('aria-expanded')!=='true'));});
   const host=f.document.createElement('style');
   host.textContent='.text-xs { font-size:12px; line-height:16px; } .leading-relaxed { line-height:1.625; } code, textarea { font-size:14px; line-height:20px; }';
   f.document.head.append(host);
-  const stop=injectComposerInfo(f.document),style=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const stop=injectComposerInfo(f.document),style=(node:Element)=>resolvedStyle(node);
   try {
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
     const objective=goal.querySelector('p')!,meta=goal.querySelector('.text-muted-foreground')!;
     assert.equal(style(objective).fontSize,'12px');
     assert.equal(style(objective).lineHeight,'16px','native leading-relaxed must not enlarge the main body line');
-    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,'14px');
-    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-button-label]')!).fontSize,'13px','actions keep the normal tier');
-    assert.equal(style(meta).fontSize,'12px','native Goal usage is secondary information');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,phone?'14px':'12px');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-button-label]')!).fontSize,phone?'13px':'12px','actions keep the normal tier');
+    assert.equal(style(meta).fontSize,phone?'12px':'11px','native Goal usage is secondary information');
     assert.equal(style(meta).lineHeight,'16px');
     objective.outerHTML='<p class="text-xs leading-relaxed">Rerendered objective <code>code</code></p><textarea>draft</textarea>';
     await f.tick();
@@ -101,9 +104,9 @@ test("native and SDK Goal and user message prose use the smallest card size belo
       const paragraphs=sdk.querySelectorAll('p');
       assert.equal(style(paragraphs[0]).fontSize,'12px',`${kind}: long content uses the smallest tier`);
       assert.equal(style(paragraphs[0]).lineHeight,'16px');
-      assert.equal(style(paragraphs[1]).fontSize,'12px',`${kind}: SDK status uses the same secondary size`);
+      assert.equal(style(paragraphs[1]).fontSize,phone?'12px':'11px',`${kind}: SDK status uses the same secondary size`);
       assert.equal(style(paragraphs[1]).lineHeight,'16px');
-      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,'14px');
+      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,phone?'14px':'12px');
       f.click(`[aria-label="${kind==='goal'?'Goal':'대기 메시지'} 닫기"]`);sdk.remove();
     }
   } finally {stop();}
@@ -111,6 +114,7 @@ test("native and SDK Goal and user message prose use the smallest card size belo
   assert.equal(style(goal.querySelector('p')!).lineHeight,'1.625','unload restores native paragraph typography');
   assert.equal(style(goal.querySelector('.text-muted-foreground')!).fontSize,'12px');
   f.dom.window.close();
+  }
 });
 
 test("Workflow and background metadata keep one secondary size across host device utilities", () => {
@@ -127,9 +131,10 @@ test("Workflow and background metadata keep one secondary size across host devic
       <section data-bb-chat-ui-info-unit data-bb-chat-ui-info-open="background" aria-label="Background activity"><div id="thread-background-commands-card-body"><div><div class="flex flex-col"><div class="px-3"><span data-main>Background task</span><span class="tabular-nums" data-meta>26m</span></div></div></div></div></section>
     </div></div>`);
     try{
+      dom.window.document.documentElement.setAttribute('data-bb-chat-ui-root-device',phone?'phone':'desktop');
       for(const node of dom.window.document.querySelectorAll('[data-main],[data-meta]')){
-        const s=dom.window.getComputedStyle(node),meta=node.hasAttribute('data-meta');
-        assert.equal(s.fontSize,meta?'12px':'13px',`${phone?'phone':'desktop'}: ${node.textContent}`);
+        const s=resolvedStyle(node),meta=node.hasAttribute('data-meta');
+        assert.equal(s.fontSize,meta?(phone?'12px':'11px'):(phone?'13px':'12px'),`${phone?'phone':'desktop'}: ${node.textContent}`);
         assert.equal(s.lineHeight,'16px',`${node.textContent}: one line-height for both roles`);
       }
     } finally {dom.window.close();}
@@ -137,15 +142,18 @@ test("Workflow and background metadata keep one secondary size across host devic
 });
 
 test("Diff file paths and commit subjects share the secondary size while retaining the code font", () => {
+  for(const phone of [false,true]) {
   const dom=new JSDOM(`<style>${composerInfoCss}</style><div data-bb-chat-ui-info-diff-file><code>lib/example.ts</code><span>+12</span></div><div data-bb-chat-ui-info-diff-commit><code>Commit subject</code></div>`);
+  dom.window.document.documentElement.setAttribute('data-bb-chat-ui-root-device',phone?'phone':'desktop');
   for(const text of dom.window.document.querySelectorAll('code')){
-    const s=dom.window.getComputedStyle(text);
-    assert.equal(s.fontSize,'12px');
+    const s=resolvedStyle(text);
+    assert.equal(s.fontSize,phone?'12px':'11px');
     assert.equal(s.lineHeight,'16px');
     assert.match(s.fontFamily,/mono/,'code labels retain their code font');
   }
-  assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('span')!).fontSize,'12px');
+  assert.equal(resolvedStyle(dom.window.document.querySelector('span')!).fontSize,phone?'12px':'11px');
   dom.window.close();
+  }
 });
 
 test("PR Merge opens the native method menu without merging; only an option executes", async () => {
@@ -212,7 +220,7 @@ test("PR method menus stay above the popover and the header reserves its close-b
     caret.setAttribute('aria-expanded','true');await f.tick();
     assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),true);
     assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),true);
-    assert.equal(f.dom.window.getComputedStyle(context.firstElementChild!).paddingRight,'40px','8px inset + 24px close + 8px gap');
+    assert.equal(resolvedStyle(context.firstElementChild!).paddingRight,"32px",'8px inset + 24px close + 8px gap');
   } finally {stop();}
   assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),false);
   assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),false);
@@ -227,7 +235,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
   const stop=injectComposerInfo(f.document);
   try {
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
-    const style=(node:Element)=>f.dom.window.getComputedStyle(node);
+    const style=(node:Element)=>resolvedStyle(node);
     const link=context.querySelector('a')!,group=context.querySelector('.inline-flex')!;
     assert.equal(style(group.parentElement!).marginLeft,'auto','Merge stays at the close end while the PR detail link follows its title');
     assert.ok(link.hasAttribute('data-bb-chat-ui-card-navigation'),'the original PR link owns the full-card target');
@@ -241,7 +249,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
     assert.equal(style(group).borderTopWidth,'0px','Merge has no outer outline');
     assert.equal(style(group).borderRadius,'0px');
     assert.equal(style(group).padding,'0px 22px 0px 0px','only the 14px caret and 8px text gap reserve space');
-    assert.equal(style(group).height,'28px','the shared text action height');
+    assert.equal(style(group).height,"24px",'the shared text action height');
     assert.equal(style(group).backgroundColor,'rgba(0, 0, 0, 0)','no second frost inside the card');
     assert.equal(style(group).getPropertyValue('backdrop-filter'),'none');
     assert.equal(style(group).position,'relative');
@@ -252,7 +260,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
       assert.equal(style(button).borderRadius,'0px');
     }
     const [label,trigger]=Array.from(group.querySelectorAll('button'));
-    assert.equal(style(label).fontSize,'13px','Merge shares the common text action size');
+    assert.equal(style(label).fontSize,'12px','Merge shares the common text action size');
     assert.equal(style(label).lineHeight,'16px');
     assert.equal(style(label).pointerEvents,'none');
     assert.equal(style(label).height,'20px');
@@ -261,8 +269,8 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
     assert.equal(style(trigger).height,'100%');
     assert.equal(style(trigger).padding,'0px');
     assert.equal(context.getAttribute('data-bb-chat-ui-card-layout'),'single-row');
-    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).height,'40px');
-    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).paddingLeft,'16px','the leading content matches the close glyph inset');
+    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).height,"36px");
+    assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).paddingLeft,"12px",'the leading content matches the close glyph inset');
     assert.equal(style(context.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom,'0px','a PR header without a body has no trailing body gap');
     const close=context.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(close.hasAttribute('data-bb-chat-ui-card-close'));
@@ -285,7 +293,7 @@ test("the SDK PR fallback uses the same single row without a family title or fam
     assert.equal(card.querySelector('[data-bb-chat-ui-info-title-icon]'),null);
     assert.equal(card.querySelector('[data-bb-chat-ui-info-pr-title]')?.textContent,'SDK PR title');
     assert.equal(link.nextElementSibling,card.querySelector('[data-bb-chat-ui-info-pr-title]'),'the original SDK link leads the generated title');
-    assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).height,'40px');
+    assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).height,"36px");
     assert.ok(link.hasAttribute('data-bb-chat-ui-card-navigation'));
     f.click('[data-bb-chat-ui-card-close]');await f.tick();
     assert.equal(card.hasAttribute('data-bb-chat-ui-card-layout'),false);
@@ -337,16 +345,16 @@ test("PR header shows the SDK title on one line and keeps a separate GitHub link
     const link=context.querySelector<HTMLAnchorElement>('a[aria-label^="Pull request "]')!;
     assert.equal(title?.textContent,'긴 Pull request 제목으로 좁은 화면에서 말줄임을 확인');
     assert.equal(title?.getAttribute('title'),title?.textContent);
-    assert.equal(f.dom.window.getComputedStyle(title!).textOverflow,'ellipsis');
-    assert.equal(f.dom.window.getComputedStyle(title!).whiteSpace,'nowrap');
+    assert.equal(resolvedStyle(title!).textOverflow,'ellipsis');
+    assert.equal(resolvedStyle(title!).whiteSpace,'nowrap');
     assert.equal(link.href,'https://github.com/example/repo/pull/42');
     assert.equal(link.getAttribute('title'),'GitHub에서 PR 열기');
     assert.equal(link.nextElementSibling,title,'the GitHub link is before the PR title');
     const iconRule=[...f.document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).find(rule=>'selectorText' in rule && rule.selectorText.endsWith('a[aria-label^="Pull request "]::after')) as CSSStyleRule;
     assert.equal(iconRule.style.content,'""');
-    assert.equal(iconRule.style.width,'14px');
+    assert.equal(iconRule.style.width,"12px");
     assert.match(iconRule.style.getPropertyValue('mask'),/data:image\/svg\+xml/);
-    assert.equal(f.dom.window.getComputedStyle(link).fontSize,'0px');
+    assert.equal(resolvedStyle(link).fontSize,'0px');
     source.setAttribute('data-bb-chat-ui-info-pr-title','갱신된 PR 제목');await f.tick();
     assert.equal(title?.textContent,'갱신된 PR 제목');
   } finally {stop();}
@@ -398,12 +406,12 @@ test("the catalog hover gutter never pulls a detail body left of its heading", a
   try {
     f.click('[data-bb-chat-ui-info-trigger="diff"]'); await f.tick();
     const detail = f.document.querySelector('[data-bb-chat-ui-info-diff-content]')!;
-    const bodyStyle = f.dom.window.getComputedStyle(detail);
+    const bodyStyle = resolvedStyle(detail);
     assert.equal(parseFloat(bodyStyle.marginLeft) || 0, 0, "Diff shares the card's title gutter");
     assert.equal(parseFloat(bodyStyle.marginRight) || 0, 0);
     f.click('[data-bb-chat-ui-info-all]'); await f.tick();
     const choice = f.document.querySelector('[data-bb-chat-ui-info-choice]')!;
-    assert.equal(f.dom.window.getComputedStyle(choice.parentElement!).marginLeft, "-8px", "only the catalog extends its hover paint");
+    assert.equal(resolvedStyle(choice.parentElement!).marginLeft, "-6px", "only the catalog extends its hover paint");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -420,11 +428,11 @@ test("native child titles and rows use the shared card typography and gutter", a
   try {
     f.click('[data-bb-chat-ui-info-trigger="children"]'); await f.tick();
     assert.ok(label.hasAttribute('data-bb-chat-ui-card-title'));
-    assert.equal(f.dom.window.getComputedStyle(label).fontWeight, '600');
-    assert.equal(f.dom.window.getComputedStyle(label).flexGrow, '0');
+    assert.equal(resolvedStyle(label).fontWeight, '600');
+    assert.equal(resolvedStyle(label).flexGrow, '0');
     const row = card.querySelector('li > a')!;
-    assert.equal(f.dom.window.getComputedStyle(row).padding, '8px');
-    assert.equal(f.dom.window.getComputedStyle(row).borderRadius, '10px');
+    assert.equal(resolvedStyle(row).padding, "6px");
+    assert.equal(resolvedStyle(row).borderRadius, "8px");
     assert.equal(label.parentElement, parent, 'native title nodes keep their parent');
   } finally { stop(); }
   assert.equal(label.hasAttribute('data-bb-chat-ui-card-title'), false, 'unload restores the native title');
@@ -439,10 +447,10 @@ test("todo rows extend their hover gutter once while the list keeps the title ed
   try {
     f.click('[data-bb-chat-ui-info-trigger="todos"]'); await f.tick();
     const list = body.querySelector('ul')!;
-    assert.equal(parseFloat(f.dom.window.getComputedStyle(list).marginLeft) || 0, 0);
+    assert.equal(parseFloat(resolvedStyle(list).marginLeft) || 0, 0);
     const row = list.querySelector('li')!;
-    assert.equal(f.dom.window.getComputedStyle(row).marginLeft, '-8px');
-    assert.equal(f.dom.window.getComputedStyle(row).paddingLeft, '8px');
+    assert.equal(resolvedStyle(row).marginLeft, "-6px");
+    assert.equal(resolvedStyle(row).paddingLeft, "6px");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -455,7 +463,7 @@ test("long todo paths wrap within the card", async () => {
   const stop = injectComposerInfo(f.document);
   try {
     f.click('[data-bb-chat-ui-info-trigger="todos"]'); await f.tick();
-    const style = f.dom.window.getComputedStyle(row);
+    const style = resolvedStyle(row);
     assert.equal(style.overflowWrap, 'anywhere', 'unbroken paths can wrap before crossing the card edge');
     assert.equal(style.minWidth, '0px');
   } finally { stop(); f.dom.window.close(); }
@@ -480,8 +488,8 @@ test("long information paragraphs wrap without changing code blocks", async () =
   try {
     for (const [kind, card] of cards) {
       f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`); await f.tick();
-      assert.equal(f.dom.window.getComputedStyle(card.querySelector('p')!).overflowWrap, 'anywhere', `${kind}: body paragraphs can wrap unbroken strings`);
-      assert.equal(f.dom.window.getComputedStyle(card.querySelector('pre')!).overflowWrap, 'normal', `${kind}: code blocks retain their own formatting`);
+      assert.equal(resolvedStyle(card.querySelector('p')!).overflowWrap, 'anywhere', `${kind}: body paragraphs can wrap unbroken strings`);
+      assert.equal(resolvedStyle(card.querySelector('pre')!).overflowWrap, 'normal', `${kind}: code blocks retain their own formatting`);
     }
   } finally { stop(); f.dom.window.close(); }
 });
@@ -496,7 +504,7 @@ test("native child lists scroll at the shared card cap without clipping row gutt
   const stop = injectComposerInfo(f.document);
   try {
     f.click('[data-bb-chat-ui-info-trigger="children"]'); await f.tick();
-    const style = (node: Element) => f.dom.window.getComputedStyle(node);
+    const style = (node: Element) => resolvedStyle(node);
     assert.equal(style(card.querySelector('ul')!).maxHeight, 'none');
     assert.equal(style(card.querySelector('ul')!).overflow, 'visible');
     for (const reveal of card.querySelectorAll('.native-child-reveal')) {
@@ -504,7 +512,7 @@ test("native child lists scroll at the shared card cap without clipping row gutt
       assert.equal(style(reveal).minWidth, '0px');
     }
   } finally { stop(); }
-  assert.equal(f.dom.window.getComputedStyle(card.querySelector('ul')!).maxHeight, '160px', 'unload restores the native limit');
+  assert.equal(resolvedStyle(card.querySelector('ul')!).maxHeight, '160px', 'unload restores the native limit');
   f.dom.window.close();
 });
 
@@ -534,11 +542,11 @@ test("native body adapters remove duplicate vertical insets and keep the common 
     try {
       f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`); await f.tick();
       for (const body of card.querySelectorAll('[data-inset]')) {
-        const style = f.dom.window.getComputedStyle(body);
+        const style = resolvedStyle(body);
         assert.equal(style.paddingTop, '0px', `${kind}: the card owns the top inset`);
         assert.equal(style.paddingBottom, '0px', `${kind}: the card owns the bottom inset`);
       }
-      if (kind === 'queue') assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom, '8px');
+      if (kind === 'queue') assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom, "6px");
     } finally { stop(); f.dom.window.close(); }
   }
 });
@@ -550,8 +558,8 @@ test("a touch-sized Goal action keeps the shared title and close on the 28px lin
   try {
     f.click('[data-bb-chat-ui-info-trigger="goal"]'); await f.tick();
     const card=f.document.querySelector('section[aria-label="Goal"]')!;
-    assert.equal(f.dom.window.getComputedStyle(card).gridTemplateRows,'28px auto');
-    assert.equal(f.dom.window.getComputedStyle(card.querySelector('[aria-label="Clear active Goal"]')!).height,'32px');
+    assert.equal(resolvedStyle(card).gridTemplateRows,"24px auto");
+    assert.equal(resolvedStyle(card.querySelector('[aria-label="Clear active Goal"]')!).height,'24px');
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -565,7 +573,7 @@ test("the native PR merge group uses the shared 32px touch action", async () => 
   const stop=injectComposerInfo(f.document);
   try{
     f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
-    assert.equal(f.dom.window.getComputedStyle(group).height,'32px');
+    assert.equal(resolvedStyle(group).height,"24px");
     assert.equal(group.parentElement,parent);
   }finally{stop();f.dom.window.close();}
 });
@@ -756,19 +764,19 @@ test("fresh native cards stay hidden before the next frame without hiding reques
     const goal = previous.cloneNode(true) as HTMLElement;
     goal.removeAttribute('data-bb-chat-ui-info-unit'); goal.removeAttribute('data-bb-chat-ui-info-open');
     previous.replaceWith(goal);
-    assert.equal(f.dom.window.getComputedStyle(goal).display, 'none', 'replacement cannot paint a native card before marking');
+    assert.equal(resolvedStyle(goal).display, 'none', 'replacement cannot paint a native card before marking');
     const plugin = f.document.createElement('div'); plugin.textContent = 'new plugin notice'; stack.append(plugin);
-    assert.equal(f.dom.window.getComputedStyle(plugin).display, 'none', 'new unknown banner also waits for classification');
+    assert.equal(resolvedStyle(plugin).display, 'none', 'new unknown banner also waits for classification');
     const request = f.document.createElement('section'); request.innerHTML = '<div data-testid="user-question-banner">Question<button>Answer</button></div>';
     stack.append(request);
     // Marker updates run at the mutation checkpoint, before paint and without
     // waiting for the animation frame that classifies ordinary cards.
     await Promise.resolve(); await Promise.resolve();
-    assert.notEqual(f.dom.window.getComputedStyle(request).display, 'none', 'request wrapper stays visible immediately');
-    assert.notEqual(f.dom.window.getComputedStyle(request.firstElementChild!).display, 'none');
+    assert.notEqual(resolvedStyle(request).display, 'none', 'request wrapper stays visible immediately');
+    assert.notEqual(resolvedStyle(request.firstElementChild!).display, 'none');
     request.remove(); await f.tick();
     f.click('[data-bb-chat-ui-info-trigger="goal"]');
-    assert.notEqual(f.dom.window.getComputedStyle(goal).display, 'none', 'selected detail still opens');
+    assert.notEqual(resolvedStyle(goal).display, 'none', 'selected detail still opens');
     const shell = f.document.querySelector('[data-promptbox-shell]')!.cloneNode(true) as HTMLElement;
     for (const node of [shell, ...shell.querySelectorAll('*')]) {
       node.removeAttribute('data-bb-chat-ui-info-stack'); node.removeAttribute('data-bb-chat-ui-info-wrap');
@@ -777,11 +785,11 @@ test("fresh native cards stay hidden before the next frame without hiding reques
     shell.querySelector('[data-bb-chat-ui-info-bar]')!.remove(); f.document.body.append(shell);
     await Promise.resolve(); await Promise.resolve();
     const freshGoal = shell.querySelector('section[aria-label="Goal"]')!;
-    assert.equal(f.dom.window.getComputedStyle(freshGoal).display, 'none', 'a new composer with a bridge is guarded before mounting');
+    assert.equal(resolvedStyle(freshGoal).display, 'none', 'a new composer with a bridge is guarded before mounting');
     shell.remove();
     stop();
-    assert.notEqual(f.dom.window.getComputedStyle(goal).display, 'none', 'unload restores native rendering');
-    assert.notEqual(f.dom.window.getComputedStyle(plugin).display, 'none');
+    assert.notEqual(resolvedStyle(goal).display, 'none', 'unload restores native rendering');
+    assert.notEqual(resolvedStyle(plugin).display, 'none');
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -796,18 +804,18 @@ test("a settings bridge gap suspends the row without restoring native cards or s
     const bar = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-bar]')!;
     const goal = stack.querySelector('section[aria-label="Goal"]')!;
     f.click('[data-bb-chat-ui-info-trigger="goal"]'); source.remove();
-    assert.equal(f.dom.window.getComputedStyle(bar).visibility, 'hidden', 'stale controls disappear before the next frame');
-    assert.equal(f.dom.window.getComputedStyle(goal).display, 'none', 'even an open detail hides immediately');
+    assert.equal(resolvedStyle(bar).visibility, 'hidden', 'stale controls disappear before the next frame');
+    assert.equal(resolvedStyle(goal).display, 'none', 'even an open detail hides immediately');
     await f.tick(); await f.tick();
     assert.equal(stack.querySelector('[data-bb-chat-ui-info-bar]'), bar, 'brief bridge gaps keep the managed row');
     assert.equal(bar.inert, true); assert.equal(bar.getAttribute('aria-hidden'), 'true');
     assert.equal(goal.hasAttribute('data-bb-chat-ui-info-open'), false);
-    assert.equal(f.dom.window.getComputedStyle(goal).display, 'none');
+    assert.equal(resolvedStyle(goal).display, 'none');
     assert.equal(f.document.querySelector('textarea')!.value, 'keep draft');
     const request = f.document.createElement('section'); request.setAttribute('data-testid', 'approval-banner');
     request.innerHTML = '<button>Approve</button>'; stack.append(request); await f.tick();
-    assert.notEqual(f.dom.window.getComputedStyle(request).display, 'none', 'a request remains usable during a bridge gap');
-    assert.equal(f.dom.window.getComputedStyle(f.document.querySelector('[data-follow-up-composer-anchor]')!).display, 'none', 'request priority still hides the editor');
+    assert.notEqual(resolvedStyle(request).display, 'none', 'a request remains usable during a bridge gap');
+    assert.equal(resolvedStyle(f.document.querySelector('[data-follow-up-composer-anchor]')!).display, 'none', 'request priority still hides the editor');
     request.remove(); await f.tick();
     parent.append(source); await f.tick();
     assert.equal(bar.inert, false, 'same-thread bridge restoration also resumes the row');
@@ -816,11 +824,11 @@ test("a settings bridge gap suspends the row without restoring native cards or s
     parent.append(source); await f.tick();
     assert.equal(stack.querySelector('[data-bb-chat-ui-info-bar]'), bar);
     assert.equal(bar.inert, false); assert.equal(bar.hasAttribute('aria-hidden'), false);
-    assert.notEqual(f.dom.window.getComputedStyle(bar).visibility, 'hidden');
+    assert.notEqual(resolvedStyle(bar).visibility, 'hidden');
     f.click('[data-bb-chat-ui-info-trigger="goal"]');
-    assert.notEqual(f.dom.window.getComputedStyle(goal).display, 'none');
+    assert.notEqual(resolvedStyle(goal).display, 'none');
     source.remove(); await f.tick(); stop();
-    assert.notEqual(f.dom.window.getComputedStyle(goal).display, 'none', 'unload during a gap restores the host');
+    assert.notEqual(resolvedStyle(goal).display, 'none', 'unload during a gap restores the host');
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -846,7 +854,7 @@ test("every empty detail has its family icon before the title while the full cat
       assert.ok(heading.firstElementChild?.matches(`[data-bb-chat-ui-info-title-icon="${kind.key}"]`), kind.key);
       assert.ok(heading.firstElementChild?.querySelector(`[data-family="${kind.key}"]`));
       assert.equal(heading.firstElementChild?.getAttribute('aria-hidden'), 'true');
-      const css = f.dom.window.getComputedStyle(heading.firstElementChild!);
+      const css = resolvedStyle(heading.firstElementChild!);
       assert.equal(css.width, '14px'); assert.equal(css.height, '14px');
       f.click('[data-bb-chat-ui-info-close]');
     }
@@ -880,7 +888,7 @@ test("native and custom card titles use one family icon without changing native 
       assert.ok(heading.firstElementChild?.matches(`[data-bb-chat-ui-info-title-icon="${key}"]`), key);
       assert.equal(heading.querySelectorAll('[data-bb-chat-ui-info-title-icon]').length, 1);
       if (key === 'goal') {
-        assert.equal(f.dom.window.getComputedStyle(nativeParent!).display, 'none');
+        assert.equal(resolvedStyle(nativeParent!).display, 'none');
         assert.equal(nativeGoal.parentElement, nativeParent);
         assert.ok(clear.querySelector('[data-bb-chat-ui-info-goal-clear-label]'), 'Goal removal stays a separate named action');
         (clear as HTMLButtonElement).click(); assert.equal(cleared, 1);
@@ -889,7 +897,7 @@ test("native and custom card titles use one family icon without changing native 
   } finally { stop(); }
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-title-icon]'), null);
   assert.equal(f.document.querySelector('[data-bb-chat-ui-info-title-heading]'), null);
-  assert.notEqual(f.dom.window.getComputedStyle(nativeGoal).display, 'none');
+  assert.notEqual(resolvedStyle(nativeGoal).display, 'none');
   f.dom.window.close();
 });
 
@@ -900,7 +908,7 @@ test("SDK Goal reuses its shared heading and keeps the body below it without nat
   const stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
   stack.insertAdjacentHTML('beforeend','<div data-bb-chat-ui-info-supplements><section data-bb-chat-ui-info-kind="goal" aria-label="Goal"><h3 data-bb-chat-ui-card-head><span data-bb-chat-ui-card-icon><svg /></span><span data-bb-chat-ui-card-title>Goal</span></h3><div data-bb-chat-ui-card-body><p>A long SDK Goal objective that must use the card width.</p><p>complete · 1234 tokens · 90s</p></div></section></div>');
   const card=stack.querySelector('[data-bb-chat-ui-info-kind="goal"]')!,head=card.querySelector('h3')!,body=card.querySelector('[data-bb-chat-ui-card-body]')!;
-  const stop=injectComposerInfo(f.document),css=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const stop=injectComposerInfo(f.document),css=(node:Element)=>resolvedStyle(node);
   try {
     for(let pass=0;pass<2;pass++){
       f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
@@ -908,8 +916,8 @@ test("SDK Goal reuses its shared heading and keeps the body below it without nat
       assert.equal(card.querySelector('h3'),head,'reuse the React-owned heading');
       assert.equal(css(card).display,'block','SDK content must not fall into native Goal action columns');
       assert.equal(css(card).gridTemplateColumns,'none');
-      assert.equal(css(head).marginBottom,'8px','the common title/body gap remains');
-      assert.equal(css(head).paddingRight,'32px','the common close-button gutter remains');
+      assert.equal(css(head).marginBottom,"6px",'the common title/body gap remains');
+      assert.equal(css(head).paddingRight,"26px",'the common close-button gutter remains');
       assert.equal(body.previousElementSibling,head);
       assert.equal(body.parentElement,card);
       assert.equal(card.querySelectorAll('[data-bb-chat-ui-card-close]').length,1);
@@ -942,7 +950,7 @@ test("Goal keeps its native removal action beside the title and close without re
   clear.addEventListener('click',()=>removed++);
   toggle.addEventListener('click',()=>{const expanded=toggle.getAttribute('aria-expanded')!=='true';toggle.setAttribute('aria-expanded',String(expanded));body.hidden=!expanded;});
   const stop=injectComposerInfo(f.document);
-  const style=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const style=(node:Element)=>resolvedStyle(node);
   try {
     f.click('[data-bb-chat-ui-info-trigger="goal"]');
     const title=goal.querySelector('h3[data-bb-chat-ui-info-close-heading]')!;
@@ -963,8 +971,8 @@ test("Goal keeps its native removal action beside the title and close without re
     assert.equal(style(body).gridArea,'body');
     const dismiss=goal.querySelector('[aria-label="Goal 닫기"]')!;
     assert.equal(style(dismiss).position,'absolute','the shared close sits on the card');
-    assert.equal(style(dismiss).top,'18px','centered on the 28px head line');
-    assert.equal(style(clear).height,'28px','Goal 해제 is the shared text action');
+    assert.equal(style(dismiss).top,"14px",'centered on the 28px head line');
+    assert.equal(style(clear).height,"24px",'Goal 해제 is the shared text action');
     assert.equal(style(clear).borderTopWidth,'1px');
     assert.equal(style(goal).alignItems,'center');
     assert.equal(clear.textContent,'해제');
@@ -1002,15 +1010,15 @@ test("queue and list cards share the same horizontal content gutter as their hea
     for (const [key,rowSelector] of [['children','[data-bb-chat-ui-info-child-row]'],['annotations','li'],['queue','[data-queued-message-row]']]) {
       f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${key}"]`);
       const card=f.document.querySelector('[data-bb-chat-ui-info-open]')!;
-      const outer=f.dom.window.getComputedStyle(card);
-      const row=f.dom.window.getComputedStyle(card.querySelector(rowSelector)!);
+      const outer=resolvedStyle(card);
+      const row=resolvedStyle(card.querySelector(rowSelector)!);
       const inset=(value:string)=>parseFloat(value)||0;
       const scroll=card.querySelector('[data-queued-messages-scroll]');
       const frame=card.querySelector('[data-queued-messages-scroll-frame]');
-      const gutter=inset(outer.paddingLeft)+inset(row.marginLeft)+inset(row.paddingLeft)+(scroll?inset(f.dom.window.getComputedStyle(scroll).paddingLeft):0)+(frame?inset(f.dom.window.getComputedStyle(frame).marginLeft):0);
+      const gutter=inset(outer.paddingLeft)+inset(row.marginLeft)+inset(row.paddingLeft)+(scroll?inset(resolvedStyle(scroll).paddingLeft):0)+(frame?inset(resolvedStyle(frame).marginLeft):0);
       assert.equal(gutter,inset(outer.paddingLeft),`${key}: body starts at the same inset as its header`);
       assert.equal(outer.paddingLeft,outer.paddingRight,'left and right card gutters match');
-      if (key === 'queue') assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,'8px','queue uses the common title-to-body gap');
+      if (key === 'queue') assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,"6px",'queue uses the common title-to-body gap');
       gutters.push(gutter);
     }
     assert.equal(new Set(gutters).size,1,'the queue does not get an extra horizontal gutter');
@@ -1038,7 +1046,7 @@ test("native card layout padding does not add another indent inside managed popo
     stack.append(card);
   }
   const stop=injectComposerInfo(f.document);
-  const getStyle=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const getStyle=(node:Element)=>resolvedStyle(node);
   try {
     for (const kind of ['parent','plan','goal','todos','workflow','background','machine','status','fallback']) {
       f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);
@@ -1058,17 +1066,17 @@ test("native card layout padding does not add another indent inside managed popo
       }
       const heading=card.querySelector('[data-bb-chat-ui-info-close-heading]');
       if(heading) {
-        assert.equal(getStyle(heading).paddingRight,kind==='goal'?'0px':'32px','the close keeps either an empty grid column or the head gutter');
-        assert.equal(getStyle(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,'18px',`${kind}: one close position`);
+        assert.equal(getStyle(heading).paddingRight,kind==='goal'?'0px':'26px','the close keeps either an empty grid column or the head gutter');
+        assert.equal(getStyle(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,"14px",`${kind}: one close position`);
       }
       const nested=card.querySelector('.ml-4');
       if(nested) assert.equal(getStyle(nested).marginLeft,'16px','nested phase indentation remains');
       const action=card.querySelector('button.px-3:not([aria-controls])');
-      if(action) assert.equal(getStyle(action).paddingLeft,'12px','actual action button padding remains');
+      if(action) assert.equal(getStyle(action).paddingLeft,"12px",'actual action button padding remains');
     }
     stop();
     assert.equal(getStyle(context.querySelector('.p-1')!).paddingLeft,'4px','unload restores the native context inset');
-    assert.equal(getStyle(context.querySelector('.px-2')!).paddingLeft,'8px','unload restores the native segment inset');
+    assert.equal(getStyle(context.querySelector('.px-2')!).paddingLeft,"8px",'unload restores the native segment inset');
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -1095,13 +1103,13 @@ test("popover headings stay flat on focus while background rows gain an inset wi
     assert.equal(toggle.matches(paintRule.selectorText.replaceAll(':hover','')),false,'decorative row paint must exclude the heading subtree');
     assert.equal(body.querySelector('div.px-3')!.matches(paintRule.selectorText.replaceAll(':hover','')),true,'the complete body row owns the hover paint');
     toggle.focus();
-    const header = f.dom.window.getComputedStyle(toggle);
+    const header = resolvedStyle(toggle);
     assert.ok(['transparent', 'rgba(0, 0, 0, 0)'].includes(header.backgroundColor), 'the title focus/hover rule must not paint a second face');
-    const row = f.dom.window.getComputedStyle(body.querySelector('div.px-3')!);
-    assert.equal(row.borderRadius, '10px');
-    assert.equal(row.paddingLeft, '8px');
-    assert.equal(row.paddingRight, '8px');
-    assert.equal(row.marginLeft, '-8px', 'padding and inset keep the text aligned with the heading');
+    const row = resolvedStyle(body.querySelector('div.px-3')!);
+    assert.equal(row.borderRadius, "8px");
+    assert.equal(row.paddingLeft, "6px");
+    assert.equal(row.paddingRight, "6px");
+    assert.equal(row.marginLeft, "-6px", 'padding and inset keep the text aligned with the heading');
     assert.equal(row.cursor, 'text', 'a decorative row hover must preserve its existing cursor');
     assert.equal(row.transition, 'background-color 150ms ease-out');
   } finally { stop(); f.dom.window.close(); }
@@ -1134,7 +1142,7 @@ test("a background row accordion shows only that task and closes again", async (
     await f.tick();
     const rows = Array.from(body.querySelectorAll<HTMLElement>('div.px-3'));
     assert.equal(rows[2].getAttribute('role'), null, 'a row without progress stays decorative');
-    assert.equal(f.dom.window.getComputedStyle(rows[2]).cursor, 'text');
+    assert.equal(resolvedStyle(rows[2]).cursor, 'text');
     rows[0].click();
     assert.equal(rows[0].getAttribute('aria-expanded'), 'true');
     assert.equal(rows[0].nextElementSibling?.textContent, '실행 중첫 번째');
@@ -1170,13 +1178,13 @@ test("popover entrance settles only the outer native disclosure and keeps inner 
       f.click('[data-bb-chat-ui-info-all]'); f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);
       const card=f.document.querySelector('[data-bb-chat-ui-info-open]')!;
       const body=card.querySelector(kind==='goal'?'#goal':'#agent-body')!;
-      assert.equal(f.dom.window.getComputedStyle(body).transition,'none','outer disclosure must not add a second entrance');
-      assert.equal(f.dom.window.getComputedStyle(body).gridTemplateRows,'1fr');
-      assert.ok(f.dom.window.getComputedStyle(card).animation.includes('bb-info-enter'),'shared popup entrance remains');
-      if(kind==='goal')assert.equal(f.dom.window.getComputedStyle(card.querySelector('[data-inner]')!).transition,'grid-template-rows 200ms ease','inner disclosure keeps its transition');
+      assert.equal(resolvedStyle(body).transition,'none','outer disclosure must not add a second entrance');
+      assert.equal(resolvedStyle(body).gridTemplateRows,'1fr');
+      assert.ok(resolvedStyle(card).animation.includes('bb-info-enter'),'shared popup entrance remains');
+      if(kind==='goal')assert.equal(resolvedStyle(card.querySelector('[data-inner]')!).transition,'grid-template-rows 200ms ease','inner disclosure keeps its transition');
     }
     stop();
-    assert.equal(f.dom.window.getComputedStyle(goal.querySelector('#goal')!).transition,'grid-template-rows 200ms ease');
+    assert.equal(resolvedStyle(goal.querySelector('#goal')!).transition,'grid-template-rows 200ms ease');
   } finally {stop(); f.dom.window.close();}
 });
 
@@ -1261,7 +1269,7 @@ test("open info popovers keep one glass face and drop the native body slab, acti
     bodies.set(spec.key, { ...wire(card, spec.toggle, spec.body), card });
   }
   const stop = injectComposerInfo(f.document);
-  const paint = (node: Element) => f.dom.window.getComputedStyle(node);
+  const paint = (node: Element) => resolvedStyle(node);
   const blurOf = (node: Element) => `${paint(node).backdropFilter} ${paint(node).getPropertyValue("-webkit-backdrop-filter")}`;
   const transparent = (value: string) => value === "rgba(0, 0, 0, 0)" || value === "transparent";
   const flatFace = (value: string) => transparent(value) || value === "color-mix(in oklab, var(--foreground) 6%, transparent)";
@@ -1419,12 +1427,12 @@ test("named native actions stay separate from popover close", async () => {
   [...context.querySelectorAll("button")].find(button => button.textContent === "Merge")!.addEventListener("click", () => merges++);
   stack.querySelector<HTMLButtonElement>('[data-phase="done"]')!.addEventListener("click", () => phaseClicks++);
   const stop = injectComposerInfo(f.document);
-  const paint = (node: Element) => f.dom.window.getComputedStyle(node);
+  const paint = (node: Element) => resolvedStyle(node);
   try {
     const sheet = f.document.getElementById("bb-chat-ui-composer-info")!.textContent!;
     // Native gutter resets never reach the head; the head reads its gutter from the shared card.
     assert.match(sheet, /> div\[class~="p-1"\]:not\(\[data-bb-chat-ui-card-head\]\)/);
-    assert.match(sheet, /\[data-bb-chat-ui-card-head\] \{ [^}]*padding:0 32px 0 0 !important;/);
+    assert.match(sheet, /\[data-bb-chat-ui-card-head\] \{ [^}]*padding:0 var\(--bb-chat-ui-card-close-gutter\) 0 0 !important;/);
     f.click('[data-bb-chat-ui-info-trigger="plan"]');
     const exit = f.document.querySelector<HTMLButtonElement>('[aria-label="Exit plan mode"]')!;
     assert.equal(exit.textContent, "종료");
@@ -1436,7 +1444,7 @@ test("named native actions stay separate from popover close", async () => {
     assert.equal(paint(exit.querySelector("svg")!).display, "none");
     assert.equal(paint(exit).getPropertyValue("backdrop-filter"), "none", "Plan 종료 is the shared hairline action, not a second glass");
     assert.equal(paint(exit).borderTopWidth, "1px");
-    assert.equal(paint(exit).height, "28px");
+    assert.equal(paint(exit).height, "24px");
     assert.equal(exit.parentElement, f.document.querySelector('[aria-label="Plan mode controls"]'));
     exit.click();
     assert.equal(planExits, 1);
@@ -1492,7 +1500,7 @@ test("named native actions stay separate from popover close", async () => {
     const otherTitle = other.querySelector("h3.px-3")!;
     assert.equal(otherTitle.hasAttribute("data-bb-chat-ui-info-close-heading"), true);
     assert.equal(paint(otherTitle).paddingLeft, "0px", "open Other title lines up with the common gutter");
-    assert.equal(paint(otherTitle).paddingRight, "32px", "open Other title keeps the shared close reserve");
+    assert.equal(paint(otherTitle).paddingRight, "26px", "open Other title keeps the shared close reserve");
     f.click('[data-bb-chat-ui-info-trigger="workflow"]');
     const workflow = stack.querySelector('section[aria-label="Workflow"]')!;
     const flatFace = (value: string) => value === "rgba(0, 0, 0, 0)" || value === "transparent" || value === "color-mix(in oklab, var(--foreground) 6%, transparent)";
@@ -1640,8 +1648,8 @@ test("native popovers replace only their bottom collapse with a small close with
       f.click('[data-bb-chat-ui-info-all]');
       f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);
       await f.tick();
-      assert.equal(f.dom.window.getComputedStyle(collapse.parentElement!).display,'none',`${kind}: the standalone bottom handle takes no space`);
-      assert.notEqual(f.dom.window.getComputedStyle(node.querySelector('[aria-label="Collapse internal list"]')!).display,'none','internal list folds remain available');
+      assert.equal(resolvedStyle(collapse.parentElement!).display,'none',`${kind}: the standalone bottom handle takes no space`);
+      assert.notEqual(resolvedStyle(node.querySelector('[aria-label="Collapse internal list"]')!).display,'none','internal list folds remain available');
       const dismiss = node.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-native-dismiss]');
       assert.ok(dismiss,`${kind}: a dedicated visual close is present`);
       assert.equal(dismiss.textContent,'×');
@@ -1661,7 +1669,7 @@ test("native popovers replace only their bottom collapse with a small close with
     for (const {node,collapse} of cards) {
       assert.equal(node.querySelector('[data-bb-chat-ui-info-native-dismiss]'),null);
       assert.equal(collapse.hasAttribute('data-bb-chat-ui-info-collapse'),false);
-      assert.notEqual(f.dom.window.getComputedStyle(collapse.parentElement!).display,'none','unload restores native controls');
+      assert.notEqual(resolvedStyle(collapse.parentElement!).display,'none','unload restores native controls');
     }
   } finally { stop(); f.dom.window.close(); }
 });
@@ -1721,7 +1729,7 @@ test("Parent uses the shared single-row card without a family heading", async ()
   const stop = injectComposerInfo(f.document);
   const nativeCard = () => card.innerHTML.replaceAll('hidden=""', "hidden");
   const resting = nativeCard();
-  const style = (node: Element) => f.dom.window.getComputedStyle(node);
+  const style = (node: Element) => resolvedStyle(node);
   const shown = (selector: string) => style(card.querySelector(selector)!).display !== "none";
   try {
     f.click('[data-bb-chat-ui-info-trigger="parent"]'); await f.tick();
@@ -1746,8 +1754,8 @@ test("Parent uses the shared single-row card without a family heading", async ()
     assert.equal(style(title).whiteSpace, "nowrap");
     assert.equal(style(row).cursor, "pointer");
     assert.equal(style(row).borderRadius, "18px");
-    assert.equal(style(row).padding, "8px 40px 8px 16px", "the whole face is clickable while text reserves the close");
-    assert.equal(style(row).minHeight, "40px");
+    assert.equal(style(row).padding, "8px 32px 8px 12px", "the whole face is clickable while text reserves the close");
+    assert.equal(style(row).minHeight, "36px");
     assert.equal(style(row).width, "100%");
     assert.ok(row.hasAttribute('data-bb-chat-ui-card-navigation'));
     assert.equal(style(card).padding, "0px", "a compact card has no dead outer gutter");
@@ -1756,10 +1764,10 @@ test("Parent uses the shared single-row card without a family heading", async ()
     const dismiss = card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-native-dismiss]")!;
     assert.equal(card.querySelectorAll("[data-bb-chat-ui-info-native-dismiss]").length, 1);
     assert.equal(dismiss.closest("[data-bb-chat-ui-info-parent-row]"), null);
-    assert.equal(style(dismiss).width, "24px");
-    assert.equal(style(dismiss).height, "24px");
+    assert.equal(style(dismiss).width, "20px");
+    assert.equal(style(dismiss).height, "20px");
     assert.equal(style(dismiss).top, "8px", "the close centers on the 40px card");
-    assert.equal(style(dismiss).right, "8px");
+    assert.equal(style(dismiss).right, "6px");
     assert.equal(shown("#thread-prompt-banner-parent-thread-body"), false, "the relationship sentence stays out of the popover");
     assert.equal(shown("#thread-prompt-banner-git-toggle"), false);
     assert.equal(shown("#thread-prompt-banner-git-body"), false);
@@ -1881,7 +1889,7 @@ test("Parent popover keeps one row before parent metadata and does not follow a 
   nativeLink().addEventListener("click", event => { event.preventDefault(); nativeMoves += 1; });
   source.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-parent-open="other-thread"]')!.addEventListener("click", () => { staleMoves += 1; });
   const stop = injectComposerInfo(f.document);
-  const shown = (selector: string) => f.dom.window.getComputedStyle(card.querySelector(selector)!).display !== "none";
+  const shown = (selector: string) => resolvedStyle(card.querySelector(selector)!).display !== "none";
   const row = () => card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-parent-row]");
   try {
     f.click('[data-bb-chat-ui-info-trigger="parent"]'); await f.tick();
@@ -1892,7 +1900,7 @@ test("Parent popover keeps one row before parent metadata and does not follow a 
     assert.equal(shown("#thread-prompt-banner-parent-thread-body"), false);
     assert.equal(shown("#thread-prompt-banner-git-toggle"), false);
     assert.equal(shown('[aria-label^="Pull request "]'), false);
-    assert.equal(f.dom.window.getComputedStyle(waiting).display !== "none", true);
+    assert.equal(resolvedStyle(waiting).display !== "none", true);
     waiting.click();
     assert.equal(nativeMoves, 1, "the temporary row uses this card's native parent link");
     assert.equal(staleMoves, 0);
@@ -1962,7 +1970,7 @@ test("Parent native-link fallback also uses a single row without a heading", asy
       assert.equal(node.getAttribute('data-bb-chat-ui-card-layout'), 'single-row');
       assert.equal(waiting?.textContent, 'Parent title', 'this card native title fills the row before parent metadata');
       assert.equal(waiting?.querySelector('[data-provider], [data-family]'), null);
-      assert.equal(f.dom.window.getComputedStyle(link).display, 'none', 'the native sentence and link stay out of the popover');
+      assert.equal(resolvedStyle(link).display, 'none', 'the native sentence and link stay out of the popover');
       assert.equal(link.parentElement, linkParent, 'native parent navigation keeps its original structure');
       assert.equal(link.getAttribute('href'), '/threads/parent');
       if (toggle) assert.equal(toggle.getAttribute('aria-expanded'), 'true');
@@ -1984,13 +1992,13 @@ test("the Workflow stack collapse is hidden without becoming another information
   const collapse = wrapper.querySelector('[aria-label="Collapse 2 workflows"]')!;
   const stop = injectComposerInfo(f.document);
   try {
-    assert.equal(f.dom.window.getComputedStyle(collapse).display,'none');
+    assert.equal(resolvedStyle(collapse).display,'none');
     assert.equal(collapse.hasAttribute('data-bb-chat-ui-info-unit'),false,'a stack close is not plugin information');
     f.click('[data-bb-chat-ui-info-all]');
     assert.equal(f.document.querySelectorAll('[data-bb-chat-ui-info-choice="workflow"]').length,1);
     assert.equal(f.document.querySelectorAll('[data-bb-chat-ui-info-choice="other"]').length,1,'only the actual plugin notice stays in the catalog');
   } finally { stop(); }
-  assert.notEqual(f.dom.window.getComputedStyle(collapse).display,'none');
+  assert.notEqual(resolvedStyle(collapse).display,'none');
   f.dom.window.close();
 });
 
@@ -2022,7 +2030,7 @@ test("pills use a sequential droplet entrance once, preserving avatar motion and
   const bar=f.document.querySelector('[data-bb-chat-ui-info-bar]')!;
   const all=bar.querySelector('[data-bb-chat-ui-info-all]')!;
   for (const pill of bar.querySelectorAll('[data-bb-chat-ui-info-trigger]')) assert.ok(pill.compareDocumentPosition(all) & f.dom.window.Node.DOCUMENT_POSITION_FOLLOWING,'the all-information button closes the row on the right');
-  assert.equal(f.dom.window.getComputedStyle(f.document.querySelector('[data-bb-chat-ui-info-all]')!).position,'relative','the all-information button anchors its own count badge');
+  assert.equal(resolvedStyle(f.document.querySelector('[data-bb-chat-ui-info-all]')!).position,'relative','the all-information button anchors its own count badge');
   const visible = ['diff', 'goal', 'todos', 'queue', 'pullRequest', 'other'];
   assert.deepEqual(pills().map(entry => entry.key), visible);
   assert.ok(f.document.querySelector('[data-bb-chat-ui-info-avatar][data-new]'), 'avatars retain their existing individual bubbles');
@@ -2070,7 +2078,7 @@ test("a changed information pill hops once, while disclosure, entry and queue ar
     const stop=injectComposerInfo(f.document);
     try {
       const glyph=() => f.document.querySelector<SVGSVGElement>('[data-bb-chat-ui-info-glyph]')!;
-      const css=f.dom.window.getComputedStyle(glyph());
+      const css=resolvedStyle(glyph());
       assert.equal(css.width,'16px'); assert.equal(css.height,'16px');
       assert.equal(f.document.querySelectorAll('[data-bb-chat-ui-info-all] img, [data-bb-chat-ui-info-all] image').length,0,'no downloaded asset is bundled');
       assert.ok(!css.animation || css.animation==='none','the resting glyph has no continuous animation');
@@ -2197,7 +2205,7 @@ test("queue pill and catalog use the message-delay family icon instead of the hi
   const pill = f.document.querySelector('[data-bb-chat-ui-info-trigger="queue"]')!;
   assert.ok(pill.querySelector('[data-icon="bb-chat-ui-queue"]'));
   assert.equal(pill.querySelector('[data-icon="ChevronDown"]'), null);
-  assert.equal(f.dom.window.getComputedStyle(pill.querySelector('[data-icon-root]')!).width, '16px');
+  assert.equal(resolvedStyle(pill.querySelector('[data-icon-root]')!).width, '16px');
   f.click('[data-bb-chat-ui-info-all]');
   assert.ok(f.document.querySelector('[data-bb-chat-ui-info-choice="queue"] [data-icon="bb-chat-ui-queue"]'));
   f.click('[data-bb-chat-ui-info-trigger="queue"]'); await f.tick();
@@ -2244,7 +2252,7 @@ test("custom Status icon wrappers use the same centered size as builtin icons", 
       for (const selector of ['[data-bb-chat-ui-info-stack-kind="status"]', '[data-bb-chat-ui-info-choice="status"]']) {
         const icon = f.document.querySelector(`${selector} > [data-icon-root]`)!;
         assert.ok(icon, selector);
-        const style = f.dom.window.getComputedStyle(icon);
+        const style = resolvedStyle(icon);
         assert.equal(style.width, '16px');
         assert.equal(style.height, '16px');
         assert.equal(style.alignItems, 'center');
@@ -2394,15 +2402,15 @@ test("the common pill face excludes active child avatar stacks and preserves the
     for(const expanded of ['false','true']){
       pill.setAttribute('aria-expanded',expanded);
       assert.equal(pill.matches(face.selectorText),false,'the child stack must never receive a rectangular pill face');
-      assert.equal(f.dom.window.getComputedStyle(pill).boxShadow,'none');
-      assert.equal(f.dom.window.getComputedStyle(pill).borderTopWidth,'0px');
-      for(const circle of pill.querySelectorAll('[data-bb-chat-ui-info-avatar],[data-bb-chat-ui-info-avatar-more]'))assert.equal(f.dom.window.getComputedStyle(circle).borderRadius,'50%');
+      assert.equal(resolvedStyle(pill).boxShadow,'none');
+      assert.equal(resolvedStyle(pill).borderTopWidth,'0px');
+      for(const circle of pill.querySelectorAll('[data-bb-chat-ui-info-avatar],[data-bb-chat-ui-info-avatar-more]'))assert.equal(resolvedStyle(circle).borderRadius,'50%');
     }
     const goal=f.document.querySelector('[data-bb-chat-ui-info-trigger="goal"]')!;
     assert.equal(goal.matches(face.selectorText),true,'ordinary pills keep their surface');
     pill.setAttribute('data-bb-chat-ui-info-unavailable','');
     assert.equal(pill.matches(face.selectorText),true,'the inactive child icon remains a normal circular pill');
-    assert.equal(f.dom.window.getComputedStyle(pill).borderRadius,'50%');
+    assert.equal(resolvedStyle(pill).borderRadius,'50%');
   } finally {stop();f.dom.window.close();}
 });
 
@@ -2428,7 +2436,7 @@ test("children use a bare latest-three avatar stack and prefer the designed SDK 
   assert.ok(avatars[2].querySelector('[data-bb-chat-ui-info-avatar-dot]'));
   assert.equal(avatars[2].querySelector('[data-bb-chat-ui-info-avatar-dot] svg'),null);
   assert.equal(pill.querySelector('[data-bb-chat-ui-info-avatar-more]')!.textContent, '+1');
-  assert.equal(f.dom.window.getComputedStyle(pill).backgroundColor, 'rgba(0, 0, 0, 0)');
+  assert.equal(resolvedStyle(pill).backgroundColor, 'rgba(0, 0, 0, 0)');
   f.click('[data-bb-chat-ui-info-trigger="children"]');
   assert.ok(f.document.querySelector('[data-bb-chat-ui-info-kind="children"]')!.hasAttribute('data-bb-chat-ui-info-open'));
   assert.equal(native.hasAttribute('data-bb-chat-ui-info-open'), false);
@@ -2448,8 +2456,8 @@ test("an SDK title icon leaves no second empty icon slot when the card opens", a
   const stop = injectComposerInfo(f.document);
   try {
     f.click('[data-bb-chat-ui-info-trigger="children"]'); await f.tick();
-    assert.equal(f.dom.window.getComputedStyle(nativeIcon).display, 'none', 'the replaced icon box must not reserve a second 14px slot and gap');
-    const visibleIcons = [...card.querySelectorAll('[data-bb-chat-ui-card-icon]')].filter(icon => f.dom.window.getComputedStyle(icon).display !== 'none');
+    assert.equal(resolvedStyle(nativeIcon).display, 'none', 'the replaced icon box must not reserve a second 14px slot and gap');
+    const visibleIcons = [...card.querySelectorAll('[data-bb-chat-ui-card-icon]')].filter(icon => resolvedStyle(icon).display !== 'none');
     assert.equal(visibleIcons.length, 1);
     assert.equal(nativeIcon.parentElement, nativeParent);
   } finally { stop(); }
@@ -2466,7 +2474,7 @@ test("Child Thread rows do not receive the shared button glass face", () => {
     f.click('[data-bb-chat-ui-info-trigger="children"]');
     for(const row of f.document.querySelectorAll('[data-bb-chat-ui-info-child-row]')) {
       assert.equal(glassRule(f.document,row),undefined,'each child row stays on the popover face');
-      const css=f.dom.window.getComputedStyle(row);
+      const css=resolvedStyle(row);
       assert.ok(css.backgroundColor==='transparent'||css.backgroundColor==='rgba(0, 0, 0, 0)');
       assert.equal(css.boxShadow,'none');
       assert.equal(css.borderTopWidth,'0px','child rows have no raised upper edge');
@@ -2474,7 +2482,7 @@ test("Child Thread rows do not receive the shared button glass face", () => {
     }
     const close=f.document.querySelector('[data-bb-chat-ui-info-kind="children"] [data-bb-chat-ui-info-dismiss]')!;
     assert.equal(glassRule(f.document,close),undefined,'the close sits flat on the card face like every close');
-    assert.equal(f.dom.window.getComputedStyle(close).position,'absolute');
+    assert.equal(resolvedStyle(close).position,'absolute');
   } finally {stop();f.dom.window.close();}
 });
 
@@ -2483,8 +2491,8 @@ test("Child Thread and other popover closes have the same button and glyph size"
   f.document.querySelector('[data-promptbox-shell] > .grid')!.insertAdjacentHTML('beforeend', '<section data-bb-chat-ui-info-kind="children" aria-label="Child Thread"><h3 data-bb-chat-ui-card-head><span data-bb-chat-ui-card-title>Child Threads</span></h3><button data-bb-chat-ui-info-dismiss="children" data-bb-chat-ui-card-close>×</button></section>');
   const stop = injectComposerInfo(f.document);
   const check = (button:Element) => {
-    const css = f.dom.window.getComputedStyle(button);
-    assert.equal(css.width,'24px'); assert.equal(css.height,'24px');
+    const css = resolvedStyle(button);
+    assert.equal(css.width,"20px"); assert.equal(css.height,"20px");
     assert.equal(css.fontSize,'12px','close glyph uses the compact menu size');
     assert.equal(css.fontWeight,'400','a heading must not make the close glyph bold');
     assert.equal(css.lineHeight,'1'); assert.equal(css.padding,'0px');
@@ -2519,7 +2527,7 @@ test("child counts use up to three overlapping avatars followed by a separate ov
     assert.equal(pill.children.length, 1, 'the count is represented entirely by the avatar stack');
     assert.deepEqual(avatars.map(node => node.getAttribute('data-child')), children.slice(Math.max(0, count - 3), count).map(child => child.id));
     for (let index = 1; index < avatars.length; index++) {
-      assert.ok(Number(f.dom.window.getComputedStyle(avatars[index]).zIndex) > Number(f.dom.window.getComputedStyle(avatars[index - 1]).zIndex), 'newer circles overlap from left to right');
+      assert.ok(Number(resolvedStyle(avatars[index]).zIndex) > Number(resolvedStyle(avatars[index - 1]).zIndex), 'newer circles overlap from left to right');
     }
     const more = stack.querySelector('[data-bb-chat-ui-info-avatar-more]');
     if (count <= 3) assert.equal(more, null, 'one to three children have no additional numeric label');
@@ -2527,11 +2535,11 @@ test("child counts use up to three overlapping avatars followed by a separate ov
       assert.ok(more);
       assert.equal(more.textContent, `+${count - 3}`);
       assert.equal(stack.lastElementChild, more);
-      const style = f.dom.window.getComputedStyle(more);
+      const style = resolvedStyle(more);
       assert.equal(style.width, '30px');
       assert.equal(style.height, '30px');
       assert.equal(style.borderRadius, '50%');
-      assert.ok(Number(style.zIndex) > Number(f.dom.window.getComputedStyle(avatars.at(-1)!).zIndex));
+      assert.ok(Number(style.zIndex) > Number(resolvedStyle(avatars.at(-1)!).zIndex));
     }
   }
   stop(); f.dom.window.close();
@@ -2554,8 +2562,8 @@ test("child avatars use host provider artwork, including late and updated logos,
       const avatar=avatars()[index];
       const artwork=avatar.querySelector(`[data-provider="${id}"]`)!;
       assert.ok(artwork,'registered provider artwork replaces initials');
-      assert.equal(f.dom.window.getComputedStyle(artwork).width,'16px');
-      assert.equal(f.dom.window.getComputedStyle(artwork).height,'16px');
+      assert.equal(resolvedStyle(artwork).width,'16px');
+      assert.equal(resolvedStyle(artwork).height,'16px');
       assert.ok(avatar.querySelector('[data-bb-chat-ui-info-avatar-dot]'));
       assert.ok(avatar.getAttribute('title')?.includes(id));
     }
@@ -2606,7 +2614,7 @@ test("child status dots share the same size and completion uses the thread theme
     stack.append(avatar);
   }
   dom.window.document.body.append(stack);
-  const dotOf = (state: string) => dom.window.getComputedStyle(stack.querySelector(`[data-state="${state}"] [data-bb-chat-ui-info-avatar-dot]`)!);
+  const dotOf = (state: string) => resolvedStyle(stack.querySelector(`[data-state="${state}"] [data-bb-chat-ui-info-avatar-dot]`)!);
   try {
     for (const state of ["run", "wait", "error", "done"]) {
       const css = dotOf(state);
@@ -2660,17 +2668,17 @@ test("Agentation uses the browser picker icon and count while retaining native c
   await f.tick();
   assert.ok(shell.hasAttribute('data-bb-chat-ui-info-open'));
   assert.equal(shell.parentElement, parent);
-  assert.equal(f.dom.window.getComputedStyle(shell).display, 'grid');
-  assert.equal(f.dom.window.getComputedStyle(shell).overflow, 'auto', 'the card remains the scroll boundary');
+  assert.equal(resolvedStyle(shell).display, 'grid');
+  assert.equal(resolvedStyle(shell).overflow, 'auto', 'the card remains the scroll boundary');
   for (const wrapper of shell.querySelectorAll('.overflow-hidden')) {
-    assert.equal(f.dom.window.getComputedStyle(wrapper).overflow, 'visible', 'native body wrappers must not clip the widened row background');
+    assert.equal(resolvedStyle(wrapper).overflow, 'visible', 'native body wrappers must not clip the widened row background');
   }
-  const rowStyle = f.dom.window.getComputedStyle(shell.querySelector('li')!);
-  assert.equal(rowStyle.paddingLeft, '8px');
-  assert.equal(rowStyle.marginLeft, '-8px', 'row content aligns with the heading while hover extends into the gutter');
+  const rowStyle = resolvedStyle(shell.querySelector('li')!);
+  assert.equal(rowStyle.paddingLeft, "6px");
+  assert.equal(rowStyle.marginLeft, "-6px", 'row content aligns with the heading while hover extends into the gutter');
   assert.ok(pill.querySelector('[data-picker-icon]'), 'expanding the native card keeps the picker glyph');
   assert.ok(decodeURIComponent(stack.style.getPropertyValue('--bb-chat-ui-feedback-icon')).includes('data-picker-icon'), 'popup header and row masks use the picker glyph');
-  assert.equal(f.dom.window.getComputedStyle(shell.querySelector('[data-feedback-icon]')!).display, 'none', 'the old header icon is hidden without removing its native DOM');
+  assert.equal(resolvedStyle(shell.querySelector('[data-feedback-icon]')!).display, 'none', 'the old header icon is hidden without removing its native DOM');
   assert.equal(pill.querySelector('[data-chevron]'), null);
   const send = shell.querySelector('[data-send-all]')!;
   const sendParent = send.parentElement;
@@ -2685,18 +2693,18 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.ok(send.querySelector('[data-bb-chat-ui-info-bulk-icon] [data-native-up], [data-native-up][data-bb-chat-ui-info-bulk-icon]'));
   assert.ok(discard.querySelector('[data-native-trash][data-bb-chat-ui-info-bulk-icon]'));
   for(const button of [send,discard]){
-    const css=f.dom.window.getComputedStyle(button);
-    assert.equal(css.width,'24px','the shared icon action');assert.equal(css.height,'24px');assert.equal(css.fontSize,'0px');assert.equal(css.padding,'0px');
+    const css=resolvedStyle(button);
+    assert.equal(css.width,"20px",'the shared icon action');assert.equal(css.height,"20px");assert.equal(css.fontSize,'0px');assert.equal(css.padding,'0px');
     assert.equal(css.borderTopWidth,'0px','no bordered square inside the card');
   }
   send.innerHTML='Retry';await f.tick();
   assert.equal(send.getAttribute('data-bb-chat-ui-info-bulk-action'),null,'error recovery stays a readable native button');
   assert.equal(send.getAttribute('aria-label'),null);assert.equal(send.getAttribute('title'),null);
-  assert.equal(f.dom.window.getComputedStyle(send).borderTopWidth,'1px','a readable recovery action is the shared hairline text action');
-  assert.equal(f.dom.window.getComputedStyle(send).height,'28px');
+  assert.equal(resolvedStyle(send).borderTopWidth,'1px','a readable recovery action is the shared hairline text action');
+  assert.equal(resolvedStyle(send).height,"24px");
   f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
-  assert.equal(f.dom.window.getComputedStyle(send).height,'32px','recovery actions retain the shared touch height');
-  assert.equal(f.dom.window.getComputedStyle(shell).gridTemplateRows,'28px auto','a larger action keeps the title on its shared line');
+  assert.equal(resolvedStyle(send).height,"24px",'recovery actions retain the shared touch height');
+  assert.equal(resolvedStyle(shell).gridTemplateRows,"24px auto",'a larger action keeps the title on its shared line');
   f.document.documentElement.removeAttribute('data-bb-chat-ui-root-hit-target');
   send.innerHTML='<svg data-native-up><path d="M12 19V5m-7 7 7-7 7 7" /></svg>Sending…';
   (send as HTMLButtonElement).disabled=true;await f.tick();
@@ -2708,17 +2716,17 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(send.getAttribute('aria-label'),'Send all');
   assert.equal(discard.parentElement,discardParent);
   const header=sendParent!.previousElementSibling!;
-  const paint=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const paint=(node:Element)=>resolvedStyle(node);
   const collapse=header.querySelector('[aria-label="Collapse staged annotations"]')!;
   assert.equal(paint(shell).gridTemplateAreas,'"heading actions close" "body body body"');
-  assert.equal(paint(shell).gridTemplateColumns,'minmax(0,1fr) auto 24px');
+  assert.equal(paint(shell).gridTemplateColumns,"minmax(0,1fr) auto 20px");
   assert.equal(paint(header).display,'contents','native header children share the same grid row');
   assert.equal(paint(header.querySelector('p')!).gridArea,'heading');
   assert.equal(paint(sendParent!).gridArea,'actions');
   assert.equal(paint(sendParent!).marginTop,'0px');
   assert.ok(collapse.hasAttribute('data-bb-chat-ui-card-close'),'the native collapse is the shared close');
   assert.equal(paint(collapse).position,'absolute');
-  assert.equal(paint(collapse).top,'18px');
+  assert.equal(paint(collapse).top,"14px");
   assert.ok(header.querySelector('p')!.hasAttribute('data-bb-chat-ui-card-head'),'the native title is the head line');
   assert.equal(paint(shell).alignItems,'center');
   assert.equal(paint(shell.querySelector('.grid')!).gridArea,'body');
@@ -2737,7 +2745,7 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(send.getAttribute('aria-label'),null);
   assert.equal(discard.getAttribute('title'),'Original discard hint');
   for (const wrapper of shell.querySelectorAll('.overflow-hidden')) {
-    assert.equal(f.dom.window.getComputedStyle(wrapper).overflow, 'hidden', 'unloading restores native body clipping');
+    assert.equal(resolvedStyle(wrapper).overflow, 'hidden', 'unloading restores native body clipping');
   }
   f.dom.window.close();
 });
@@ -2911,8 +2919,8 @@ test("native panel and plugin-page actions become title icons without moving ori
   assert.equal(icons[0].getAttribute('title'), '사이드 패널에서 열기');
   assert.equal(icons[1].getAttribute('aria-label'), '플러그인 페이지에서 열기');
   assert.equal(panel.parentElement, parent); assert.equal(page.parentElement, parent);
-  assert.equal(f.dom.window.getComputedStyle(panel).display, 'none');
-  assert.equal(f.dom.window.getComputedStyle(page).display, 'none');
+  assert.equal(resolvedStyle(panel).display, 'none');
+  assert.equal(resolvedStyle(page).display, 'none');
   assert.equal(node.querySelectorAll('[data-bb-chat-ui-info-panel-source]').length, 2);
   assert.equal(parent?.querySelector('button:last-child')?.textContent, 'Stop workflow');
   assert.equal(parent?.querySelector('button:last-child')?.hasAttribute('data-bb-chat-ui-info-panel-source'), false);
@@ -3187,18 +3195,18 @@ test("composer question cards have rounded corners and a gentle entrance without
     const stop=injectComposerInfo(f.document);
     try {
       await f.tick();
-      const css=f.dom.window.getComputedStyle(question);
+      const css=resolvedStyle(question);
       assert.equal(css.borderRadius,'18px',id);
       assert.ok(css.animation.includes('bb-info-enter 260ms'),id);
       assert.equal(css.overflow,'hidden','the card surface clips to its rounded edge');
       const nested=question.querySelector('[data-testid="plugin-interaction-shell"]');
-      if (nested) assert.equal(f.dom.window.getComputedStyle(nested).borderRadius,'18px','the visible nested card also rounds its bottom edge above its native margin');
+      if (nested) assert.equal(resolvedStyle(nested).borderRadius,'18px','the visible nested card also rounds its bottom edge above its native margin');
       answer.click(); assert.equal(selected,1); assert.equal(answer.parentElement,parent);
       assert.equal(question.querySelector('textarea')!.value,'Custom answer');
-      assert.equal(f.dom.window.getComputedStyle(outside).borderRadius,'4px','past questions outside the composer are unchanged');
+      assert.equal(resolvedStyle(outside).borderRadius,'4px','past questions outside the composer are unchanged');
       stop();
-      assert.equal(f.dom.window.getComputedStyle(question).borderRadius,'','unloading restores native styling');
-      if (nested) assert.equal(f.dom.window.getComputedStyle(nested).borderRadius,'4px','unloading restores the nested native surface');
+      assert.equal(resolvedStyle(question).borderRadius,'','unloading restores native styling');
+      if (nested) assert.equal(resolvedStyle(nested).borderRadius,'4px','unloading restores the nested native surface');
     } finally {stop();f.dom.window.close();}
   }
 });
@@ -3246,7 +3254,7 @@ test("composer question cards frost once with the theme glass and keep nested an
     const stop = injectComposerInfo(f.document);
     try {
       await f.tick();
-      const css = f.dom.window.getComputedStyle(card);
+      const css = resolvedStyle(card);
       const glass = glassRule(f.document, card);
       assert.ok(glass, id);
       assert.equal(css.backdropFilter, "blur(14px) saturate(1.25)", id);
@@ -3255,16 +3263,16 @@ test("composer question cards frost once with the theme glass and keep nested an
       assert.match(glassSource(f.document), /-webkit-backdrop-filter:blur\(14px\) saturate\(1\.25\)/);
       assert.equal(css.borderTopColor, "rgba(0, 0, 0, 0)", `${id} uses the glass edge instead of a solid border`);
       assert.ok(css.boxShadow.includes("inset"), id);
-      assert.equal(f.dom.window.getComputedStyle(outside).backdropFilter, "none", `${id} outside the composer stays native`);
+      assert.equal(resolvedStyle(outside).backdropFilter, "none", `${id} outside the composer stays native`);
       const nestedPlan = card.querySelector('[data-testid="plan-review-request"]');
       if (nestedPlan) {
-        assert.equal(f.dom.window.getComputedStyle(nestedPlan).backdropFilter, "none", "the plan body keeps its own fill");
+        assert.equal(resolvedStyle(nestedPlan).backdropFilter, "none", "the plan body keeps its own fill");
         assert.equal(glassRule(f.document, nestedPlan), undefined);
       }
       f.document.documentElement.classList.add("dark");
-      assert.match(f.dom.window.getComputedStyle(stack).getPropertyValue("--bb-chat-ui-info-face"), /\/\s*0\.76\)/, `${id} dark glass`);
+      assert.match(resolvedStyle(stack).getPropertyValue("--bb-chat-ui-info-face"), /\/\s*0\.76\)/, `${id} dark glass`);
       f.document.documentElement.classList.remove("dark");
-      assert.match(f.dom.window.getComputedStyle(stack).getPropertyValue("--bb-chat-ui-info-face"), /\/\s*0\.68\)/, `${id} light glass`);
+      assert.match(resolvedStyle(stack).getPropertyValue("--bb-chat-ui-info-face"), /\/\s*0\.68\)/, `${id} light glass`);
     } finally { stop(); f.dom.window.close(); }
   }
 
@@ -3284,8 +3292,8 @@ test("composer question cards frost once with the theme glass and keep nested an
   const stop = injectComposerInfo(f.document);
   try {
     await f.tick();
-    const wrap = f.dom.window.getComputedStyle(banner);
-    const face = f.dom.window.getComputedStyle(shell);
+    const wrap = resolvedStyle(banner);
+    const face = resolvedStyle(shell);
     assert.equal(wrap.backdropFilter, "none", "the request wrapper must not add a second blur");
     assert.equal(glassRule(f.document, banner), undefined);
     assert.equal(wrap.backgroundColor, "rgba(0, 0, 0, 0)");
@@ -3303,7 +3311,7 @@ test("composer question cards frost once with the theme glass and keep nested an
     assert.equal(clicks, 1);
     assert.equal(shell.querySelector("input")!.value, "dummy");
     stop();
-    assert.equal(f.dom.window.getComputedStyle(shell).backdropFilter, "none", "unloading restores the native shell");
+    assert.equal(resolvedStyle(shell).backdropFilter, "none", "unloading restores the native shell");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -3325,14 +3333,14 @@ test("plan and approval cards round and clip the outer surface in both shell sta
       const stop = injectComposerInfo(f.document);
       try {
         await f.tick();
-        const css = f.dom.window.getComputedStyle(card);
+        const css = resolvedStyle(card);
         const state = expanded ? "expanded" : "collapsed";
         assert.equal(css.borderRadius, "18px", `${id} ${state} rounds every outer corner`);
         assert.equal(css.overflow, "hidden", `${id} ${state} clips to the outer radius`);
         assert.equal(css.animationName, "none", `${id} does not gain an entrance`);
         const request = card.querySelector('[data-testid="plan-review-request"]');
         if (request) {
-          const body = f.dom.window.getComputedStyle(request);
+          const body = resolvedStyle(request);
           assert.equal(body.borderRadius, "0px", "the plan body stays square");
           assert.equal(body.overflow, "visible");
           assert.equal(body.backgroundColor, "rgba(0, 0, 0, 0)");
@@ -3342,7 +3350,7 @@ test("plan and approval cards round and clip the outer surface in both shell sta
           assert.ok(fade, "the plan body still has a scroll fade");
           assert.equal(fade!.parentElement, stack, "the scroll fade stays outside the clipped card");
           assert.equal(card.contains(fade), false);
-          assert.equal(f.dom.window.getComputedStyle(stack).overflow, "visible");
+          assert.equal(resolvedStyle(stack).overflow, "visible");
         }
       } finally { stop(); f.dom.window.close(); }
     }
@@ -3366,18 +3374,18 @@ test("a collapsed secret card sits on the composer edge and keeps its label cent
   const stop = injectComposerInfo(f.document);
   try {
     await f.tick();
-    const css = f.dom.window.getComputedStyle(card);
-    const row = f.dom.window.getComputedStyle(stack);
+    const css = resolvedStyle(card);
+    const row = resolvedStyle(stack);
     assert.equal(css.marginBottom, "0px", "collapsed card drops the native bottom margin");
     assert.equal(row.marginBottom, "0px", "the hidden composer no longer leaves a space-y gap");
-    assert.equal(f.dom.window.getComputedStyle(label).alignItems, "center");
+    assert.equal(resolvedStyle(label).alignItems, "center");
     assert.equal(css.borderRadius, "18px");
-    assert.ok(f.dom.window.getComputedStyle(banner).animation.includes("bb-info-enter 260ms"));
+    assert.ok(resolvedStyle(banner).animation.includes("bb-info-enter 260ms"));
     card.setAttribute("data-expanded", "");
     // Marker styling settles at the mutation checkpoint before paint, without a layout frame.
     await Promise.resolve(); await Promise.resolve();
-    assert.equal(f.dom.window.getComputedStyle(card).marginBottom, "8px", "an open card keeps its bottom margin");
-    assert.equal(f.dom.window.getComputedStyle(stack).marginBottom, "8px");
+    assert.equal(resolvedStyle(card).marginBottom, "8px", "an open card keeps its bottom margin");
+    assert.equal(resolvedStyle(stack).marginBottom, "8px");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -3399,8 +3407,8 @@ test("secret action row drops its solid fill and divider without a second blur",
   const stop = injectComposerInfo(f.document);
   try {
     await f.tick();
-    const css = f.dom.window.getComputedStyle(row);
-    const face = f.dom.window.getComputedStyle(shell);
+    const css = resolvedStyle(row);
+    const face = resolvedStyle(shell);
     assert.equal(css.backgroundColor, "rgba(0, 0, 0, 0)");
     assert.equal(css.borderTopWidth, "0px");
     assert.equal(css.backdropFilter, "none", "the action row must not add a second blur");
@@ -3433,16 +3441,16 @@ test("secret scroll edge drops the header hairline and keeps the glass shell", a
   const stop = injectComposerInfo(f.document);
   try {
     await f.tick();
-    const edge = f.dom.window.getComputedStyle(header);
-    const face = f.dom.window.getComputedStyle(shell);
-    const row = f.dom.window.getComputedStyle(shell.querySelector(".sticky")!);
+    const edge = resolvedStyle(header);
+    const face = resolvedStyle(shell);
+    const row = resolvedStyle(shell.querySelector(".sticky")!);
     assert.equal(edge.borderBottomColor, "rgba(0, 0, 0, 0)", "the secret header hairline is not a solid line on the scroll edge");
     assert.equal(edge.borderBottomWidth, "1px", "clearing the color keeps the header box");
-    assert.equal(f.dom.window.getComputedStyle(otherHeader).borderBottomColor, "rgb(222, 222, 222)", "other request cards keep their header line");
+    assert.equal(resolvedStyle(otherHeader).borderBottomColor, "rgb(222, 222, 222)", "other request cards keep their header line");
     assert.equal(face.backdropFilter, "blur(14px) saturate(1.25)");
     assert.ok(face.boxShadow.includes("inset"), "the shell keeps its soft inset edge");
     assert.equal(face.borderRadius, "18px");
-    assert.equal(f.dom.window.getComputedStyle(scroll).overflowY, "auto");
+    assert.equal(resolvedStyle(scroll).overflowY, "auto");
     assert.equal(row.backgroundColor, "rgba(0, 0, 0, 0)");
     assert.equal(row.borderTopWidth, "0px");
     assert.equal(row.backdropFilter, "none");
@@ -3450,8 +3458,8 @@ test("secret scroll edge drops the header hairline and keeps the glass shell", a
     shell.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     assert.equal(submits, 1);
     f.document.documentElement.classList.add("dark");
-    assert.equal(f.dom.window.getComputedStyle(header).borderBottomColor, "rgba(0, 0, 0, 0)");
-    assert.match(f.dom.window.getComputedStyle(stack).getPropertyValue("--bb-chat-ui-info-face"), /\/\s*0\.76\)/);
+    assert.equal(resolvedStyle(header).borderBottomColor, "rgba(0, 0, 0, 0)");
+    assert.match(resolvedStyle(stack).getPropertyValue("--bb-chat-ui-info-face"), /\/\s*0\.76\)/);
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -3484,7 +3492,7 @@ test("secret card height eases between the open body and the header instead of s
   const otherMotions: unknown[] = [];
   const box = (height: number) => ({ x: 0, y: 0, top: 0, left: 0, right: 420, bottom: height, width: 420, height, toJSON() { return {}; } });
   shell.getBoundingClientRect = () => {
-    const height = flight && !flight.done ? flight.height : shell.hasAttribute("data-expanded") ? 320 : f.dom.window.getComputedStyle(body).display === "none" ? 48 : 320;
+    const height = flight && !flight.done ? flight.height : shell.hasAttribute("data-expanded") ? 320 : resolvedStyle(body).display === "none" ? 48 : 320;
     return box(height);
   };
   shell.animate = (keyframes: { height?: string }[], options: { duration?: number; easing?: string; fill?: string }) => {
@@ -3533,12 +3541,12 @@ test("secret card height eases between the open body and the header instead of s
   try {
     await beforePaint();
     assert.equal(motions.length, 0, "the first paint records the open card and does not replay a height animation");
-    assert.match(f.dom.window.getComputedStyle(banner).animation, /bb-info-enter 260ms/);
-    assert.equal(f.dom.window.getComputedStyle(shell).animationName, "none");
-    assert.equal(f.dom.window.getComputedStyle(shell).overflow, "hidden");
-    assert.equal(f.dom.window.getComputedStyle(shell).borderRadius, "18px");
-    assert.equal(f.dom.window.getComputedStyle(shell.firstElementChild!).borderBottomColor, "rgba(0, 0, 0, 0)");
-    assert.equal(f.dom.window.getComputedStyle(shell.querySelector(".sticky")!).backgroundColor, "rgba(0, 0, 0, 0)");
+    assert.match(resolvedStyle(banner).animation, /bb-info-enter 260ms/);
+    assert.equal(resolvedStyle(shell).animationName, "none");
+    assert.equal(resolvedStyle(shell).overflow, "hidden");
+    assert.equal(resolvedStyle(shell).borderRadius, "18px");
+    assert.equal(resolvedStyle(shell.firstElementChild!).borderBottomColor, "rgba(0, 0, 0, 0)");
+    assert.equal(resolvedStyle(shell.querySelector(".sticky")!).backgroundColor, "rgba(0, 0, 0, 0)");
     const hideButton = shell.querySelector<HTMLButtonElement>('[aria-label="Hide details"]')!;
     hideButton.focus();
     hideBody();
@@ -3549,8 +3557,8 @@ test("secret card height eases between the open body and the header instead of s
     assert.equal(motions[0].options.fill, "both");
     assert.match(motions[0].options.easing ?? "", /cubic-bezier/);
     assert.equal(body.hidden, false, "the hidden attribute is lifted while the shell height clips the body");
-    assert.equal(f.dom.window.getComputedStyle(body).display, "block", "the closing body stays painted so the shell can clip it");
-    assert.notEqual(f.dom.window.getComputedStyle(input).display, "none");
+    assert.equal(resolvedStyle(body).display, "block", "the closing body stays painted so the shell can clip it");
+    assert.notEqual(resolvedStyle(input).display, "none");
     assert.equal(f.document.activeElement, hideButton);
     assert.equal(input.value, "dummy");
     body.hidden = true;
@@ -3558,8 +3566,8 @@ test("secret card height eases between the open body and the header instead of s
     form.style.setProperty("display", "none", "important");
     await beforePaint();
     assert.equal(body.hidden, false, "a re-render does not put the closing body back into hidden");
-    assert.equal(f.dom.window.getComputedStyle(body).display, "block", "a re-render keeps the closing body painted");
-    assert.equal(f.dom.window.getComputedStyle(form).display, "block");
+    assert.equal(resolvedStyle(body).display, "block", "a re-render keeps the closing body painted");
+    assert.equal(resolvedStyle(form).display, "block");
     assert.equal(motions.length, 1, "a re-render does not start a second height animation");
     shell.style.maxHeight = "480px";
     await beforePaint();
@@ -3570,7 +3578,7 @@ test("secret card height eases between the open body and the header instead of s
     assert.equal(body.style.display, "none");
     assert.equal(body.style.getPropertyPriority("display"), "important");
     assert.equal(input.style.display, "none");
-    assert.equal(f.dom.window.getComputedStyle(body).display, "none");
+    assert.equal(resolvedStyle(body).display, "none");
     assert.equal(shell.style.height, "");
     showBody();
     await beforePaint();
@@ -3593,7 +3601,7 @@ test("secret card height eases between the open body and the header instead of s
     assert.deepEqual(motions[3].keyframes.map(frame => frame.height), ["180px", "320px"]);
     interrupted.onfinish?.();
     assert.equal(shell.hasAttribute("data-expanded"), true);
-    assert.notEqual(f.dom.window.getComputedStyle(body).display, "none", "the interrupted close does not hide the reopened body");
+    assert.notEqual(resolvedStyle(body).display, "none", "the interrupted close does not hide the reopened body");
     motions[3].animation.finish();
     otherShell.removeAttribute("data-expanded");
     await beforePaint();
@@ -3605,7 +3613,7 @@ test("secret card height eases between the open body and the header instead of s
     assert.equal(motions.length, 4, "reduced motion keeps the native snap");
     assert.equal(body.style.display, "none");
     assert.equal(body.style.getPropertyPriority("display"), "important");
-    assert.equal(f.dom.window.getComputedStyle(body).display, "none");
+    assert.equal(resolvedStyle(body).display, "none");
     reduce = false;
     showBody();
     await beforePaint();
@@ -3614,28 +3622,28 @@ test("secret card height eases between the open body and the header instead of s
     hideBody();
     await beforePaint();
     const removed = motions.at(-1)!.animation;
-    assert.equal(f.dom.window.getComputedStyle(body).display, "block");
+    assert.equal(resolvedStyle(body).display, "block");
     shell.remove();
     await beforePaint();
     assert.equal(removed.cancelled, true, "removing the card cancels its height animation");
     banner.append(shell);
     await beforePaint();
-    assert.equal(f.dom.window.getComputedStyle(body).display, "none", "a removed card comes back collapsed");
+    assert.equal(resolvedStyle(body).display, "none", "a removed card comes back collapsed");
     showBody();
     await beforePaint();
     motions.at(-1)!.animation.finish();
     hideBody();
     await beforePaint();
     const unloading = motions.at(-1)!;
-    assert.equal(f.dom.window.getComputedStyle(body).display, "block");
+    assert.equal(resolvedStyle(body).display, "block");
     stop();
     assert.equal(unloading.animation.cancelled, true);
     assert.equal(body.style.display, "none");
     assert.equal(body.style.getPropertyPriority("display"), "important");
-    assert.equal(f.dom.window.getComputedStyle(body).display, "none");
+    assert.equal(resolvedStyle(body).display, "none");
     assert.equal([...shell.attributes].some(attr => attr.name.includes("secret")), false);
     assert.equal(input.value, "dummy");
-    assert.equal(f.dom.window.getComputedStyle(otherShell.firstElementChild!).borderBottomColor, "rgb(222, 222, 222)");
+    assert.equal(resolvedStyle(otherShell.firstElementChild!).borderBottomColor, "rgb(222, 222, 222)");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -3672,7 +3680,7 @@ test("plan and approval cards ease height from the current box and keep independ
     node.style.setProperty("display", "none", "important");
   }
   const planScroller = plan.querySelector<HTMLElement>(".overflow-auto")!;
-  const painted = (body: HTMLElement) => f.dom.window.getComputedStyle(body).display !== "none";
+  const painted = (body: HTMLElement) => resolvedStyle(body).display !== "none";
   const rect = (x: number, y: number, width: number, height: number) => new f.dom.window.DOMRect(x, y, width, height);
   stack.getBoundingClientRect = () => rect(0, 40, 400, 800);
   // The banner box clips the fade. Keep the scroller inside that box.
@@ -3746,7 +3754,7 @@ test("plan and approval cards ease height from the current box and keep independ
     assert.equal(node.hidden, true);
     assert.equal(node.style.display, "none");
     assert.equal(node.style.getPropertyPriority("display"), "important");
-    assert.equal(f.dom.window.getComputedStyle(node).display, "none");
+    assert.equal(resolvedStyle(node).display, "none");
   };
   const planFade = (edge: string) => [...f.document.querySelectorAll<HTMLElement>(`[data-bb-chat-ui-info-body-fade="${edge}"]`)].find(node => node.style.left === "24px");
   const endHeight = (motion: Motion) => Number.parseFloat(motion.keyframes.at(-1)?.height ?? "");
@@ -3758,17 +3766,17 @@ test("plan and approval cards ease height from the current box and keep independ
     await beforePaint();
     assert.equal(planMotions.length, 0, "the first paint records the open card and does not replay a height animation");
     assert.equal(approvalMotions.length, 0);
-    assert.equal(f.dom.window.getComputedStyle(plan).borderRadius, "18px");
-    assert.equal(f.dom.window.getComputedStyle(plan).overflow, "hidden");
-    assert.equal(f.dom.window.getComputedStyle(plan).animationName, "none");
-    assert.equal(f.dom.window.getComputedStyle(plan).backdropFilter, "blur(14px) saturate(1.25)");
+    assert.equal(resolvedStyle(plan).borderRadius, "18px");
+    assert.equal(resolvedStyle(plan).overflow, "hidden");
+    assert.equal(resolvedStyle(plan).animationName, "none");
+    assert.equal(resolvedStyle(plan).backdropFilter, "blur(14px) saturate(1.25)");
     assert.equal(planFade("below")?.hidden, false, "a settled long body shows the remaining scroll fade");
     assert.equal(plan.contains(planFade("below")!), false);
     hiddenStill(planPrivate);
     hide(question, questionBody);
     await beforePaint();
     assert.equal(questionMotions, 0, "question cards keep their own motion");
-    assert.equal(f.dom.window.getComputedStyle(questionBody).display, "none");
+    assert.equal(resolvedStyle(questionBody).display, "none");
     hide(plan, planBody);
     await beforePaint();
     assert.equal(planMotions.length, 1, "collapse schedules a height animation before the next frame");
@@ -3777,19 +3785,19 @@ test("plan and approval cards ease height from the current box and keep independ
     assert.equal(planMotions[0].options.easing, "cubic-bezier(.22,1,.36,1)");
     assert.equal(planMotions[0].options.fill, "both");
     assert.equal(planBody.hidden, false, "the disclosure stays painted while the shell height clips it");
-    assert.notEqual(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.notEqual(resolvedStyle(planBody).display, "none");
     assert.equal(plan.style.height, "");
     assert.equal(plan.style.maxHeight, "160px");
     hiddenStill(planPrivate);
     assert.equal(plan.querySelector("[data-approve]")!.parentElement, planBody);
     assert.equal(planScroller.clientHeight, 288);
     assert.equal(planFade("below")?.hidden, true, "the stack fade hides while the shell height is moving");
-    assert.equal(f.dom.window.getComputedStyle(planFade("below")!).display, "none");
+    assert.equal(resolvedStyle(planFade("below")!).display, "none");
     planBody.hidden = true;
     planBody.style.setProperty("display", "none", "important");
     await beforePaint();
     assert.equal(planBody.hidden, false, "a re-render keeps the closing disclosure painted");
-    assert.notEqual(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.notEqual(resolvedStyle(planBody).display, "none");
     hiddenStill(planPrivate);
     assert.equal(planMotions.length, 1, "a re-render does not start a second height animation");
     flights.get(plan)!.height = 100;
@@ -3800,7 +3808,7 @@ test("plan and approval cards ease height from the current box and keep independ
     assert.equal(planMotions.length, 2, "a reverse toggle replaces the in-flight animation");
     assert.deepEqual(planMotions[1].keyframes.map(frame => frame.height), ["100px", "160px"]);
     interrupted.onfinish?.();
-    assert.notEqual(f.dom.window.getComputedStyle(planBody).display, "none", "the interrupted close does not hide the reopened body");
+    assert.notEqual(resolvedStyle(planBody).display, "none", "the interrupted close does not hide the reopened body");
     hiddenStill(planPrivate);
     assert.equal(planFade("below")?.hidden, true, "the fade stays hidden through the reverse");
     planMotions[1].animation.finish();
@@ -3822,7 +3830,7 @@ test("plan and approval cards ease height from the current box and keep independ
     assert.equal(planBody.hidden, true);
     assert.equal(planBody.style.display, "none");
     assert.equal(planBody.style.getPropertyPriority("display"), "important");
-    assert.equal(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.equal(resolvedStyle(planBody).display, "none");
     assert.equal(planScroller.clientHeight, 0);
     assert.equal(planFade("below")?.hidden, true, "the collapsed body recalculates the fade instead of leaving it forced");
     hiddenStill(planPrivate);
@@ -3835,7 +3843,7 @@ test("plan and approval cards ease height from the current box and keep independ
     approvalMotions[0].animation.finish();
     assert.equal(approval.getBoundingClientRect().height, 48);
     assert.equal(approval.style.height, "");
-    assert.equal(f.dom.window.getComputedStyle(approvalBody).display, "none");
+    assert.equal(resolvedStyle(approvalBody).display, "none");
     show(approval, approvalBody);
     await beforePaint();
     assert.deepEqual(approvalMotions.at(-1)?.keyframes.map(frame => frame.height), ["48px", "90px"]);
@@ -3849,7 +3857,7 @@ test("plan and approval cards ease height from the current box and keep independ
     hide(plan, planBody);
     await beforePaint();
     assert.equal(planMotions.length, 3, "reduced motion keeps the native snap");
-    assert.equal(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.equal(resolvedStyle(planBody).display, "none");
     assert.equal(planBody.style.getPropertyPriority("display"), "important");
     reduce = false;
     show(plan, planBody);
@@ -3859,13 +3867,13 @@ test("plan and approval cards ease height from the current box and keep independ
     hide(plan, planBody);
     await beforePaint();
     const removed = planMotions.at(-1)!.animation;
-    assert.notEqual(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.notEqual(resolvedStyle(planBody).display, "none");
     plan.remove();
     await beforePaint();
     assert.equal(removed.cancelled, true, "removing the card cancels its height animation");
     stack.prepend(plan);
     await beforePaint();
-    assert.equal(f.dom.window.getComputedStyle(planBody).display, "none", "a removed card comes back collapsed");
+    assert.equal(resolvedStyle(planBody).display, "none", "a removed card comes back collapsed");
     hiddenStill(planPrivate);
     show(plan, planBody);
     await beforePaint();
@@ -3873,12 +3881,12 @@ test("plan and approval cards ease height from the current box and keep independ
     hide(plan, planBody);
     await beforePaint();
     const unloading = planMotions.at(-1)!;
-    assert.notEqual(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.notEqual(resolvedStyle(planBody).display, "none");
     stop();
     assert.equal(unloading.animation.cancelled, true);
     assert.equal(planBody.style.display, "none");
     assert.equal(planBody.style.getPropertyPriority("display"), "important");
-    assert.equal(f.dom.window.getComputedStyle(planBody).display, "none");
+    assert.equal(resolvedStyle(planBody).display, "none");
     assert.equal([...plan.attributes].some(attr => attr.name.includes("secret")), false);
     assert.equal([...approval.attributes].some(attr => attr.name.includes("secret")), false);
     assert.equal(questionMotions, 0);
@@ -3908,16 +3916,16 @@ test("plan review body sits in the card and fades only the scroll directions tha
   const stop = injectComposerInfo(f.document);
   try {
     await f.tick();
-    const box = f.dom.window.getComputedStyle(body);
-    const scroll = f.dom.window.getComputedStyle(scroller);
+    const box = resolvedStyle(body);
+    const scroll = resolvedStyle(scroller);
     assert.equal(box.backgroundColor, "rgba(0, 0, 0, 0)");
     assert.equal(box.borderTopWidth, "0px");
     assert.equal(box.borderRadius, "0px");
     assert.equal(box.backdropFilter, "none", "the plan body does not add a second glass layer");
-    assert.equal(f.dom.window.getComputedStyle(card).backdropFilter, "blur(14px) saturate(1.25)");
+    assert.equal(resolvedStyle(card).backdropFilter, "blur(14px) saturate(1.25)");
     assert.equal(scroll.paddingLeft, "0px");
     assert.equal(scroll.paddingRight, "0px");
-    assert.equal(f.dom.window.getComputedStyle(path).borderTopWidth, "0px");
+    assert.equal(resolvedStyle(path).borderTopWidth, "0px");
     const approval = f.document.createElement("section");
     approval.setAttribute("data-testid", "approval-banner");
     approval.innerHTML = '<div class="overflow-y-auto" data-shell-scroll><h3>Do you want to run this command?</h3><div data-testid="command-preview" class="overflow-hidden"><pre class="overflow-auto px-3 py-2">$ echo</pre><button type="button">Show more</button></div></div>';
@@ -3969,11 +3977,11 @@ test("plan review body sits in the card and fades only the scroll directions tha
     assert.ok(at("below", 616, 30, 300), "approval command fade uses the pre viewport");
     assert.equal(at("above", 480, 30, 300), undefined);
     assert.equal(visible("below").length, 2);
-    for (const fade of visible("below")) assert.notEqual(f.dom.window.getComputedStyle(fade).display, "none", "request overlays remain outside the pending-card guard");
+    for (const fade of visible("below")) assert.notEqual(resolvedStyle(fade).display, "none", "request overlays remain outside the pending-card guard");
     assert.equal(visible("above").length, 0);
     assert.equal(at("below", 404, 24, 320)!.parentElement, stack);
     assert.equal(scroller.contains(at("below", 404, 24, 320)!), false);
-    assert.equal(f.dom.window.getComputedStyle(at("below", 404, 24, 320)!).backdropFilter, "blur(5px)");
+    assert.equal(resolvedStyle(at("below", 404, 24, 320)!).backdropFilter, "blur(5px)");
     move(scroller, 100);
     assert.ok(at("above", 140, 24, 320));
     assert.ok(at("below", 404, 24, 320));
@@ -4157,8 +4165,8 @@ test("a clipped plan body keeps the scroll blur on the visible edge", async () =
     assert.equal(below().style.height, "24px");
     assert.equal(above().hidden, true);
     assert.equal(below().parentElement, stack);
-    assert.equal(f.dom.window.getComputedStyle(below()).backdropFilter, "blur(5px)");
-    assert.match(f.dom.window.getComputedStyle(below()).maskImage, /linear-gradient/);
+    assert.equal(resolvedStyle(below()).backdropFilter, "blur(5px)");
+    assert.match(resolvedStyle(below()).maskImage, /linear-gradient/);
     move(100);
     assert.equal(above().hidden, false);
     assert.equal(above().style.top, "100px");
@@ -4255,12 +4263,12 @@ test("restore action text keeps the compact size when desktop button defaults ar
     try {
       f.click('[data-bb-chat-ui-info-trigger="status"]');
       const action=f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-unarchive]')!;
-      const css=f.dom.window.getComputedStyle(action);
-      assert.equal(css.fontSize,'13px',`${text}: desktop button defaults do not enlarge the shared text action`);
+      const css=resolvedStyle(action);
+      assert.equal(css.fontSize,'12px',`${text}: desktop button defaults do not enlarge the shared text action`);
       assert.equal(css.lineHeight,'16px','compact text keeps its matching line height');
-      assert.equal(css.minHeight,'28px','a pointer uses the shared 28px text action');
+      assert.equal(css.minHeight,"24px",'a pointer uses the shared 28px text action');
       f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
-      assert.equal(f.dom.window.getComputedStyle(action).minHeight,'32px','a finger keeps the 32px hit target');
+      assert.equal(resolvedStyle(action).minHeight,"24px",'a finger keeps the 32px hit target');
       action.click(); assert.equal(calls,1,'the restore action still reaches its original SDK control');
     } finally { stop(); f.dom.window.close(); }
   }
@@ -4281,10 +4289,10 @@ test("archived stack-only composer offers only restore and preserves its native 
   assert.deepEqual([...f.document.querySelectorAll('[data-bb-chat-ui-info-trigger]')].map(node => node.getAttribute('data-bb-chat-ui-info-trigger')),['status']);
   const pill = f.click('[data-bb-chat-ui-info-trigger="status"]');
   assert.equal(pill.textContent,'Archived thread');
-  assert.equal(f.dom.window.getComputedStyle(pill).width,'100%');
+  assert.equal(resolvedStyle(pill).width,'100%');
   const popover=f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-archived-detail]')!;
   assert.ok(popover);
-  const restoreStyle=f.dom.window.getComputedStyle(popover.querySelector('[data-bb-chat-ui-info-unarchive]')!);
+  const restoreStyle=resolvedStyle(popover.querySelector('[data-bb-chat-ui-info-unarchive]')!);
   assert.equal(restoreStyle.width,'100%','the restore button spans the whole content width');
   assert.equal(restoreStyle.display,'flex');
   assert.equal(popover.querySelectorAll('button').length,2,'only close and restore are present');
@@ -4912,7 +4920,7 @@ test("Diff lists show five rows and independently expand their remaining rows ac
       ['6 · Commit 6','5 · Commit 5','4 · Commit 4','3 · Commit 3','2 · Commit 2']);
     for (const kind of ['files','commits']) {
       assert.equal(toggle(kind).getAttribute('aria-expanded'),'false');
-      const css=f.dom.window.getComputedStyle(toggle(kind));
+      const css=resolvedStyle(toggle(kind));
       assert.equal(css.boxShadow,'none','more/collapse is a plain row without its own glass shadow');
       assert.equal(css.backgroundColor,'rgba(0, 0, 0, 0)','more/collapse has no separate background');
       assert.ok(f.document.getElementById(toggle(kind).getAttribute('aria-controls')!));
@@ -4920,7 +4928,7 @@ test("Diff lists show five rows and independently expand their remaining rows ac
     assert.equal(toggle('files').textContent,'3개 더 보기');
     assert.equal(toggle('commits').textContent,'2개 더 보기');
     const hidden = f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-diff-file][hidden]')!;
-    assert.equal(f.dom.window.getComputedStyle(hidden).display,'none','hidden rows do not occupy the scroll view');
+    assert.equal(resolvedStyle(hidden).display,'none','hidden rows do not occupy the scroll view');
     toggle('files').click();
     assert.equal(visible('file').length,8);
     assert.equal(visible('commit').length,5,'opening files does not open commits');
@@ -5437,8 +5445,8 @@ test("a desktop row keeps an A tail and a separate Latest button at the right ed
     const proxy=f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-jump]')!;
     assert.equal(all.parentElement!.parentElement,bar);assert.equal(proxy.parentElement,bar);
     assert.equal(f.document.querySelector('[data-bb-chat-ui-info-dock]'),null);
-    assert.notEqual(f.dom.window.getComputedStyle(all.parentElement!).marginLeft,'auto');
-    assert.equal(f.dom.window.getComputedStyle(proxy).right,'0px');
+    assert.notEqual(resolvedStyle(all.parentElement!).marginLeft,'auto');
+    assert.equal(resolvedStyle(proxy).right,'0px');
     for(const pill of f.document.querySelectorAll('[data-bb-chat-ui-info-trigger]')) assert.ok(pill.compareDocumentPosition(all)&f.dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
     assert.equal(proxy.hasAttribute('data-bb-chat-ui-info-jump-off'),true);
     assert.equal(f.shown(),2,'the avatar stack reserves its four overlapping circles');
@@ -5476,8 +5484,8 @@ test("a phone row keeps an A tail and reserves a separate Latest at the right ed
     f.jump.classList.remove('invisible'); await f.tick();
     assert.equal(proxy.hasAttribute('data-bb-chat-ui-info-jump-off'), false);
     assert.equal(f.shown(), 1, 'Latest reserves 32px plus an 8px gap on a phone');
-    assert.equal(f.dom.window.getComputedStyle(proxy).right,'0px');
-    assert.equal(f.dom.window.getComputedStyle(proxy.querySelector('[data-bb-chat-ui-info-jump-label]')!).display,'none');
+    assert.equal(resolvedStyle(proxy).right,'0px');
+    assert.equal(resolvedStyle(proxy.querySelector('[data-bb-chat-ui-info-jump-label]')!).display,'none');
     f.click('[data-bb-chat-ui-info-all]');
     assert.equal(proxy.hasAttribute('data-bb-chat-ui-info-jump-off'), false, 'the right-edge button stays usable with a popover open');
     f.click('[data-bb-chat-ui-info-all]');
@@ -5667,8 +5675,8 @@ test("latest-event stays rendered while off so the host hidden rule cannot cance
         f.jump.classList.toggle('invisible', !visible); await f.tick();
         assert.equal(proxy.hidden, false, `${device}: the hidden attribute would force display:none in BB`);
         assert.equal(proxy.hasAttribute('data-bb-chat-ui-info-jump-off'), !visible);
-        assert.notEqual(f.dom.window.getComputedStyle(proxy).display, 'none', `${device}: the element stays rendered to animate`);
-        assert.equal(f.dom.window.getComputedStyle(proxy).pointerEvents, visible ? 'auto' : 'none');
+        assert.notEqual(resolvedStyle(proxy).display, 'none', `${device}: the element stays rendered to animate`);
+        assert.equal(resolvedStyle(proxy).pointerEvents, visible ? 'auto' : 'none');
       }
     } finally { stop(); f.dom.window.close(); }
   }
@@ -5684,7 +5692,7 @@ test("Parent and PR popovers from the shared context card hide the other familie
     toggle.setAttribute('aria-expanded', String(expanded));
     node.querySelector<HTMLElement>('#thread-prompt-banner-parent-thread-body')!.hidden = !expanded;
   });
-  const shown = (selector:string) => f.dom.window.getComputedStyle(node.querySelector(selector)!).display !== 'none';
+  const shown = (selector:string) => resolvedStyle(node.querySelector(selector)!).display !== 'none';
   const stop = injectComposerInfo(f.document);
   try {
     f.click('[data-bb-chat-ui-info-trigger="parent"]'); await f.tick();
@@ -5729,7 +5737,7 @@ test("Parent popover hides the native sentence, person icon, and Diff without mo
   };
   card.innerHTML = shared("Uncommitted · +162 −21 · 6 files");
   wire();
-  const style = (node: Element) => f.dom.window.getComputedStyle(node);
+  const style = (node: Element) => resolvedStyle(node);
   const stop = injectComposerInfo(f.document);
   try {
     const link = () => card.querySelector<HTMLAnchorElement>('#thread-prompt-banner-parent-thread-body a')!;
@@ -5833,13 +5841,13 @@ test('information circles open their own details and disabled families disappear
   const f=fixture(),stop=injectComposerInfo(f.document);
   try{
    for(const node of f.document.querySelectorAll('[data-bb-chat-ui-info-trigger]')){
-    const style=f.dom.window.getComputedStyle(node);
+    const style=resolvedStyle(node);
     assert.equal(style.width,'auto','text pills do not reserve a fixed width');
     assert.equal(style.minWidth,'0px','content can yield to the available row width');
    }
-   assert.equal(f.dom.window.getComputedStyle(f.document.querySelector('[data-bb-chat-ui-info-trigger="children"]')!).paddingRight,'0px');
-   assert.equal(f.dom.window.getComputedStyle(f.document.querySelector('[data-bb-chat-ui-info-bar]')!).gap,'8px');
-   assert.equal(f.dom.window.getComputedStyle(f.document.querySelector('[data-bb-chat-ui-info-stack-icons]')!).position,'relative','circle offsets start at the stack, not a distant row ancestor');
+   assert.equal(resolvedStyle(f.document.querySelector('[data-bb-chat-ui-info-trigger="children"]')!).paddingRight,'0px');
+   assert.equal(resolvedStyle(f.document.querySelector('[data-bb-chat-ui-info-bar]')!).gap,'8px');
+   assert.equal(resolvedStyle(f.document.querySelector('[data-bb-chat-ui-info-stack-icons]')!).position,'relative','circle offsets start at the stack, not a distant row ancestor');
   }finally{stop();f.dom.window.close();}
  });
 
@@ -5964,12 +5972,12 @@ test('request guards are marked in the mutation checkpoint without waiting for a
   const host=f.document.createElement('section');host.innerHTML='<div data-testid="approval-banner"><button>Approve</button></div>';stack.append(host);
   await Promise.resolve();await Promise.resolve();
   assert.ok(host.hasAttribute('data-bb-chat-ui-info-holds-request'));
-  assert.notEqual(f.dom.window.getComputedStyle(host).display,'none');
+  assert.notEqual(resolvedStyle(host).display,'none');
   const shell=f.document.createElement('div');shell.setAttribute('data-promptbox-shell','');
   shell.innerHTML='<div class="grid"><span hidden data-bb-chat-ui-info-settings="{}"></span><section>New card</section></div>';
   f.document.body.append(shell);await Promise.resolve();await Promise.resolve();
   assert.ok(shell.firstElementChild!.hasAttribute('data-bb-chat-ui-info-guard'));
-  assert.equal(f.dom.window.getComputedStyle(shell.querySelector('section')!).display,'none');
+  assert.equal(resolvedStyle(shell.querySelector('section')!).display,'none');
   stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-info-guard], [data-bb-chat-ui-info-holds-request]'),null);
  }finally{stop();f.dom.window.close();}
 });
@@ -6049,7 +6057,7 @@ test("open native popover titles are read-only while actions and inner disclosur
       const title=f.document.getElementById(id)!;const card=title.closest('section[aria-label]')!;
       assert.equal(title.getAttribute('aria-expanded'),'true',`${key}: pill still opens the native body`);
       assert.equal(title.getAttribute('tabindex'),'-1',`${key}: title is not an extra tab stop`);
-      assert.equal(f.dom.window.getComputedStyle(title).cursor,'default',`${key}: read-only title has a normal cursor`);
+      assert.equal(resolvedStyle(title).cursor,'default',`${key}: read-only title has a normal cursor`);
       title.querySelector('span')!.click();assert.equal(title.getAttribute('aria-expanded'),'true',`${key}: nested title click cannot collapse the body`);
       const keydown=new f.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true});title.dispatchEvent(keydown);assert.equal(keydown.defaultPrevented,true);
       (card.querySelector('[data-real-action]') as HTMLButtonElement).click();
@@ -6076,7 +6084,7 @@ test("the close stays on the first 28px head line without measuring or observing
   try{
     f.click('[data-bb-chat-ui-info-trigger="todos"]');await f.tick();
     const close=card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
-    assert.equal(f.dom.window.getComputedStyle(close).top,'18px','a wrapped head keeps the close on its first line');
+    assert.equal(resolvedStyle(close).top,"14px",'a wrapped head keeps the close on its first line');
     assert.equal(measured,0,'the head is never measured for the close');
     assert.equal(card.style.getPropertyValue('--bb-chat-ui-info-title-height'),'52px','the card style is left untouched');
     assert.equal(title.parentElement,originalParent);
@@ -6094,7 +6102,7 @@ test("all static list statuses share padded rounded hover rows and Goal control 
     for(const [key,root,selector] of [['todos',card,'li'],['workflow',workflow,'div.min-h-7']] as const){
       f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();
       for(const row of root.querySelectorAll(selector)){
-        const s=f.dom.window.getComputedStyle(row);assert.equal(s.padding,key==='workflow'?'6px 8px':'8px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,'10px');assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
+        const s=resolvedStyle(row);assert.equal(s.padding,key==='workflow'?'4px 6px':'6px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,"8px");assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
       }
     }
   }finally{stop();f.dom.window.close();}
@@ -6113,7 +6121,7 @@ test("native list viewports leave room for rounded row backgrounds without clipp
     c.innerHTML=`<button aria-expanded="false" aria-controls="${key}-paint-body">${label}</button><section role="region" id="${key}-paint-body" hidden class="overflow-hidden"><div class="overflow-hidden bg-popover">${body}</div></section>`;stack.append(c);
     const trigger=c.querySelector('button')!;trigger.addEventListener('click',()=>{const open=trigger.getAttribute('aria-expanded')!=='true';trigger.setAttribute('aria-expanded',String(open));c.querySelector('section')!.hidden=!open;});
   }
-  const stop=injectComposerInfo(f.document),style=(n:Element)=>f.dom.window.getComputedStyle(n);
+  const stop=injectComposerInfo(f.document),style=(n:Element)=>resolvedStyle(n);
   try{
     for(const [key,label,,selector] of cards){
       f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();const c=stack.querySelector(`section[aria-label="${label}"]`)!;
@@ -6129,11 +6137,11 @@ test("native list viewports leave room for rounded row backgrounds without clipp
           const row=style(viewport.querySelector('li')!);
           assert.equal(parseFloat(row.marginLeft)+parseFloat(row.paddingLeft),0,'only the row extends its hover paint; its content stays at the title edge');
         }else{
-          assert.equal(s.paddingLeft,'8px');assert.equal(s.paddingRight,'8px');assert.equal(s.marginLeft,'-8px');assert.equal(s.marginRight,'-8px');assert.equal(s.width,'calc(100% + 16px)');
+          assert.equal(s.paddingLeft,"6px");assert.equal(s.paddingRight,"6px");assert.equal(s.marginLeft,"-6px");assert.equal(s.marginRight,"-6px");assert.equal(s.width,"calc(100% + 12px)");
         }
         assert.equal(s.overflow,'visible','the shared popover handles scrolling without clipping row corners');
       }
-      if(key==='workflow')for(const row of c.querySelectorAll('[data-detail-scroll-area] > *')){const s=style(row);assert.equal(s.width,'calc(100% + 16px)');assert.equal(s.marginLeft,'-8px');assert.equal(s.borderRadius,'10px');}
+      if(key==='workflow')for(const row of c.querySelectorAll('[data-detail-scroll-area] > *')){const s=style(row);assert.equal(s.width,"calc(100% + 12px)");assert.equal(s.marginLeft,"-6px");assert.equal(s.borderRadius,"8px");}
       if(key==='todos')assert.equal(style(c.querySelector('ul')!).maxHeight,'none');
     }
   }finally{stop();}
@@ -6147,7 +6155,7 @@ test("information popovers share the Diff height cap without smaller native list
   const todo=stack.querySelector('section[aria-label="To-do list"]')!;
   todo.querySelector('#todos')!.innerHTML='<ul class="native-todo-cap"><li>To-do</li></ul>';
   const workflow=f.document.createElement('section');workflow.setAttribute('aria-label','Workflow');workflow.innerHTML='<button aria-expanded="false" aria-controls="height-workflow">Workflow</button><section role="region" id="height-workflow"><div data-detail-scroll-area>Agents</div></section>';stack.append(workflow);
-  const stop=injectComposerInfo(f.document),style=(n:Element)=>f.dom.window.getComputedStyle(n);
+  const stop=injectComposerInfo(f.document),style=(n:Element)=>resolvedStyle(n);
   try{
     for(const kind of ['diff','todos','workflow','queue','children','goal','other']){
       f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);await f.tick();
@@ -6181,7 +6189,7 @@ test("compact information lists share the background row density without native 
     const toggle=card.querySelector('button')!,region=card.querySelector('section')!;
     toggle.addEventListener('click',()=>{region.hidden=!region.hidden;toggle.setAttribute('aria-expanded',String(!region.hidden));});stack.append(card);
   }
-  const stop=injectComposerInfo(f.document),paint=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const stop=injectComposerInfo(f.document),paint=(node:Element)=>resolvedStyle(node);
   try{
     for(const [kind,rowSelector,groups] of [
       ['todos','ul > li',['ul']],
@@ -6192,7 +6200,7 @@ test("compact information lists share the background row density without native 
       const card=stack.querySelector(`[data-bb-chat-ui-info-open="${kind}"]`)!;
       assert.equal(paint(stack).getPropertyValue('--bb-chat-ui-info-row-gap'),'2px','the background row gap is the shared reference');
       for(const row of card.querySelectorAll(rowSelector)){
-        const css=paint(row);assert.equal(css.minHeight,kind==='workflow'?'28px':'32px');assert.equal(css.padding,kind==='workflow'?'6px 8px':'8px');assert.equal(css.fontSize,'13px');assert.equal(css.lineHeight,'16px');
+        const css=paint(row);assert.equal(css.minHeight,kind==='workflow'?'24px':'28px');assert.equal(css.padding,kind==='workflow'?'4px 6px':'6px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'16px');
         assert.equal(css.marginTop,'0px');assert.equal(css.marginBottom,'0px','native space-y margins do not add another gap');
       }
       for(const selector of groups)assert.equal(paint(card.querySelector(selector)!).rowGap,'var(--bb-chat-ui-info-row-gap)',`${kind}: peers use one gap`);
@@ -6216,11 +6224,11 @@ test("Workflow header keeps its title above live metadata without moving native 
   const [title,count,time]=Array.from(summary.children) as HTMLElement[];
   const progress=header.querySelector<HTMLElement>('[role="presentation"]')!;
   header.addEventListener('click',()=>{const expanded=header.getAttribute('aria-expanded')!=='true';header.setAttribute('aria-expanded',String(expanded));card.querySelector<HTMLElement>('#workflow-header-body')!.hidden=!expanded;});
-  const stop=injectComposerInfo(f.document),paint=(n:Element)=>f.dom.window.getComputedStyle(n);
+  const stop=injectComposerInfo(f.document),paint=(n:Element)=>resolvedStyle(n);
   try {
     f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();
     assert.equal(paint(header).display,'grid');
-    assert.equal(paint(header).paddingRight,'32px','reserve the shared close gutter even with native px-3');
+    assert.equal(paint(header).paddingRight,"26px",'reserve the shared close gutter even with native px-3');
     assert.equal(paint(count).gridColumn,'1 / 3','metadata starts at the same left edge as list rows');
     assert.equal(paint(header).paddingBottom,'6px','leave a small gap below metadata without restoring both native gutters');
     assert.equal(paint(card.querySelector('[data-detail-scroll-area]')!).paddingTop,'0px','list starts directly below metadata with only its row padding');
@@ -6229,7 +6237,7 @@ test("Workflow header keeps its title above live metadata without moving native 
     assert.equal(paint(count).gridRow,'2');assert.equal(paint(time).gridRow,'2');assert.equal(paint(progress).gridRow,'2');
     assert.equal(paint(header.querySelector('[data-bb-chat-ui-info-title-icon]')!).gridRow,'1');
     assert.equal(paint(header.querySelector('.ml-auto')!).display,'none');
-    assert.equal(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,'18px','the shared close sits on the 28px title row above the metadata');
+    assert.equal(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,"14px",'the shared close sits on the 28px title row above the metadata');
     assert.equal(title.parentElement,summary);assert.equal(count.parentElement,summary);assert.equal(progress.parentElement,header);
     header.click();assert.equal(header.getAttribute('aria-expanded'),'true','title remains read-only');
     count.textContent='2/3 agents';time.textContent='1m';await f.tick();
@@ -6301,15 +6309,15 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     header.setAttribute('aria-expanded',String(expanded));
     region.setAttribute('aria-hidden',String(!expanded));
   });
-  const stop=injectComposerInfo(f.document),paint=(n:Element)=>f.dom.window.getComputedStyle(n);
+  const stop=injectComposerInfo(f.document),paint=(n:Element)=>resolvedStyle(n);
   const flat=(value:string)=>value==='rgba(0, 0, 0, 0)'||value==='transparent';
   try {
     f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();
     assert.equal(header.getAttribute('aria-expanded'),'true','opening the popover expands the workflow body');
     const controls=header.parentElement as HTMLElement;
     assert.equal(paint(controls).display,'grid');
-    assert.equal(paint(controls).gridTemplateColumns,'14px fit-content(calc(100% - 62px)) 24px minmax(0,1fr)','the workflow title sizes the external-action position');
-    assert.equal(paint(controls).gridTemplateRows,'28px auto 12px');
+    assert.equal(paint(controls).gridTemplateColumns,"14px fit-content(calc(100% - 52px)) 20px minmax(0,1fr)",'the workflow title sizes the external-action position');
+    assert.equal(paint(controls).gridTemplateRows,"24px auto 12px");
     assert.equal(paint(header).display,'contents','read-only title content shares the controls grid without moving nodes');
     assert.equal(paint(summary).display,'contents');
     assert.equal(paint(title).gridRow,'1');
@@ -6328,7 +6336,7 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     const sideIcon=header.parentElement?.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-panel-action]')!;
     assert.equal(sideIcon.getAttribute('aria-label'),side.getAttribute('aria-label'));
     assert.equal(paint(sideIcon).borderRadius,'999px','the shared icon action');
-    assert.equal(paint(sideIcon).width,'24px');
+    assert.equal(paint(sideIcon).width,"20px");
     assert.equal(paint(sideIcon).alignSelf,'center');
     assert.equal(paint(sideIcon).gridColumn,'3');
     assert.equal(paint(sideIcon).gridRow,'1');
@@ -6338,10 +6346,10 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     const dismiss=card.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(dismiss,'one close for the Workflow card');
     assert.equal(paint(dismiss).position,'absolute','the shared close sits on the card, beside the head gutter');
-    assert.equal(paint(dismiss).top,'18px','on the 28px head line with the side-panel action');
+    assert.equal(paint(dismiss).top,"14px",'on the 28px head line with the side-panel action');
     assert.equal(paint(dismiss).width,paint(sideIcon).width);
     assert.equal(paint(dismiss).height,paint(sideIcon).height);
-    assert.equal(paint(controls).paddingRight,'32px','the head reserves the close gutter after the side-panel action');
+    assert.equal(paint(controls).paddingRight,"26px",'the head reserves the close gutter after the side-panel action');
     const agentRow=run.querySelector<HTMLElement>('[data-agent]')!;
     const agentLabel=agentRow.querySelector<HTMLElement>('[data-agent-label]')!;
     assert.equal(paint(agentRow).minWidth,'0px');
@@ -6371,8 +6379,8 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     const agent=run.querySelector<HTMLElement>('[data-agent]')!;
     const action=run.querySelector<HTMLElement>('[data-agent-action]')!;
     for (const row of [phase,agent,action]) {
-      assert.equal(paint(row).minHeight,'28px');
-      assert.equal(paint(row).padding,'6px 8px');
+      assert.equal(paint(row).minHeight,"24px");
+      assert.equal(paint(row).padding,"4px 6px");
       assert.equal(flat(paint(row).backgroundColor),true,`${row.getAttribute('data-phase')??row.getAttribute('data-agent')??'action'} drops the native wash`);
       assert.equal(paint(row).boxShadow,'none');
     }
@@ -6441,7 +6449,7 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
     for (const node of card.querySelectorAll<HTMLElement>('*')) {
       if (node.closest('input, textarea, select, pre, code, [contenteditable="true"], [data-bb-chat-ui-info-avatar], [role="presentation"]')) continue;
       if (node.matches('[data-bb-chat-ui-card-close], [data-bb-chat-ui-card-action], [data-bb-chat-ui-card-button]') || node.closest('[hidden]')) continue;
-      const css=f.dom.window.getComputedStyle(node);
+      const css=resolvedStyle(node);
       // jsdom keeps var() faces only on the shorthand and drops color-mix() fills; the live audit covers those.
       const face=css.getPropertyValue('background');
       const paint=(css.backgroundColor && !['rgba(0, 0, 0, 0)','transparent'].includes(css.backgroundColor)) || /var\(/.test(face);
@@ -6453,7 +6461,7 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
     assert.deepEqual(offenders,[],`${kind}: no element inside the card paints a second surface`);
   };
   const stop=injectComposerInfo(f.document);
-  const css=(node:Element)=>f.dom.window.getComputedStyle(node);
+  const css=(node:Element)=>resolvedStyle(node);
   try {
     await f.tick();
     for (const kind of ['all','diff','children','pullRequest','goal','plan','todos','workflow','background','machine','fallback','queue','annotations','other']) {
@@ -6462,16 +6470,16 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
       await f.tick();
       const card=f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-menu], [data-bb-chat-ui-info-open]')!;
       assert.ok(card,`${kind}: a card opened`);
-      assert.equal(css(card).padding,kind==='pullRequest'?'0px':'16px 24px',`${kind}: one card gutter`);
+      assert.equal(css(card).padding,kind==='pullRequest'?'0px':'12px 16px',`${kind}: one card gutter`);
       assert.equal(css(card).borderRadius,'18px',`${kind}: one card radius`);
       const closes=Array.from(card.querySelectorAll('[data-bb-chat-ui-card-close]')).filter(node=>css(node).display!=='none');
       assert.equal(closes.length,1,`${kind}: exactly one close slot`);
       assert.equal(css(closes[0]).position,'absolute',`${kind}: close sits on the card, not in a per-card grid`);
-      assert.equal(css(closes[0]).top,kind==='pullRequest'?'8px':'18px',`${kind}: close centers on its row`);
-      assert.equal(css(closes[0]).right,kind==='pullRequest'?'8px':'16px',`${kind}: close uses its card inset`);
+      assert.equal(css(closes[0]).top,kind==='pullRequest'?'8px':'14px',`${kind}: close centers on its row`);
+      assert.equal(css(closes[0]).right,kind==='pullRequest'?'6px':'10px',`${kind}: close uses its card inset`);
       const head=card.querySelector('[data-bb-chat-ui-card-head]');
       assert.ok(head,`${kind}: a head slot`);
-      assert.equal(css(head!).minHeight,kind==='pullRequest'?'40px':'28px',`${kind}: one row height`);
+      assert.equal(css(head!).minHeight,kind==='pullRequest'?'36px':'24px',`${kind}: one row height`);
       surfaceFree(card,kind);
       f.click('[data-bb-chat-ui-card-close]');
       await f.tick();

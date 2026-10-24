@@ -119,11 +119,11 @@ ${NATIVE_DETAIL} :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[cl
 ${NATIVE_DETAIL} > button[aria-expanded][aria-controls][class~="px-3"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${NATIVE_DETAIL} > div > button[aria-expanded][aria-controls]:is([class~="px-3"],[class~="px-2"]):not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${NATIVE_DETAIL} > div[class~="p-1"]:not([${cardSlot.head}]), ${NATIVE_DETAIL} > div[class~="p-1"] > div[class~="px-2"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
-${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:-8px; margin-right:-8px; width:calc(100% + 16px); box-sizing:border-box; }
+${DETAIL}[aria-label="To-do list"] ul[class~="px-2.5"] > li[class~="px-2"] { margin-left:calc(-1 * var(--bb-chat-ui-card-row-pad)); margin-right:calc(-1 * var(--bb-chat-ui-card-row-pad)); width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); box-sizing:border-box; }
 ${DETAIL} [${MARK}-readonly-title] { cursor:default !important; background:transparent !important; box-shadow:none !important; }
-${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; flex:0 1 auto; gap:8px; min-width:0; min-height:28px; height:28px; padding:0 !important; ${cardStyle.titleText} }
+${DETAIL} [${cardSlot.head}] > button[${MARK}-readonly-title] { display:flex; align-items:center; flex:0 1 auto; gap:var(--bb-chat-ui-card-gap); min-width:0; min-height:var(--bb-chat-ui-card-head); height:var(--bb-chat-ui-card-head); padding:0 !important; ${cardStyle.titleText} }
 /* Keep native title, live counters and phase bars on their original parents. */
-${WORKFLOW_HEADING} { height:auto; display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:28px auto; gap:2px 8px; align-items:center; padding:0 32px 6px 0 !important; }
+${WORKFLOW_HEADING} { height:auto; display:grid; grid-template-columns:14px auto auto minmax(0,1fr); grid-template-rows:var(--bb-chat-ui-card-head) auto; gap:2px 8px; align-items:center; padding:0 var(--bb-chat-ui-card-close-gutter) 6px 0 !important; }
 ${WORKFLOW_HEADING} > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
 ${WORKFLOW_HEADING} > span[class~="flex-1"] { display:contents; }
 ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:first-child { grid-column:2 / -1; grid-row:1; }
@@ -132,7 +132,7 @@ ${WORKFLOW_HEADING} > span[class~="flex-1"] > span:nth-child(3) { grid-column:3;
 ${WORKFLOW_HEADING} > [role="presentation"] { grid-column:4; grid-row:2; width:64px; max-width:100%; }
 ${WORKFLOW_HEADING} > span[class~="ml-auto"] { display:none; }
 /* Current runs put the title button inside the controls group, under an Active workflows host. */
-${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { height:auto; position:relative; display:grid !important; grid-template-columns:14px fit-content(calc(100% - 62px)) 24px minmax(0,1fr); grid-template-rows:28px auto 12px; align-items:center; column-gap:8px; row-gap:2px; margin:0 0 8px; padding:0 32px 0 0 !important; }
+${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] { height:auto; position:relative; display:grid !important; grid-template-columns:14px fit-content(calc(100% - var(--bb-chat-ui-card-workflow-title-reserve))) var(--bb-chat-ui-card-icon) minmax(0,1fr); grid-template-rows:var(--bb-chat-ui-card-head) auto 12px; align-items:center; column-gap:var(--bb-chat-ui-card-gap); row-gap:2px; margin:0 0 var(--bb-chat-ui-card-gap); padding:0 var(--bb-chat-ui-card-close-gutter) 0 0 !important; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-panel-action] { grid-column:3; grid-row:1; }
 ${DETAIL}[${OPEN}="workflow"] [${MARK}-title-heading="workflow"][role="group"] > [${MARK}-title-icon] { grid-column:1; grid-row:1; }
 /* Flatten only the read-only title layout. Native controls and their handlers keep their parents. */
@@ -171,15 +171,15 @@ ${DETAIL}[aria-label="Model fallback"][${cardSlot.layout}="with-actions"] > [rol
 ${DETAIL}[aria-label="Model fallback"][${cardSlot.layout}="with-actions"] > [role="status"] > span[title] { grid-area:body; min-width:0; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Model fallback"] [aria-label="Dismiss model fallback"] > :is(svg, [data-icon-root]) { display:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] { padding:4px 8px !important; min-width:0; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:8px; min-width:0; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] { display:flex; align-items:center; gap:var(--bb-chat-ui-card-gap); min-width:0; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-title] { ${cardStyle.title} font-weight:400; }
 /* Center a 14px mask in its 24px target, but align its visible edge to the 16px Parent icon slot. */
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { ${cardStyle.action} margin-left:-5px; margin-right:-3px; font-size:0 !important; text-decoration:none; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] { ${cardStyle.action} margin-left:var(--bb-chat-ui-card-pr-offset); margin-right:var(--bb-chat-ui-card-pr-trailing); font-size:0 !important; text-decoration:none; }
 ${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "] > * { display:none !important; }
-${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:14px; height:14px; background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
+${DETAIL}[${OPEN}="pullRequest"] [${MARK}-pr-heading] a[aria-label^="Pull request "]::after { content:""; width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); background:currentColor; mask:${GITHUB_MARK} center/contain no-repeat; -webkit-mask:${GITHUB_MARK} center/contain no-repeat; }
 ${DETAIL}[${OPEN}="pullRequest"] a[aria-label^="Pull request "] > span[title] { display:none; }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { ${cardStyle.button} position:relative; z-index:1; gap:0; padding:0 22px 0 0 !important; border:0 !important; border-radius:0 !important; cursor:default; }
-${LARGE_HIT_TARGET} ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { height:32px; min-height:32px; }
+${LARGE_HIT_TARGET} ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] { height:var(--bb-chat-ui-card-button-large); min-height:var(--bb-chat-ui-card-button-large); }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button { display:inline-flex; align-items:center; justify-content:center; height:20px; min-height:20px; padding:0 !important; ${cardStyle.text} background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
@@ -188,6 +188,7 @@ ${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge me
 [data-bb-chat-ui-pr-menu-layer] { z-index:56 !important; }
 [data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
 ${cardFaceCss("[data-bb-chat-ui-pr-menu]")}
+[data-bb-chat-ui-pr-menu] { padding:var(--bb-chat-ui-card-pr-menu-y) var(--bb-chat-ui-card-pr-menu-x) !important; }
 ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria-label^="Queued message"][aria-label$=" actions"]) { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
@@ -213,7 +214,7 @@ ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [cl
 ${DETAIL}[${OPEN}="workflow"] section[role="region"] button[aria-expanded] + [class~="flex-col"] { margin-top:var(--bb-chat-ui-info-row-gap) !important; }
 /* Leave the corner gutter inside the real scroller, not outside a clipped reveal wrapper. */
 ${LIST_DETAIL} > section[role="region"], ${LIST_DETAIL} > section[role="region"] > div[class~="bg-popover"] { min-width:0; overflow:visible !important; }
-${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; padding-left:8px !important; padding-right:8px !important; }
+${LIST_DETAIL} [data-detail-scroll-area] { box-sizing:border-box; width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); margin-left:calc(-1 * var(--bb-chat-ui-card-row-pad)); margin-right:calc(-1 * var(--bb-chat-ui-card-row-pad)); padding-left:var(--bb-chat-ui-card-row-pad) !important; padding-right:var(--bb-chat-ui-card-row-pad) !important; }
 ${NATIVE_BODY} { ${cardStyle.body} }
 ${DETAIL}[${OPEN}="queue"] [data-queued-messages-scroll] > ul[data-bb-chat-ui-queue-end-boundary="true"] { padding-top:0 !important; }
 /* Main popovers own the common height cap; native list caps must not shorten it. */
@@ -221,13 +222,13 @@ ${DETAIL}[${OPEN}="todos"] ul, ${DETAIL}[aria-label="Child threads"] ul, ${DETAI
 ${DETAIL}[${OPEN}="workflow"] section[aria-label="Workflow"] { overflow:visible !important; background-color:transparent !important; border:0 !important; box-shadow:none !important; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) { overflow:visible !important; border-top-width:0 !important; border-top-color:transparent !important; background:transparent !important; box-shadow:none !important; }
 ${DETAIL}[${OPEN}="workflow"] section[role="region"]:not([aria-hidden="true"]) > div[class~="bg-popover"] { overflow:visible !important; background-color:transparent !important; box-shadow:none !important; }
-${WORKFLOW_LIST_ROW} { width:calc(100% + 16px); margin-left:-8px; margin-right:-8px; min-height:28px !important; padding:6px 8px !important; }
+${WORKFLOW_LIST_ROW} { width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); margin-left:calc(-1 * var(--bb-chat-ui-card-row-pad)); margin-right:calc(-1 * var(--bb-chat-ui-card-row-pad)); min-height:var(--bb-chat-ui-card-workflow-min) !important; padding:var(--bb-chat-ui-card-workflow-y) var(--bb-chat-ui-card-row-pad) !important; }
 /* A compact step timeline; native phase controls and agent nodes retain their parents. */
 ${WORKFLOW_PHASES} > div { position:relative; min-width:0; }
-${WORKFLOW_PHASE_ROW} { gap:8px; opacity:1; }
-${WORKFLOW_PHASE_ROW.split(", ").map(selector => `${selector}::before`).join(", ")} { content:""; position:relative; z-index:1; display:inline-block; flex:none; width:18px; height:18px; border:0; border-radius:999px; background:radial-gradient(circle,var(--subtle-foreground) 0 4px,transparent 4.5px); }
-${WORKFLOW_PHASES} > div:not(:last-child)::after { content:""; position:absolute; top:19px; bottom:-13px; left:8px; width:2px; background:color-mix(in oklab,var(--foreground) 22%,transparent); pointer-events:none; }
-${WORKFLOW_PHASES} > div[class~="items-center"]:not(:last-child)::after { left:16px; }
+${WORKFLOW_PHASE_ROW} { gap:var(--bb-chat-ui-card-gap); opacity:1; }
+${WORKFLOW_PHASE_ROW.split(", ").map(selector => `${selector}::before`).join(", ")} { content:""; position:relative; z-index:1; display:inline-block; flex:none; width:var(--bb-chat-ui-card-workflow-dotbox); height:var(--bb-chat-ui-card-workflow-dotbox); border:0; border-radius:999px; background:radial-gradient(circle,var(--subtle-foreground) 0 4px,transparent 4.5px); }
+${WORKFLOW_PHASES} > div:not(:last-child)::after { content:""; position:absolute; top:var(--bb-chat-ui-card-workflow-top); bottom:calc(-1 * var(--bb-chat-ui-card-workflow-tail)); left:var(--bb-chat-ui-card-workflow-left); width:2px; background:color-mix(in oklab,var(--foreground) 22%,transparent); pointer-events:none; }
+${WORKFLOW_PHASES} > div[class~="items-center"]:not(:last-child)::after { left:var(--bb-chat-ui-card-workflow-inset); }
 ${WORKFLOW_PHASES} > div > button[aria-expanded] > svg { order:3; margin-left:auto; flex:none; color:var(--subtle-foreground); }
 ${WORKFLOW_PHASES} > div > button[aria-expanded] > span[class~="font-medium"] { flex:1; }
 ${WORKFLOW_PHASES} > div[class~="items-center"] > span[aria-hidden="true"] { display:none; }
@@ -237,13 +238,13 @@ ${WORKFLOW_PHASES} > div > button[aria-expanded][class~="bg-background/70"]::bef
 ${WORKFLOW_PHASES} > div > button[aria-expanded]:has(> [data-icon="CircleCheck"])::before,
 ${WORKFLOW_PHASES} > div[class~="items-center"][class~="bg-background/70"]::before,
 ${WORKFLOW_PHASES} > div[class~="items-center"]:has(> [data-icon="CircleCheck"])::before { background:radial-gradient(circle,var(--foreground) 0 4px,transparent 4.5px); }
-${WORKFLOW_PHASES} > div > button[aria-expanded] + div[class~="flex-col"] { margin-left:9px !important; padding-left:18px; border-left:0; }
-${WORKFLOW_AGENT_ROW} { display:grid; grid-template-columns:14px minmax(0,1fr); column-gap:8px; row-gap:2px; }
+${WORKFLOW_PHASES} > div > button[aria-expanded] + div[class~="flex-col"] { margin-left:var(--bb-chat-ui-card-workflow-center) !important; padding-left:var(--bb-chat-ui-card-workflow-dotbox); border-left:0; }
+${WORKFLOW_AGENT_ROW} { display:grid; grid-template-columns:14px minmax(0,1fr); column-gap:var(--bb-chat-ui-card-gap); row-gap:2px; }
 ${WORKFLOW_AGENT_ROW} > svg[data-icon-root] { grid-column:1; grid-row:1; align-self:center; }
 ${WORKFLOW_AGENT_ROW} > span[class~="truncate"] { grid-column:2; grid-row:1; font-weight:400; }
 ${WORKFLOW_AGENT_ROW} > span[class~="ml-auto"] { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
-${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 16px); margin:0 -8px; }
+${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); margin:0 calc(-1 * var(--bb-chat-ui-card-row-pad)); }
 [${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); ${cardStyle.prose} }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
 [${MARK}-trigger]:active, [${MARK}-stack-kind]:active, [${MARK}-all]:active { transform:scale(.95); }
@@ -316,14 +317,14 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
 [${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; order:0 !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
 /* Keep native actions on their original parents while sharing one title row. */
-${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-areas:"heading actions close" "body body body"; grid-template-rows:28px auto; align-items:center; gap:8px; outline:0 !important; }
+${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) { display:grid !important; grid-template-columns:minmax(0,1fr) auto var(--bb-chat-ui-card-icon); grid-template-areas:"heading actions close" "body body body"; grid-template-rows:var(--bb-chat-ui-card-head) auto; align-items:center; gap:var(--bb-chat-ui-card-gap); outline:0 !important; }
 ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > * { min-width:0; flex-shrink:0; }
 ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
-[${MARK}-menu] > p { margin:0 0 8px; }
+[${MARK}-menu] > p { margin:0 0 var(--bb-chat-ui-card-gap); }
 /* The catalog is a list of rows laid out in columns: the grid owns the hover gutter. */
 [${MARK}-menu] > [${MARK}-catalog] { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); gap:2px; ${cardStyle.rowGutter} }
-[${MARK}-choice] { display:flex; min-width:0; align-items:center; gap:8px; color:inherit; font:inherit; text-align:left; cursor:pointer; ${cardStyle.rowBox} }
+[${MARK}-choice] { display:flex; min-width:0; align-items:center; gap:var(--bb-chat-ui-card-gap); color:inherit; font:inherit; text-align:left; cursor:pointer; ${cardStyle.rowBox} }
 [${MARK}-choice]:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 [${MARK}-choice] span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 [${MARK}-choice] svg { width:16px; height:16px; flex-shrink:0; }
@@ -336,7 +337,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff] p { white-space:pre-wrap; }
 [${MARK}-diff-content] { display:block !important; }
 [${MARK}-diff-files], [${MARK}-diff-commits] { display:flex; flex-direction:column; row-gap:0; }
-[${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:8px; min-width:0; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+[${MARK}-diff-file], [${MARK}-diff-commit] { display:flex; align-items:center; gap:var(--bb-chat-ui-card-gap); min-width:0; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 [${MARK}-diff-file]:hover, [${MARK}-diff-commit]:hover { ${cardStyle.rowHover} }
 [${MARK}-diff-file][hidden], [${MARK}-diff-commit][hidden] { display:none !important; }
 [${MARK}-diff-toggle] { display:flex; align-items:center; gap:6px; margin:0; color:var(--subtle-foreground); font-family:inherit; cursor:pointer; text-align:left; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
@@ -345,7 +346,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-toggle] svg { width:12px; height:12px; flex-shrink:0; }
 [${MARK}-diff-toggle][aria-expanded=true] svg { transform:rotate(180deg); }
 [${MARK}-diff-file] > svg { width:16px; height:16px; flex-shrink:0; }
-[${MARK}-diff-graph] { position:relative; align-self:stretch; margin-top:-8px; margin-bottom:-8px; width:16px; flex-shrink:0; color:var(--subtle-foreground); }
+[${MARK}-diff-graph] { position:relative; align-self:stretch; margin-top:calc(-1 * var(--bb-chat-ui-card-row-pad)); margin-bottom:calc(-1 * var(--bb-chat-ui-card-row-pad)); width:16px; flex-shrink:0; color:var(--subtle-foreground); }
 [${MARK}-diff-graph]::before, [${MARK}-diff-graph]::after { content:""; position:absolute; left:7.5px; width:1px; background:color-mix(in oklab,var(--subtle-foreground) 40%,transparent); }
 [${MARK}-diff-graph]::before { top:0; bottom:calc(50% + 4px); }
 [${MARK}-diff-graph]::after { top:calc(50% + 4px); bottom:0; }
@@ -356,11 +357,11 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-file] > span { flex-shrink:0; ${cardStyle.secondaryText} }
 [${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }
-[${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:12px !important; color:var(--subtle-foreground); }
+[${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:var(--bb-chat-ui-card-secondary-size) !important; line-height:var(--bb-chat-ui-card-line); color:var(--subtle-foreground); }
 [${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
 ${DETAIL}[aria-label="Queued messages"] > :not([${cardSlot.head}]) { min-height:0; }
-${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:8px; }
+${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:var(--bb-chat-ui-card-gap); }
 ${DETAIL} [data-queued-messages-scroll-frame] { position:static !important; display:grid !important; grid-template-rows:minmax(0,1fr); flex:0 1 auto !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; overflow:hidden !important; }
 ${DETAIL} [data-queued-messages-scroll] { height:auto !important; min-height:0 !important; max-height:none !important; padding:4px 0; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
 ${DETAIL} header[data-queued-messages-mode] { display:none !important; }
@@ -402,10 +403,10 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-child-meta], [${MARK}-child-status] { ${cardStyle.meta} }
 [${MARK}-child-meta] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 [${MARK}-child-status] { flex:none; white-space:nowrap; }
-${DETAIL}[aria-label="Child threads"] ul > li > a { display:flex; align-items:center; gap:8px; min-width:0; color:inherit; cursor:pointer; text-decoration:none; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+${DETAIL}[aria-label="Child threads"] ul > li > a { display:flex; align-items:center; gap:var(--bb-chat-ui-card-gap); min-width:0; color:inherit; cursor:pointer; text-decoration:none; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${DETAIL}[aria-label="Child threads"] ul > li > a:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 /* Agentation: native header pieces join the card's head line; the close is the shared slot. */
-${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto 24px; grid-template-rows:28px auto; grid-template-areas:"heading actions close" "body body body"; align-items:center; column-gap:8px; row-gap:8px; }
+${DETAIL}.agentation-staging-shell { display:grid !important; grid-template-columns:minmax(0,1fr) auto var(--bb-chat-ui-card-icon); grid-template-rows:var(--bb-chat-ui-card-head) auto; grid-template-areas:"heading actions close" "body body body"; align-items:center; column-gap:var(--bb-chat-ui-card-gap); row-gap:var(--bb-chat-ui-card-gap); }
 ${DETAIL}.agentation-staging-shell > div:first-child { display:contents !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { display:contents !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [data-icon="ChatFeedback"] { display:none !important; }
@@ -416,20 +417,20 @@ ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-are
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:first-child { order:2; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:last-child { order:1; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { ${cardStyle.button} }
-${LARGE_HIT_TARGET} ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { height:32px; min-height:32px; }
+${LARGE_HIT_TARGET} ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { height:var(--bb-chat-ui-card-button-large); min-height:var(--bb-chat-ui-card-button-large); }
 ${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] { gap:0; font-size:0 !important; }
 ${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] > :not([${MARK}-bulk-icon]) { display:none !important; }
-[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:14px; height:14px; pointer-events:none; }
+[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); pointer-events:none; }
 ${DETAIL}.agentation-staging-shell > .grid { grid-area:body; width:100%; }
 ${DETAIL}.agentation-staging-shell > .grid,
 ${DETAIL}.agentation-staging-shell > .grid > div { overflow:visible !important; }
 ${DETAIL}.agentation-staging-shell > .grid > div > div { padding:0 !important; }
 ${DETAIL}.agentation-staging-shell ul { max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; overflow:visible !important; }
 ${DETAIL}.agentation-staging-shell ul { display:flex; flex-direction:column; row-gap:2px; }
-${DETAIL}.agentation-staging-shell li { display:flex !important; align-items:center; gap:8px; min-width:0; margin-top:0 !important; margin-bottom:0 !important; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
+${DETAIL}.agentation-staging-shell li { display:flex !important; align-items:center; gap:var(--bb-chat-ui-card-gap); min-width:0; margin-top:0 !important; margin-bottom:0 !important; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${DETAIL}.agentation-staging-shell li:is(:hover, :focus-within) { ${cardStyle.rowHover} }
 ${DETAIL}.agentation-staging-shell li > button { ${cardStyle.action} }
-${DETAIL}.agentation-staging-shell li > button :is(svg, [data-icon-root]) { width:14px; height:14px; }
+${DETAIL}.agentation-staging-shell li > button :is(svg, [data-icon-root]) { width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); }
 ${DETAIL}.agentation-staging-shell li > button:not(:disabled):is(:hover, :focus-visible) { ${cardStyle.hover} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] { display:grid !important; grid-template-areas:"comment comment" "location target"; grid-template-columns:auto minmax(0,1fr); gap:0 6px; flex:1; min-width:0; }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span { max-width:none !important; font:inherit; }

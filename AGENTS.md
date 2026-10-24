@@ -54,7 +54,8 @@
 - 확인 명령: `npm test`, `npm run typecheck`
 - 이 플러그인의 제품 규칙은 이 절에 쓴다.
 - 정보 팝오버 UI를 만들거나 고치기 전에 `docs/composer-popovers.md`를 읽고 카드·제목·목록 행의 공통 규격을 따른다.
-- 정보 팝오버 글자는 긴 본문·사용자 메시지 12px/16px, 목록·액션 13px/16px, 제목 14px/18px의 세 단계를 쓴다. 보조 정보는 12px/16px이며 native·SDK, phone·desktop에 같은 규칙을 적용한다.
+- 정보 팝오버 글자는 desktop에서 제목 12px/16px·600, 목록·글자 액션 12px/16px, 보조 정보 11px/16px를 쓴다. phone은 제목 14px/18px·600, 목록·글자 액션 13px/16px, 보조 정보 12px/16px를 유지한다. 단일 행 PR·Parent 제목의 굵기는 400이며 긴 본문·사용자 메시지는 양쪽 모두 12px/16px다. native·SDK에 같은 역할 규칙을 적용하고 html의 data-bb-chat-ui-root-device 속성으로 CSS 변수를 선택한다. 속성이 없으면 desktop 값이며 창 너비로 기기를 정하지 않는다.
+- 정보 카드 여백은 루트 CSS 변수로 device별 선택한다. desktop은 안쪽 12px 16px, 제목 줄 24px·본문 간격 6px, 아이콘 액션·닫기 20px, 목록 행 최소 28px·padding 6px·radius 8px다. phone도 안쪽은 12px 16px로 줄이고 기존 28px 제목 줄·24px 닫기·32px 목록 행·padding 8px를 유지한다. 컴포저 pill과 모델 메뉴의 기존 규격은 바꾸지 않는다.
 - PR의 Merge 버튼과 오른쪽 캐럿은 같은 머지 방식 메뉴를 연다. `Merge`, `Squash merge`, `Rebase and merge` 중 하나를 선택했을 때만 실행한다.
 - UI 구현 때마다 같은 제품 코드를 직접 쓰고 검수 데이터를 주입하는 데모를 함께 갱신해 사용자에게 띄운다. 데모는 `thread-storage`에 두고 검증한 커밋을 표시하며, 외부 변경 액션만 검수용 콜백으로 대체한다.
 - 정보 팝오버 제목은 읽기 전용이며, 제목·액션·닫기는 세로 중앙선을 맞춘다. 실제 액션과 내부 목록 펼치기는 유지한다. 목록 hover는 상태별로 달라지지 않게 padding·radius·전환을 통일하며, 장식용 행에 pointer를 추가하지 않는다.

@@ -210,7 +210,7 @@ ${LEGACY_QUEUE} [data-queued-message-actions] button[aria-label^="Edit"] {
 }
 ${MANAGED_QUEUE} [data-queued-message-row] {
   ${cardStyle.rowBox}
-  padding:6px 8px !important;
+  padding:var(--bb-chat-ui-card-queue-y) var(--bb-chat-ui-card-row-pad) !important;
   ${cardStyle.rowGutter}
 }
 ${MANAGED_QUEUE} [data-queued-message-row]:is(:hover, :focus-within) {
@@ -218,8 +218,8 @@ ${MANAGED_QUEUE} [data-queued-message-row]:is(:hover, :focus-within) {
 }
 ${MANAGED_QUEUE} [data-queued-messages-scroll] > ul { display:flex; flex-direction:column; row-gap:0; }
 /* Keep the hover gutter inside the clipped viewport; message content stays at the body edge. */
-${OPEN_QUEUE} [data-queued-messages-scroll-frame] { width:calc(100% + 16px) !important; margin-left:-8px; margin-right:-8px; }
-${OPEN_QUEUE} [data-queued-messages-scroll] { box-sizing:border-box; padding-left:8px !important; padding-right:8px !important; }
+${OPEN_QUEUE} [data-queued-messages-scroll-frame] { width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)) !important; margin-left:calc(-1 * var(--bb-chat-ui-card-row-pad)); margin-right:calc(-1 * var(--bb-chat-ui-card-row-pad)); }
+${OPEN_QUEUE} [data-queued-messages-scroll] { box-sizing:border-box; padding-left:var(--bb-chat-ui-card-row-pad) !important; padding-right:var(--bb-chat-ui-card-row-pad) !important; }
 ${MANAGED_QUEUE} [data-queued-message-row] > .flex {
   width: 100%;
   flex-direction: row;
@@ -273,7 +273,7 @@ ${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]:is(:
 ${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"]::before {
   content:none !important;
 }
-${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] svg { width:14px; height:14px; position:relative; }
+${OPEN_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] svg { width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); position:relative; }
 ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
   flex: 1 1 0%;
   max-width: none;
@@ -292,6 +292,12 @@ ${MANAGED_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .
   font-size: 12px !important;
   line-height: 16px !important;
 }
+/* A truncated schedule caption is secondary information, not user-message prose. */
+${MANAGED_QUEUE} [data-queued-message-row] .text-2xs .truncate {
+  --text-xs: var(--bb-chat-ui-card-secondary-size);
+  font-size: var(--bb-chat-ui-card-secondary-size) !important;
+  line-height: var(--bb-chat-ui-card-line) !important;
+}
 ${MANAGED_QUEUE} [data-queued-message-actions] {
   display: none !important;
   position: static !important;
@@ -304,17 +310,18 @@ ${MANAGED_QUEUE} [data-queued-message-actions] {
   pointer-events: auto !important;
 }
 ${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Queued message "][aria-label$=" actions"]) {
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
+  width: var(--bb-chat-ui-card-queue-action);
+  height: var(--bb-chat-ui-card-queue-action);
+  min-height: var(--bb-chat-ui-card-queue-action);
   padding: 0 !important;
   border-radius: 999px !important;
 }
 ${SMALL_HIT_TARGET} ${MANAGED_QUEUE} :is([data-queued-message-actions] button, button[aria-label^="Queued message "][aria-label$=" actions"]) {
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
+  width: var(--bb-chat-ui-card-queue-small);
+  height: var(--bb-chat-ui-card-queue-small);
+  min-height: var(--bb-chat-ui-card-queue-small);
 }
+${MANAGED_QUEUE} [data-queued-message-actions] button :is(svg,[data-icon-root]) { width:var(--bb-chat-ui-card-queue-inline-glyph); height:var(--bb-chat-ui-card-queue-inline-glyph); }
 ${MANAGED_QUEUE} button[aria-label^="Queued message "][aria-label$=" actions"] {
   margin-top:0;
 }
