@@ -53,13 +53,14 @@ License: https://github.com/lucide-icons/lucide/blob/0.300.0/LICENSE
 
 - app.tsx: bb-chat-ui-status — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/activity.svg
 - lib/quote-pill.ts: QUOTE_ICON — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/quote.svg
+- lib/transcript-components.ts: CODE_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/code.svg
 - lib/user-attachments.ts: FILE_ICON — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/file.svg
 
 The status path matches this release. Its original copying route was not recorded;
 this release is the verified source used for attribution. The quote and file SVGs
 were replaced directly from this release on 2026-10-19.
 
-Adaptations: activity uses React and currentColor; quote and file use a black stroke
+Adaptations: activity uses React and currentColor; quote, file and code use a black stroke
 as a CSS alpha mask, omit fixed SVG dimensions, and inherit the surrounding text
 color through CSS. Quote is rotated 180 degrees to display an opening quote. Both quote and file
 are scaled to 85% around their centers. The CSS icon box dimensions remain unchanged.

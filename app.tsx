@@ -14,6 +14,7 @@ import { injectQuotePill } from "./lib/quote-pill";
 import { injectMentionPills } from "./lib/mention-pill";
 import { injectSendHaptic } from "./lib/send-haptic";
 import { injectQueuedMessages } from "./lib/queued-messages";
+import { injectTranscriptComponents } from "./lib/transcript-components";
 import { injectThreadToc } from "./lib/thread-toc";
 import { injectUserAttachments } from "./lib/user-attachments";
 import { injectWorkspaceDiffPill } from "./lib/workspace-diff-pill";
@@ -96,6 +97,10 @@ export default definePluginApp((app) => {
     mount() {
       return injectSendHaptic(document);
     },
+  });
+  app.contentScripts.register({
+    id: "transcript-components",
+    mount() { return injectTranscriptComponents(document); },
   });
   app.contentScripts.register({
     id: "thread-toc",

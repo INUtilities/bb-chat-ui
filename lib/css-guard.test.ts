@@ -8,6 +8,7 @@ import { injectComposerInfo } from "./composer-info.ts";
 import { injectMentionPills } from "./mention-pill.ts";
 import { injectQuotePill } from "./quote-pill.ts";
 import { injectQueuedMessages } from "./queued-messages.ts";
+import { injectTranscriptComponents } from "./transcript-components.ts";
 import { injectThreadToc } from "./thread-toc.ts";
 import { injectUserAttachments } from "./user-attachments.ts";
 import { injectWorkspaceDiffPill } from "./workspace-diff-pill.ts";
@@ -81,7 +82,7 @@ test("no injected rule pairs :has() with a generic subject", () => {
     const value = key === "document" ? document : key === "getComputedStyle" ? dom.window.getComputedStyle.bind(dom.window) : dom.window[key];
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
   }
-  const stops = [injectComposerGlass, injectComposerInfo, injectMentionPills, injectQuotePill, injectQueuedMessages, injectThreadToc, injectUserAttachments, injectWorkspaceDiffPill]
+  const stops = [injectComposerGlass, injectComposerInfo, injectMentionPills, injectQuotePill, injectQueuedMessages, injectThreadToc, injectTranscriptComponents, injectUserAttachments, injectWorkspaceDiffPill]
     .map((inject) => inject(document));
   try {
     const offenders = Array.from(document.querySelectorAll("style"))
