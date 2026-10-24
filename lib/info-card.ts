@@ -70,21 +70,25 @@ export function cardFaceCss(selector: string): string {
   return `${selector} { ${cardStyle.face} }\n.dark ${selector}, .dark${selector} { ${cardStyle.faceDark} }`;
 }
 
-export function infoCardCss(root = `[${CARD}]`): string {
+export function infoCardCss(root = `[${CARD}]`, typographyScope = ""): string {
   const card = `:is(${root})`;
+  const within = typographyScope ? `:where(${typographyScope}) ` : "";
   const s = Object.fromEntries(Object.entries(cardSlot).map(([key, attr]) => [key, `[${attr}]`])) as { [K in keyof typeof cardSlot]: string };
   const controls = `${s.action}, ${s.button}, ${s.close}, ${s.row}, ${s.navigation}`;
   const ownType = `${NESTED_SURFACE_EXEMPT}, ${s.title}, ${s.meta}, ${s.section}, ${s.action}, ${s.button}, ${s.close}`;
   const ownTypeTree = `${ownType}, ${ownType.split(", ").map(selector => `${selector} *`).join(", ")}`;
   const headingTypeTree = `${ownTypeTree}, ${s.head}, ${s.head} *`;
+  // A mixed positive :where() list falls into Chrome's global candidate bucket.
+  // Separate subjects keep zero specificity and use tag/class buckets. Native
+  // roots also expose their common ancestor outside the multi-branch :is().
   return `
 ${cardFaceCss(card)}
 ${card} { position:relative; box-sizing:border-box; padding:16px 24px !important; ${cardStyle.text} }
 /* Host utilities grow on phones; content roles keep the same three-level scale. */
-${card} :where([class~="text-xs"], [class~="text-sm"]):not(:where(${headingTypeTree})) { ${cardStyle.text} }
-${card} :where([class~="text-2xs"]):not(:where(${ownTypeTree})) { ${cardStyle.secondaryText} }
-${s.prose}, ${card} :where(p):not(:where(${headingTypeTree})) { ${cardStyle.prose} }
-:is(${s.prose}, ${card} p) :where(span, a, strong, em, b, i, li, [class~="text-xs"], [class~="text-sm"]):not(:where(${headingTypeTree})) { ${cardStyle.prose} }
+${[".text-xs", ".text-sm"].map(subject => `${within}${card} :where(${subject}):not(:where(${headingTypeTree})) { ${cardStyle.text} }`).join("\n")}
+${within}${card} :where(.text-2xs):not(:where(${ownTypeTree})) { ${cardStyle.secondaryText} }
+${s.prose}, ${within}${card} :where(p):not(:where(${headingTypeTree})) { ${cardStyle.prose} }
+${["span", "a", "strong", "em", "b", "i", "li", ".text-xs", ".text-sm"].map(subject => `${within}:is(${s.prose}, ${card} p) :where(${subject}):not(:where(${headingTypeTree})) { ${cardStyle.prose} }`).join("\n")}
 ${card} :is(button, a):not(${controls}) { ${FLAT} }
 ${card} button:not(${controls}):not(:disabled):is(:hover, :focus-visible) { background-color:${CARD_HOVER} !important; }
 ${s.head} { ${cardStyle.head} }

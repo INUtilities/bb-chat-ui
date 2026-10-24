@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 
+import { infoCardCss } from "./info-card.ts";
 import { injectComposerGlass } from "./composer-glass.ts";
 import { injectComposerInfo } from "./composer-info.ts";
 import { injectMentionPills } from "./mention-pill.ts";
@@ -94,4 +95,47 @@ test("no injected rule pairs :has() with a generic subject", () => {
     }
     dom.window.close();
   }
+});
+
+// Chrome SelectorStats: the card's mixed :where(span, ..., [class~="text-xs"])
+// rule tried every transcript element even with all cards closed. Keep each
+// positive typography subject in a single class or tag bucket; :not exclusions
+// can still contain lists without widening that candidate bucket.
+test("card typography keeps one class or tag candidate bucket per selector", () => {
+  const dom = new JSDOM("<html></html>");
+  const sheet = new dom.window.CSSStyleSheet();
+  sheet.replaceSync(infoCardCss());
+  const offenders: string[] = [];
+  for (const rule of Array.from(sheet.cssRules)) {
+    const css = rule as CSSStyleRule;
+    if (!css.selectorText || !css.style.getPropertyValue("font-size")) continue;
+    for (const selector of splitTop(css.selectorText, ",")) {
+      const subject = splitTop(selector, " >+~").at(-1) ?? "";
+      const positive = subject.match(/^:where\(([^()]*)\)/)?.[1];
+      if (positive && (splitTop(positive, ",").length !== 1 || /\[class[~|^$*]?=/.test(positive))) offenders.push(selector);
+    }
+  }
+  dom.window.close();
+  assert.deepEqual(offenders, [], "card typography must reject unrelated timeline candidates cheaply");
+});
+
+// The native card root is an :is(menu, detail) list. Blink cannot extract a
+// required ancestor from that list, so its typography needs a separate scope
+// that lets transcript elements fail the ancestor filter before matching.
+test("native card typography exposes its required composer ancestor", () => {
+  const scope = "[data-promptbox-shell]";
+  const dom = new JSDOM("<html></html>");
+  const sheet = new dom.window.CSSStyleSheet();
+  sheet.replaceSync(infoCardCss("[data-menu], [data-detail]", scope));
+  const offenders: string[] = [];
+  for (const rule of Array.from(sheet.cssRules)) {
+    const css = rule as CSSStyleRule;
+    if (!css.selectorText || !css.style.getPropertyValue("font-size")) continue;
+    for (const selector of splitTop(css.selectorText, ",")) {
+      const subject = splitTop(selector, " >+~").at(-1) ?? "";
+      if (subject.startsWith(":where(") && !selector.startsWith(`:where(${scope}) `)) offenders.push(selector);
+    }
+  }
+  dom.window.close();
+  assert.deepEqual(offenders, [], "native type rules must reject elements outside the composer via the ancestor filter");
 });

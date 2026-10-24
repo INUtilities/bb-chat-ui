@@ -80,7 +80,7 @@ const CARD_ROOT = `[${MARK}-menu], ${DETAIL}`;
 const PILL = `:is([${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump])`;
 
 export const composerInfoCss = `
-${infoCardCss(CARD_ROOT)}
+${infoCardCss(CARD_ROOT, "[data-promptbox-shell]")}
 [${MARK}-stack] { --bb-chat-ui-info-row-gap:2px; --bb-chat-ui-info-max-height:min(50dvh,26rem); --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
 .dark [${MARK}-stack] { --bb-chat-ui-info-face:${DARK_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,black 60%,transparent); }
 [${MARK}-stack]::after { display:none !important; }
