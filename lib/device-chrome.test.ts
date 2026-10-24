@@ -32,10 +32,12 @@ test("rotating a phone keeps its identity and its existing viewport layout", () 
 
 test("phone sizing consumes helper axes and composer motion shares a timeline across devices", () => {
   const phoneNarrow = 'html[data-bb-chat-ui-root-device="phone"][data-bb-chat-ui-root-viewport="narrow"]';
-  for (const css of [quotePillCss(), userAttachmentsCss(), composerGlassCss]) {
+  for (const css of [userAttachmentsCss(), composerGlassCss]) {
     assert.ok(css.includes(phoneNarrow));
     assert.doesNotMatch(css, /@media[^\{]*(?:width|pointer|hover)/);
   }
+  assert.match(quotePillCss(), /html\[data-bb-chat-ui-root-device="phone"\]/);
+  assert.doesNotMatch(quotePillCss(), /@media[^\{]*(?:width|pointer|hover)/);
   assert.match(composerGlassCss, /\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\]\s*\{[^}]*height 360ms cubic-bezier\(0\.22, 1, 0\.36, 1\),\s*border-radius 360ms cubic-bezier\(0\.22, 1, 0\.36, 1\)/);
   assert.doesNotMatch(composerGlassCss, /html\[data-bb-chat-ui-root-hit-target="small"\][^}]*height 360ms/);
 });

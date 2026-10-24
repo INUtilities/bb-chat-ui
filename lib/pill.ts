@@ -1,4 +1,4 @@
-import { PHONE_NARROW } from "./device-chrome.ts";
+export const REFERENCE_PHONE = 'html[data-bb-chat-ui-root-device="phone"]';
 
 // 값과 선언만 소유한다. native 면·선택·삭제·저장은 각 adapter의 책임이다.
 export const pillSlot = {
@@ -11,6 +11,8 @@ export const pillSlot = {
 } as const;
 
 export const pillStyle = {
+  referenceFace: `border-color: transparent !important; background: color-mix(in oklab, var(--foreground) 7%, transparent) !important; background-image: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: var(--foreground);`,
+  referenceHover: `background: color-mix(in oklab, var(--foreground) 11%, transparent) !important;`,
   legacyQuote: `  display: inline-flex !important;
   align-items: center;
   position: relative;
@@ -88,7 +90,9 @@ export const pillStyle = {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: color-mix(in oklab, var(--foreground) 9%, transparent);
+  opacity: 1 !important;
+  transition: background-color 120ms ease-out;
   color: var(--pill-icon, currentColor);
   cursor: pointer;
 `,
@@ -126,9 +130,11 @@ export const pillStyle = {
   widePhone: "max-width: calc(100% - 8px) !important;",
   removeReserve: "padding-right: 30px !important;",
   removeReservePhone: "padding-right: 34px !important;",
+  removeCross: `content:""; background:currentColor; opacity:0.75; clip-path:polygon(12% 0,50% 38%,88% 0,100% 12%,62% 50%,100% 88%,88% 100%,50% 62%,12% 100%,0 88%,38% 50%,0 12%);`,
   removeGlyph: "width: 10px; height: 10px;",
   removeGlyphPhone: "width: 12px; height: 12px;",
-  removeFocus: "outline: 1px solid var(--ring); outline-offset: -2px;",
+  removeHover: "background: color-mix(in oklab, var(--foreground) 16%, transparent);",
+  removeFocus: "outline: 2px solid var(--ring); outline-offset: 0;",
 } as const;
 
 // reference 선언을 단일 원본으로 두고 같은 값을 device 변수로도 노출한다.
@@ -146,7 +152,7 @@ function referenceTokens(declarations: string): string {
 }
 export function pillCss(): string {
   return `html { ${referenceTokens(pillStyle.reference)} --bb-chat-ui-pill-reference-icon:14px; }
-${PHONE_NARROW} { ${referenceTokens(pillStyle.referencePhone)} --bb-chat-ui-pill-reference-icon:16px; }`;
+${REFERENCE_PHONE} { ${referenceTokens(pillStyle.referencePhone)} --bb-chat-ui-pill-reference-icon:16px; }`;
 }
 
 // app.tsx 한 곳에서 설치한다. 독립 host의 중복 mount도 같은 sheet를 공유한다.

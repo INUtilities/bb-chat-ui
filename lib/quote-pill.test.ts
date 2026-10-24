@@ -84,34 +84,25 @@ test("leaves keys outside a quote alone", () => {
   );
 });
 
-test("removes a composer quote only from the hover control", () => {
+test("removes a composer quote only from its real control", () => {
   assert.equal(
     quotePointerAction({
       insideQuote: true,
-      hovering: true,
-      clientX: 180,
-      quoteRight: 200,
-      removeZonePx: 28,
+      removeButton: true,
     }),
     "remove",
   );
   assert.equal(
     quotePointerAction({
       insideQuote: true,
-      hovering: false,
-      clientX: 180,
-      quoteRight: 200,
-      removeZonePx: 28,
+      removeButton: false,
     }),
     "block",
   );
   assert.equal(
     quotePointerAction({
       insideQuote: true,
-      hovering: true,
-      clientX: 40,
-      quoteRight: 200,
-      removeZonePx: 28,
+      removeButton: false,
     }),
     "block",
   );
@@ -155,10 +146,7 @@ test("ignores pointers outside a quote", () => {
   assert.equal(
     quotePointerAction({
       insideQuote: false,
-      hovering: true,
-      clientX: 190,
-      quoteRight: 200,
-      removeZonePx: 28,
+      removeButton: true,
     }),
     "ignore",
   );
@@ -170,9 +158,9 @@ test("paints the pill without watching or rewriting the quote node", () => {
   assert.match(css, /text-overflow:\s*ellipsis/);
   assert.match(css, /border-radius:\s*9999px/);
   assert.match(css, /padding:\s*6px 14px 6px 12px !important/);
-  assert.match(css, /data-prompt-mention-resource\*='"itemId":"quote:'/);
-  assert.match(css, /:not\(\[data-promptbox-compact-content\]\)/);
-  const mentionAt = css.indexOf(".prompt-mention-pill");
+  assert.doesNotMatch(css, /data-prompt-mention-resource\*=/);
+  assert.match(css, /data-promptbox-editor-content\] \.ProseMirror blockquote/);
+  const mentionAt = css.indexOf("[data-promptbox-editor-content] .ProseMirror blockquote");
   const mentionSelector = css.slice(css.lastIndexOf("\n", mentionAt), mentionAt);
   assert.doesNotMatch(mentionSelector, /:not\(\[data-promptbox-compact-content\]\)/);
   assert.match(
@@ -183,17 +171,15 @@ test("paints the pill without watching or rewriting the quote node", () => {
     css,
     /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror > \*\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;[^}]*height:\s*100%;/,
   );
-  assert.match(css, /html\[data-bb-chat-ui-root-hit-target="small"\]/);
+  assert.match(css, /html\[data-bb-chat-ui-root-device="phone"\]/);
   assert.doesNotMatch(css, /max-height:\s*20px/);
   assert.doesNotMatch(css, /contenteditable/i);
-  const sentMention = css.match(
-    /\[data-message-column\] \[data-markdown-preview\] \.prompt-mention-pill\s*\{[^}]*\}/,
-  );
-  assert.ok(sentMention);
-  assert.match(sentMention[0], /padding:\s*6px 14px 6px 12px !important/);
-  assert.match(sentMention[0], /min-height:\s*32px/);
-  assert.match(sentMention[0], /font-size:\s*inherit !important/);
-  assert.doesNotMatch(sentMention[0], /itemId/);
+  const sentQuote = css.match(/\[data-message-column\] > \.group\\\/message blockquote,[\s\S]*?\{[^}]*\}/);
+  assert.ok(sentQuote);
+  assert.match(sentQuote[0], /padding:\s*4px 12px 4px 10px !important/);
+  assert.match(sentQuote[0], /min-height:\s*var\(--bb-chat-ui-pill-reference-min-height, 28px\)/);
+  assert.match(sentQuote[0], /font-size:\s*var\(--bb-chat-ui-pill-reference-font-size, 12px\)/);
+  assert.doesNotMatch(sentQuote[0], /itemId/);
 
   let observed = false;
   const originalObserver = globalThis.MutationObserver;

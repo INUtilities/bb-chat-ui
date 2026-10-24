@@ -1,6 +1,6 @@
 const sheets = new WeakMap<HTMLStyleElement, { original: string; resolved: string }>();
 
-/** Substitute numeric root card tokens before JSDOM parses shorthand geometry (var() is unsupported there). */
+/** Substitute numeric root card and reference-pill tokens before JSDOM parses shorthand geometry (var() is unsupported there). */
 function resolveCardSheets(element: Element): void {
   const document = element.ownerDocument;
   const root = document.defaultView!.getComputedStyle(document.documentElement);
@@ -8,7 +8,7 @@ function resolveCardSheets(element: Element): void {
     const current = sheet.textContent ?? '';
     const saved = sheets.get(sheet);
     const original = saved && saved.resolved === current ? saved.original : current;
-    const resolved = original.replace(/var\((--bb-chat-ui-card-[\w-]+)\)/g, (match, token: string) => {
+    const resolved = original.replace(/var\((--bb-chat-ui-(?:card|pill-reference)-[\w-]+)(?:,\s*[^)]+)?\)/g, (match, token: string) => {
       const value = root.getPropertyValue(token).trim();
       return /^-?[\d.]+px$/.test(value) ? value : match;
     }).replace(/calc\(-1 \* ([\d.]+)px\)/g, (_, value) => `${-Number(value)}px`)

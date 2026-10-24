@@ -1,5 +1,4 @@
-import { pillSlot, pillStyle, referenceVariableStyle, referencePhoneVariableStyle } from "./pill.ts";
-import { PHONE_NARROW } from "./device-chrome.ts";
+import { pillSlot, pillStyle, referenceVariableStyle, referencePhoneVariableStyle, REFERENCE_PHONE } from "./pill.ts";
 
 const STYLE_ID = "bb-chat-ui-mention-pill";
 const MARK = pillSlot.reference;
@@ -15,6 +14,7 @@ const PAINTED = `${PILL}[data-prompt-mention][${RESOURCE}]`;
 
 const css = `
 ${PAINTED} {
+${pillStyle.referenceFace}
   display: inline-flex !important;
   position: relative;
   box-sizing: border-box;
@@ -27,7 +27,9 @@ ${referenceVariableStyle}
   vertical-align: middle;
   white-space: nowrap !important;
   overflow: hidden;
+  transition-property: background-color, color !important;
 }
+${PAINTED}:hover { ${pillStyle.referenceHover} }
 ${PAINTED}[${WIDE}] {
   ${pillStyle.wide}
 }
@@ -50,41 +52,42 @@ ${PAINTED} > button[${REMOVE}] {
 ${pillStyle.remove}
 }
 ${PAINTED} > button[${REMOVE}]::before {
-  content: "";
   ${pillStyle.removeGlyph}
-  background: currentColor;
-  opacity: 0.5;
-  clip-path: polygon(12% 0, 50% 38%, 88% 0, 100% 12%, 62% 50%, 100% 88%, 88% 100%, 50% 62%, 12% 100%, 0 88%, 38% 50%, 0 12%);
+  ${pillStyle.removeCross}
 }
 ${PAINTED} > button[${REMOVE}]:hover {
-  background: var(--state-hover);
+  ${pillStyle.removeHover}
 }
 ${PAINTED} > button[${REMOVE}]:focus-visible {
   ${pillStyle.removeFocus}
 }
-  ${PHONE_NARROW} ${PAINTED} {
+  ${REFERENCE_PHONE} ${PAINTED} {
 ${referencePhoneVariableStyle}
   }
-  ${PHONE_NARROW} ${PAINTED}[${WIDE}] {
+  ${REFERENCE_PHONE} ${PAINTED}[${WIDE}] {
     ${pillStyle.widePhone}
   }
-  ${PHONE_NARROW} ${PAINTED}:not([${WIDE}]) > .truncate {
+  ${REFERENCE_PHONE} ${PAINTED}:not([${WIDE}]) > .truncate {
     max-width: calc(240px - 12px - 14px - 2px - 6px - 16px);
   }
-  ${PHONE_NARROW} ${PAINTED} [data-icon-root],
-  ${PHONE_NARROW} ${PAINTED} [data-section-mention-marker],
-  ${PHONE_NARROW} ${PAINTED} [data-bb-chat-ui-quote-glyph] {
+  ${REFERENCE_PHONE} ${PAINTED} [data-icon-root],
+  ${REFERENCE_PHONE} ${PAINTED} [data-section-mention-marker],
+  ${REFERENCE_PHONE} ${PAINTED} [data-bb-chat-ui-quote-glyph] {
     ${pillStyle.referenceIconPhone}
   }
-  ${PHONE_NARROW} ${PAINTED}:has(> [${REMOVE}]) {
+  ${REFERENCE_PHONE} ${PAINTED}:has(> [${REMOVE}]) {
     ${pillStyle.removeReservePhone}
   }
-  ${PHONE_NARROW} ${PAINTED} > button[${REMOVE}] {
+  ${REFERENCE_PHONE} ${PAINTED} > button[${REMOVE}] {
 ${pillStyle.removePhone}
   }
-  ${PHONE_NARROW} ${PAINTED} > button[${REMOVE}]::before {
+  ${REFERENCE_PHONE} ${PAINTED} > button[${REMOVE}]::before {
     ${pillStyle.removeGlyphPhone}
   }
+
+@media (prefers-reduced-motion: reduce) {
+  ${PAINTED} > button[${REMOVE}] { transition:none; }
+}
 
 [data-promptbox-compact-content][${HAS_MENTION}] .ProseMirror {
   display: flex !important;
@@ -205,8 +208,8 @@ export function injectMentionPills(doc: Document): () => void {
         members.add(pill); pillWrappers.set(pill, wrapper); dirtyWrappers.add(wrapper);
       }
       const hash = commitHash(resource);
-      const wide = hash !== null || resource?.icon === "FileDiff" ||
-        (resource?.kind === "path" && /:\d+(?:[-–]\d+)?$/.test(resource.label ?? ""));
+      const wide = !quotePills.has(pill) && (hash !== null || resource?.icon === "FileDiff" ||
+        (resource?.kind === "path" && /:\d+(?:[-–]\d+)?$/.test(resource.label ?? "")));
       if (pill.hasAttribute(WIDE) !== wide) pill.toggleAttribute(WIDE, wide);
       const label = pill.querySelector<HTMLElement>(":scope > .truncate");
       if (hash && label && label.textContent !== hash) {

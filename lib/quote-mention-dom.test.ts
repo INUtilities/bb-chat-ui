@@ -81,7 +81,7 @@ test("sidebar mutations skip document-wide quote scans while nested new quotes a
     let fullScans = 0;
     const query = f.document.querySelectorAll.bind(f.document);
     f.document.querySelectorAll = ((selector: string) => {
-      if (selector === "[data-prompt-mention-resource]") fullScans++;
+      if (selector.includes("[data-prompt-mention-resource]")) fullScans++;
       return query(selector);
     }) as typeof f.document.querySelectorAll;
     f.document.querySelector("aside")!.innerHTML = '<div><span>New sidebar row</span></div>';
@@ -186,7 +186,7 @@ test("late Diff source searches only code quotes still waiting for it", async ()
     let scans = 0;
     const proto = f.dom.window.Element.prototype, all = proto.querySelectorAll;
     proto.querySelectorAll = function(selector: string) {
-      if (selector === '[data-prompt-mention-resource]') scans++;
+      if (selector.includes('[data-prompt-mention-resource]')) scans++;
       return all.call(this, selector);
     };
     const source = f.document.createElement('button');

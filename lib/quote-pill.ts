@@ -1,22 +1,16 @@
-import { pillStyle } from "./pill.ts";
-import { PHONE_NARROW, SMALL_HIT_TARGET } from "./device-chrome.ts";
+import { LEGACY_QUOTE_REMOVE, LEGACY_QUOTE_HOST, installLegacyQuoteControls, legacyQuoteFromButton } from "./legacy-quote-controls.ts";
+import { pillStyle, referenceVariableStyle, referencePhoneVariableStyle, REFERENCE_PHONE } from "./pill.ts";
 
 const STYLE_ID = "bb-chat-ui-quote-pill";
-const REMOVE_ZONE_PX = 28;
+
 
 const USER_QUOTE = "[data-message-column] > .group\\/message blockquote";
 const COMPOSER_QUOTE =
   "[data-promptbox-editor-scroll] [data-promptbox-editor-content]:not([data-promptbox-compact-content]) .ProseMirror blockquote";
 const PENDING_COMPOSER_QUOTE =
   "[data-promptbox-editor-scroll] [data-promptbox-editor-content] .ProseMirror blockquote";
-const QUOTE_MENTION_PILL =
-  '.prompt-mention-pill[data-prompt-mention-resource*=\'"itemId":"quote:\']';
-const COMPOSER_QUOTE_MENTION = `[data-promptbox-editor-scroll] [data-promptbox-editor-content] ${QUOTE_MENTION_PILL}`;
 // mention-pill marks the compact editor wrapper that holds a quote pill (was .ProseMirror:has(...) > *).
 const COMPACT_QUOTE_MENTION_LINE = `[data-promptbox-compact-content][data-bb-chat-ui-has-quote-mention] .ProseMirror`;
-const SENT_MENTION_PILL =
-  "[data-message-column] [data-markdown-preview] .prompt-mention-pill";
-
 // Lucide 0.300.0 icons/quote.svg (ISC), rotated and centered at 85% for an opening quote; see THIRD_PARTY_NOTICES.md.
 const QUOTE_ICON = encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(1.8 1.8) scale(.85) rotate(180 12 12)"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></g></svg>`,
@@ -62,6 +56,7 @@ interface QuoteView {
     tr: QuoteTransaction;
   };
   dispatch: (transaction: unknown) => void;
+  focus?: () => void;
 }
 
 interface QuoteViewDesc {
@@ -99,7 +94,11 @@ export function quotePillCss(): string {
 ${USER_QUOTE},
 ${PENDING_COMPOSER_QUOTE} {
 ${pillStyle.legacyQuote}
+${referenceVariableStyle}
+  transition-property: background-color, color !important;
+${pillStyle.referenceFace}
 }
+${USER_QUOTE}::before,
 ${USER_QUOTE}::before,
 ${PENDING_COMPOSER_QUOTE}::before {
 ${pillStyle.legacyQuoteIcon}
@@ -126,68 +125,51 @@ ${PENDING_COMPOSER_QUOTE} br {
 ${USER_QUOTE} {
   pointer-events: none;
 }
-${COMPOSER_QUOTE}::after {
-  content: "×";
-  display: none;
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  box-sizing: border-box;
-  align-items: center;
-  justify-content: flex-end;
-  width: 32px;
-  height: 100%;
-  padding-right: 14px;
-  border-radius: 0 9999px 9999px 0;
-  background-image: linear-gradient(90deg, transparent, var(--pill-surface, var(--card)) 58%);
-  color: var(--pill-icon, currentColor);
-  font: 500 15px/1 inherit;
-  text-align: right;
-  pointer-events: none;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+${PENDING_COMPOSER_QUOTE} { ${pillStyle.removeReserve} }
+[${LEGACY_QUOTE_HOST}] {position:absolute;inset:0;pointer-events:none;}
+[${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}] {
+  ${pillStyle.remove}
+  display:inline-flex !important; flex:none !important; pointer-events:auto; right:auto; --bb-chat-ui-legacy-remove-inset:3px;
 }
-  ${SMALL_HIT_TARGET} ${COMPOSER_QUOTE}:hover::after {
-    display: flex;
-  }
+[${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]::before { ${pillStyle.removeGlyph} ${pillStyle.removeCross} }
+[${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]:hover { ${pillStyle.removeHover} }
+[${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]:focus-visible { ${pillStyle.removeFocus} }
+${REFERENCE_PHONE} [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}] { ${pillStyle.removePhone} right:auto; --bb-chat-ui-legacy-remove-inset:4px; }
+${REFERENCE_PHONE} [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]::before { ${pillStyle.removeGlyphPhone} }
+@media (prefers-reduced-motion: reduce) { [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}] { transition:none; } }
 
-${PENDING_COMPOSER_QUOTE} {
-${pillStyle.reference}  overflow: hidden;
+${USER_QUOTE}, ${PENDING_COMPOSER_QUOTE} {
+  overflow: hidden;
 }
+${USER_QUOTE} > :not(:first-child),
 ${PENDING_COMPOSER_QUOTE} > :not(:first-child) {
   display: none !important;
 }
+${USER_QUOTE} > :first-child,
 ${PENDING_COMPOSER_QUOTE} > :first-child {
   line-height: 16px !important;
 }
+${USER_QUOTE}::before,
 ${PENDING_COMPOSER_QUOTE}::before {
   flex-basis: 14px;
   width: 14px;
   height: 14px;
 }
-  ${PHONE_NARROW} ${PENDING_COMPOSER_QUOTE} {
-${pillStyle.referencePhone}
+  ${REFERENCE_PHONE} ${USER_QUOTE}, ${REFERENCE_PHONE} ${PENDING_COMPOSER_QUOTE} {
+${referencePhoneVariableStyle}
   }
-  ${PHONE_NARROW} ${PENDING_COMPOSER_QUOTE} > :first-child {
+  ${REFERENCE_PHONE} ${USER_QUOTE} > :first-child,
+  ${REFERENCE_PHONE} ${PENDING_COMPOSER_QUOTE} > :first-child {
     line-height: 18px !important;
   }
-  ${PHONE_NARROW} ${PENDING_COMPOSER_QUOTE}::before {
+  ${REFERENCE_PHONE} ${USER_QUOTE}::before,
+  ${REFERENCE_PHONE} ${PENDING_COMPOSER_QUOTE}::before {
     flex-basis: 16px;
     width: 16px;
     height: 16px;
   }
+${REFERENCE_PHONE} ${PENDING_COMPOSER_QUOTE} { ${pillStyle.removeReservePhone} }
 
-${COMPOSER_QUOTE_MENTION} {
-  align-items: center !important;
-  flex-shrink: 0 !important;
-  gap: 6px !important;
-  box-sizing: border-box;
-  min-height: 32px;
-  max-height: none !important;
-  padding: 6px 14px 6px 12px !important;
-  vertical-align: middle;
-}
 ${COMPACT_QUOTE_MENTION_LINE} {
   display: flex !important;
   align-items: center !important;
@@ -201,16 +183,6 @@ ${COMPACT_QUOTE_MENTION_LINE} > * {
   height: 100%;
   min-width: 0;
   margin: 0 !important;
-}
-${SENT_MENTION_PILL} {
-  align-items: center !important;
-  box-sizing: border-box;
-  gap: 6px !important;
-  min-height: 32px;
-  padding: 6px 14px 6px 12px !important;
-  font-size: inherit !important;
-  line-height: 1.25 !important;
-  vertical-align: middle;
 }
 `;
 }
@@ -272,18 +244,11 @@ export function quoteInputAction(input: {
   return "ignore";
 }
 
-export function quotePointerAction(input: {
-  insideQuote: boolean;
-  hovering: boolean;
-  clientX: number;
-  quoteRight: number;
-  removeZonePx: number;
-}): QuotePointerAction {
+export function quotePointerAction(input: {insideQuote: boolean; removeButton: boolean}): QuotePointerAction {
   if (!input.insideQuote) return "ignore";
-  const inRemoveZone = input.quoteRight - input.clientX <= input.removeZonePx;
-  if (input.hovering && inRemoveZone) return "remove";
-  return "block";
+  return input.removeButton ? "remove" : "block";
 }
+
 
 export function injectQuotePill(document: Document): () => void {
   const style = document.createElement("style");
@@ -291,12 +256,24 @@ export function injectQuotePill(document: Document): () => void {
   style.textContent = quotePillCss();
   document.head.append(style);
 
+  const stopControls = typeof document.querySelectorAll === "function" ? installLegacyQuoteControls(document) : () => {};
+
+  const removeButton = (target: EventTarget | null) => target instanceof Element ? target.closest<HTMLButtonElement>(`button[${LEGACY_QUOTE_REMOVE}]`) : null;
   let dragging = false;
   let ejecting = false;
   let lastEjectKey = "";
 
   const onKeyDown = (event: KeyboardEvent) => {
     dragging = false;
+    const button = removeButton(event.target);
+    if (button) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault(); event.stopPropagation();
+        const quote = legacyQuoteFromButton(button);
+        if (quote) deleteQuote(quote);
+      }
+      return;
+    }
     const relation = quoteRelation(document);
     const inside =
       relation.inside ?? relation.partial ?? composerQuote(event.target);
@@ -354,14 +331,9 @@ export function injectQuotePill(document: Document): () => void {
       dragging = true;
       return;
     }
-    const action = pointerAction(quote, event.clientX);
-    if (action === "ignore") return;
+    if (removeButton(event.target)) { event.preventDefault(); event.stopPropagation(); return; }
     event.preventDefault();
     event.stopPropagation();
-    if (action === "remove") {
-      deleteQuote(quote);
-      return;
-    }
     const rect = quote.getBoundingClientRect();
     moveCaret(
       quote,
@@ -374,9 +346,12 @@ export function injectQuotePill(document: Document): () => void {
     settleSelection(document);
   };
   const onClick = (event: MouseEvent) => {
-    if (!composerQuote(event.target)) return;
-    event.preventDefault();
-    event.stopPropagation();
+    const button = removeButton(event.target);
+    const quote = legacyQuoteFromButton(button) ?? composerQuote(event.target);
+    const action = quotePointerAction({insideQuote:!!quote, removeButton:!!button});
+    if (action === "ignore") return;
+    event.preventDefault(); event.stopPropagation();
+    if (action === "remove" && quote) deleteQuote(quote);
   };
   const onPasteOrDrop = (event: Event) => {
     if (!editingQuote(document, event.target)) return;
@@ -439,6 +414,7 @@ export function injectQuotePill(document: Document): () => void {
     document.removeEventListener("paste", onPasteOrDrop, true);
     document.removeEventListener("drop", onPasteOrDrop, true);
     document.removeEventListener("selectionchange", onSelectionChange, true);
+    stopControls();
     style.remove();
   };
 }
@@ -458,15 +434,6 @@ function quoteForKey(
   return inside ?? relation.before ?? relation.after;
 }
 
-function pointerAction(quote: HTMLElement, clientX: number): QuotePointerAction {
-  return quotePointerAction({
-    insideQuote: true,
-    hovering: quote.matches(":hover"),
-    clientX,
-    quoteRight: quote.getBoundingClientRect().right,
-    removeZonePx: REMOVE_ZONE_PX,
-  });
-}
 
 function composerQuote(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Node)) return null;
@@ -642,12 +609,8 @@ function editorViewOf(node: Node | null): QuoteView | null {
   while (current) {
     if (current instanceof Element) {
       const desc = (current as QuoteElement).pmViewDesc;
-      if (
-        desc?.view?.state?.selection &&
-        typeof desc.view.dispatch === "function"
-      ) {
-        return desc.view;
-      }
+      const view = (current as HTMLElement & {editor?:{view?:QuoteView}}).editor?.view ?? desc?.view;
+      if (view?.state?.selection && typeof view.dispatch === "function") return view;
     }
     current = current.parentNode;
   }
@@ -656,12 +619,13 @@ function editorViewOf(node: Node | null): QuoteView | null {
 
 function quoteDesc(quote: HTMLElement): QuoteViewDesc | null {
   const desc = (quote as QuoteElement).pmViewDesc;
-  if (!desc?.view?.dispatch || !desc.view.state?.tr?.delete) return null;
+  const view = desc?.view ?? editorViewOf(quote);
+  if (!desc || !view?.dispatch || !view.state?.tr?.delete) return null;
   if (!Number.isInteger(desc.posBefore) || !Number.isInteger(desc.posAfter)) {
     return null;
   }
   if (desc.posAfter <= desc.posBefore) return null;
-  return desc;
+  return {posBefore:desc.posBefore, posAfter:desc.posAfter, view};
 }
 
 function closerEdge(quote: HTMLElement): "before" | "after" {
@@ -833,6 +797,7 @@ function deleteQuote(quote: HTMLElement) {
     desc.view.dispatch(
       desc.view.state.tr.delete(desc.posBefore, desc.posAfter),
     );
+    desc.view.focus?.();
   } catch {
     return;
   }
