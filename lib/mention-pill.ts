@@ -1,3 +1,4 @@
+import { deleteWithCaret } from "./delete-with-caret.ts";
 import { pillSlot, pillStyle, referenceVariableStyle, referencePhoneVariableStyle, REFERENCE_PHONE } from "./pill.ts";
 
 const STYLE_ID = "bb-chat-ui-mention-pill";
@@ -169,8 +170,7 @@ function removeMention(pill: HTMLElement): void {
     const node = view.state.doc.nodeAt(from);
     if (!node?.isAtom || !node.isInline || !node.attrs.resource ||
         !view.nodeDOM(from)?.contains(pill)) return;
-    view.dispatch(view.state.tr.delete(from, from + node.nodeSize));
-    view.focus();
+    deleteWithCaret(view, from, from + node.nodeSize);
   } catch {
     // The editor may have unmounted between the pointer event and click.
   }

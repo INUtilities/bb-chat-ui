@@ -1,4 +1,5 @@
 import { QUOTE_PREVIEW_MARK } from "./quote-preview.ts";
+import { deleteWithCaret } from "./delete-with-caret.ts";
 import { LEGACY_QUOTE_REMOVE, LEGACY_QUOTE_HOST, installLegacyQuoteControls, legacyQuoteFromButton } from "./legacy-quote-controls.ts";
 import { pillStyle, referenceVariableStyle, referencePhoneVariableStyle, REFERENCE_PHONE } from "./pill.ts";
 
@@ -796,10 +797,7 @@ function deleteQuote(quote: HTMLElement) {
   const desc = quoteDesc(quote);
   if (!desc) return;
   try {
-    desc.view.dispatch(
-      desc.view.state.tr.delete(desc.posBefore, desc.posAfter),
-    );
-    desc.view.focus?.();
+    deleteWithCaret(desc.view, desc.posBefore, desc.posAfter);
   } catch {
     return;
   }

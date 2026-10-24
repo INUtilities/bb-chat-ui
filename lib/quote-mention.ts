@@ -1,4 +1,5 @@
 import { decorateQuotePreview, clearQuotePreview } from "./quote-preview.ts";
+import { deleteWithCaret } from "./delete-with-caret.ts";
 import { pillSlot, pillStyle } from "./pill.ts";
 import { QUOTE_MARK_MASK } from "./quote-pill.ts";
 import { decorateLegacyQuote, LEGACY_QUOTE_REMOVE, pruneLegacyQuoteControls } from "./legacy-quote-controls.ts";
@@ -272,7 +273,7 @@ function deleteMention(mention: HTMLElement) {
   if (!Number.isInteger(desc.posBefore) || !Number.isInteger(desc.posAfter)) return;
   if (desc.posAfter <= desc.posBefore) return;
   try {
-    desc.view.dispatch(desc.view.state.tr.delete(desc.posBefore, desc.posAfter));
+    deleteWithCaret(desc.view, desc.posBefore, desc.posAfter);
   } catch {
     return;
   }
