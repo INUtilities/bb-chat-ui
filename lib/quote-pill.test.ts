@@ -157,7 +157,7 @@ test("paints the pill without watching or rewriting the quote node", () => {
   assert.match(css, /white-space:\s*nowrap/);
   assert.match(css, /text-overflow:\s*ellipsis/);
   assert.match(css, /border-radius:\s*9999px/);
-  assert.match(css, /padding:\s*6px 14px 6px 12px !important/);
+  assert.match(css, /padding:\s*0px 14px 0px 12px !important/);
   assert.doesNotMatch(css, /data-prompt-mention-resource\*=/);
   assert.match(css, /data-promptbox-editor-content\] \.ProseMirror blockquote/);
   const mentionAt = css.indexOf("[data-promptbox-editor-content] .ProseMirror blockquote");
@@ -176,8 +176,8 @@ test("paints the pill without watching or rewriting the quote node", () => {
   assert.doesNotMatch(css, /contenteditable/i);
   const sentQuote = css.match(/\[data-message-column\] > \.group\\\/message blockquote,[\s\S]*?\{[^}]*\}/);
   assert.ok(sentQuote);
-  assert.match(sentQuote[0], /padding:\s*4px 12px 4px 10px !important/);
-  assert.match(sentQuote[0], /min-height:\s*var\(--bb-chat-ui-pill-reference-min-height, 28px\)/);
+  assert.match(sentQuote[0], /padding:\s*0px 12px 0px 10px !important/);
+  assert.match(sentQuote[0], /min-height:\s*var\(--bb-chat-ui-pill-reference-min-height, 18px\)/);
   assert.match(sentQuote[0], /font-size:\s*var\(--bb-chat-ui-pill-reference-font-size, 12px\)/);
   assert.doesNotMatch(sentQuote[0], /itemId/);
 

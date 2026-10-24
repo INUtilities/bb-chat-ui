@@ -10,17 +10,20 @@
 ## 크기와 말줄임
 
 예전 blockquote와 새 인용, 컴포저와 보낸 메시지는 reference 역할의
-높이 desktop 28px·phone 32px, 최대 너비 140px·240px를 공유한다.
+높이 desktop 18px·phone 20px, 최대 너비 140px·240px를 공유한다.
 글자는 desktop 12/16, phone 14/18이다. phone 값은 루트 device 속성으로 선택하며
-넓은 폰에서도 유지한다. hover·focus로 크기를 늘리지 않고 한 줄 말줄임을 유지한다.
+넓은 폰에서도 유지한다. 세로 padding·margin은 0이며 가로 margin 3px·4px는 유지한다.
+1px 투명 테두리와 16px·18px 글줄을 합친 높이로, 일반 글줄 높이를 키우지 않는다. hover·focus로 크기를 늘리지 않고 한 줄 말줄임을 유지한다.
 인용인 FileDiff도 같은 최대 너비를 쓴다. 일반 파일 행 범위·커밋 멘션의 wide 예외는 유지한다.
 
 ## 삭제 액션
 
-편집 중의 삭제 ×는 항상 보이는 desktop 20px·phone 24px 원이다.
+편집 중의 삭제 ×는 항상 보이는 desktop 16px·phone 18px 원이다.
+phone은 버튼의 투명한 24px 가상 영역으로 터치 크기를 확보한다. pill의 overflow는 visible이며
+라벨 자체가 말줄임을 처리해 터치 영역이 줄 배치나 높이를 늘리지 않는다.
 foreground 9% 면, hover 16%, glyph opacity 75%, 2px focus ring을 쓴다.
 `pillStyle.remove`·`removeHover`·`removeFocus`가 값의 원본이다.
-글자가 버튼 아래로 가지 않게 오른쪽 30/34px를 확보한다. 읽기 전용 보낸 메시지에는 삭제를 만들지 않는다.
+글자가 버튼 아래로 가지 않게 오른쪽 26/28px를 확보한다. 읽기 전용 보낸 메시지에는 삭제를 만들지 않는다.
 
 ## 예전 인용의 실제 삭제 버튼
 

@@ -10,7 +10,7 @@ function resolveCardSheets(element: Element): void {
     const original = saved && saved.resolved === current ? saved.original : current;
     const resolved = original.replace(/var\((--bb-chat-ui-(?:card|pill-reference)-[\w-]+)(?:,\s*[^)]+)?\)/g, (match, token: string) => {
       const value = root.getPropertyValue(token).trim();
-      return /^-?[\d.]+px$/.test(value) ? value : match;
+      return /^-?[\d.]+px(?: -?[\d.]+px)?$/.test(value) ? value : match;
     }).replace(/calc\(-1 \* ([\d.]+)px\)/g, (_, value) => `${-Number(value)}px`)
       .replace(/calc\(100% \+ 2 \* ([\d.]+)px\)/g, (_, value) => `calc(100% + ${2 * Number(value)}px)`);
     sheets.set(sheet, { original, resolved });

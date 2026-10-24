@@ -27,7 +27,6 @@ ${referenceVariableStyle}
   border-radius: 9999px !important;
   vertical-align: middle;
   white-space: nowrap !important;
-  overflow: hidden;
   transition-property: background-color, color !important;
 }
 ${PAINTED}:hover { ${pillStyle.referenceHover} }
@@ -82,6 +81,7 @@ ${referencePhoneVariableStyle}
   ${REFERENCE_PHONE} ${PAINTED} > button[${REMOVE}] {
 ${pillStyle.removePhone}
   }
+  ${REFERENCE_PHONE} ${PAINTED} > button[${REMOVE}]::after { ${pillStyle.removeHitPhone} }
   ${REFERENCE_PHONE} ${PAINTED} > button[${REMOVE}]::before {
     ${pillStyle.removeGlyphPhone}
   }

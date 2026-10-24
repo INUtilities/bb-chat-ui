@@ -137,12 +137,10 @@ ${PENDING_COMPOSER_QUOTE} { ${pillStyle.removeReserve} }
 [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]:hover { ${pillStyle.removeHover} }
 [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]:focus-visible { ${pillStyle.removeFocus} }
 ${REFERENCE_PHONE} [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}] { ${pillStyle.removePhone} right:auto; --bb-chat-ui-legacy-remove-inset:4px; }
+${REFERENCE_PHONE} [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]::after { ${pillStyle.removeHitPhone} }
 ${REFERENCE_PHONE} [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}]::before { ${pillStyle.removeGlyphPhone} }
 @media (prefers-reduced-motion: reduce) { [${LEGACY_QUOTE_HOST}] > button[${LEGACY_QUOTE_REMOVE}] { transition:none; } }
 
-${USER_QUOTE}, ${PENDING_COMPOSER_QUOTE} {
-  overflow: hidden;
-}
 ${USER_QUOTE} > :not(:first-child),
 ${PENDING_COMPOSER_QUOTE} > :not(:first-child) {
   display: none !important;

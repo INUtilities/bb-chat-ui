@@ -18,17 +18,16 @@ export const pillStyle = {
   position: relative;
   box-sizing: border-box;
   max-width: 100%;
-  min-height: 28px;
+  min-height: 18px;
   min-width: 0;
   gap: 6px;
-  margin: 0.25rem 0 !important;
+  margin: 0px 3px !important;
   border: 1px solid var(--pill-surface-border, var(--border)) !important;
   border-radius: 9999px !important;
   background: var(--pill-surface, var(--card));
   color: var(--pill-foreground, var(--muted-foreground));
   box-shadow: var(--pill-shadow);
-  padding: 6px 14px 6px 12px !important;
-  overflow: hidden;
+  padding: 0px 12px 0px 10px !important;
   vertical-align: middle;
   white-space: nowrap !important;
   user-select: none;
@@ -49,23 +48,25 @@ export const pillStyle = {
   nativeNavigationIcon: `  width: 16px;
   height: 16px;
 `,
-  reference: `  height: 28px !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
+  reference: `  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
   max-width: min(140px, calc(100% - 6px)) !important;
   gap: 4px !important;
-  margin: 3px !important;
-  padding: 4px 12px 4px 10px !important;
+  margin: 0px 3px !important;
+  padding: 0px 12px 0px 10px !important;
+  overflow: visible !important;
   font-size: 12px !important;
   line-height: 16px !important;
 `,
-  referencePhone: `  height: 32px !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
+  referencePhone: `  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
   max-width: min(240px, calc(100% - 8px)) !important;
   gap: 6px !important;
-  margin: 4px !important;
-  padding: 6px 14px 6px 12px !important;
+  margin: 0px 4px !important;
+  padding: 0px 14px 0px 12px !important;
+  overflow: visible !important;
   font-size: 14px !important;
   line-height: 18px !important;
 `,
@@ -82,10 +83,10 @@ export const pillStyle = {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -97,10 +98,10 @@ export const pillStyle = {
   cursor: pointer;
 `,
   removePhone: `  right: 4px;
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  min-height: 24px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
 `,
   navigation: `display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; transition:transform 260ms cubic-bezier(.2,.9,.22,1.25);`,
   navigationFace: `background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important;`,
@@ -128,8 +129,9 @@ export const pillStyle = {
   quoteGlyph: "display:inline-block;width:14px;height:14px;flex:0 0 14px;align-self:center;background-color:var(--pill-icon, currentColor);",
   wide: "max-width: calc(100% - 6px) !important;",
   widePhone: "max-width: calc(100% - 8px) !important;",
-  removeReserve: "padding-right: 30px !important;",
-  removeReservePhone: "padding-right: 34px !important;",
+  removeReserve: "padding-right: 26px !important;",
+  removeReservePhone: "padding-right: 28px !important;",
+  removeHitPhone: 'content:""; position:absolute; width:24px; height:24px; left:50%; top:50%; transform:translate(-50%,-50%);',
   removeCross: `content:""; background:currentColor; opacity:0.75; clip-path:polygon(12% 0,50% 38%,88% 0,100% 12%,62% 50%,100% 88%,88% 100%,50% 62%,12% 100%,0 88%,38% 50%,0 12%);`,
   removeGlyph: "width: 10px; height: 10px;",
   removeGlyphPhone: "width: 12px; height: 12px;",
@@ -140,14 +142,14 @@ export const pillStyle = {
 // reference 선언을 단일 원본으로 두고 같은 값을 device 변수로도 노출한다.
 // fallback은 독립 CSS fixture와 adapter 단독 mount의 기존 규격을 보존한다.
 function referenceVariables(declarations: string): string {
-  return declarations.replace(/(height|min-height|max-height|gap|margin|font-size|line-height): (\d+px)/g,
+  return declarations.replace(/(height|min-height|max-height|gap|margin|font-size|line-height): (\d+px(?: \d+px)?)/g,
     (_, property: string, value: string) => `${property}: var(--bb-chat-ui-pill-reference-${property}, ${value})`);
 }
 export const referenceVariableStyle = referenceVariables(pillStyle.reference);
 export const referencePhoneVariableStyle = referenceVariables(pillStyle.referencePhone);
 
 function referenceTokens(declarations: string): string {
-  return [...declarations.matchAll(/(?:^|\n)  (height|min-height|max-height|gap|margin|font-size|line-height): (\d+px)/g)]
+  return [...declarations.matchAll(/(?:^|\n)  (height|min-height|max-height|gap|margin|font-size|line-height): (\d+px(?: \d+px)?)/g)]
     .map(([, property, value]) => `--bb-chat-ui-pill-reference-${property}:${value};`).join("");
 }
 export function pillCss(): string {
