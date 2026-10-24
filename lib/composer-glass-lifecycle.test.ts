@@ -70,16 +70,16 @@ test('a detached secondary composer is released while the first footer stays con
     f.document.body.append(second.scroller);await f.tick();await f.paint();
     assert.equal(f.watchers(second.composer),1,'a secondary composer can reattach without moving the primary footer');
     first.composer.setAttribute('data-promptbox-compact','');await f.tick();
-    assert.match(first.composer.style.animation,/bb-chat-ui-composer-radius/,'the live composer keeps its motion');
+    assert.equal(first.composer.style.borderRadius,'25px','the live composer keeps its corner motion');
   } finally {stop();f.cleanup();}
 });
 
-test('detaching an animating composer cancels its frame, timer, and radius listener', async () => {
+test('detaching an animating composer cancels its frame, timer, and corner listener', async () => {
   const f=fixture();const {scroller,composer}=f.add();
   const listeners=new Set<EventListenerOrEventListenerObject>();
   const add=composer.addEventListener.bind(composer);const remove=composer.removeEventListener.bind(composer);
-  composer.addEventListener=((type:string,listener:EventListenerOrEventListenerObject,options?:boolean|AddEventListenerOptions)=>{if(type==='animationend')listeners.add(listener);add(type,listener,options);}) as typeof composer.addEventListener;
-  composer.removeEventListener=((type:string,listener:EventListenerOrEventListenerObject,options?:boolean|EventListenerOptions)=>{if(type==='animationend')listeners.delete(listener);remove(type,listener,options);}) as typeof composer.removeEventListener;
+  composer.addEventListener=((type:string,listener:EventListenerOrEventListenerObject,options?:boolean|AddEventListenerOptions)=>{if(type==='transitionend')listeners.add(listener);add(type,listener,options);}) as typeof composer.addEventListener;
+  composer.removeEventListener=((type:string,listener:EventListenerOrEventListenerObject,options?:boolean|EventListenerOptions)=>{if(type==='transitionend')listeners.delete(listener);remove(type,listener,options);}) as typeof composer.removeEventListener;
   const stop=injectComposerGlass(f.document);
   try {
     composer.style.transition='height 240ms linear';composer.style.height='40px';composer.setAttribute('data-promptbox-compact','');await f.tick();
@@ -87,14 +87,14 @@ test('detaching an animating composer cancels its frame, timer, and radius liste
     composer.style.height='';await f.tick();assert.equal(f.timers.size,1);
     scroller.remove();await f.tick();
     assert.equal(f.frames.size,0,'pin RAF is cancelled');assert.equal(f.timers.size,0,'height finish timer is cancelled');
-    assert.equal(listeners.size,0,'radius listener is removed even if animationend never fires');
+    assert.equal(listeners.size,0,'corner listener is removed even if animationend never fires');
     assert.equal(composer.style.height,'','a cancelled finish timer cannot leave an inline height on reattachment');
-    assert.equal(composer.style.animation,'','a detached radius animation is cleared before reattachment');
-    composer.style.animation='';composer.removeAttribute('data-promptbox-compact');await f.tick();
-    assert.equal(composer.style.animation,'','a detached composer cannot restart plugin motion');
+    assert.equal(composer.style.borderRadius,'','a detached corner transition is cleared before reattachment');
+    composer.removeAttribute('data-promptbox-compact');await f.tick();
+    assert.equal(composer.style.borderRadius,'','a detached composer cannot restart plugin motion');
     f.document.body.append(scroller);await f.tick();await f.paint();assert.equal(f.watchers(composer),1);
     composer.setAttribute('data-promptbox-compact','');await f.tick();
-    assert.match(composer.style.animation,/bb-chat-ui-composer-radius/,'reattached DOM starts new motion normally');
+    assert.equal(composer.style.borderRadius,'25px','reattached DOM starts new corner motion normally');
   } finally {stop();f.cleanup();}
 });
 
@@ -205,7 +205,7 @@ test('new composers bind radius motion before the deferred layout frame',async()
   try {
     const second=f.add();await f.tick();
     second.composer.setAttribute('data-promptbox-compact','');await f.tick();
-    assert.match(second.composer.style.animation,/bb-chat-ui-composer-radius/);
+    assert.equal(second.composer.style.borderRadius,'25px');
   } finally {stop();f.cleanup();}
 });
 
@@ -225,4 +225,55 @@ test('moving marked buttons and Diff sections between footers preserves their cu
   assert.equal(button.hasAttribute('data-bb-chat-ui-has-image'),false,'buttons outside the input are no longer marked');
   assert.equal(section.hasAttribute('data-bb-chat-ui-diff-section'),false,'sections outside the stack are no longer marked');
  }finally{stop();f.cleanup();}
+});
+
+for (const hit of ['small','large']) test(`native height cleanup keeps radius on the same timeline (${hit})`,async()=>{
+  const f=fixture(),{composer}=f.add();f.document.querySelector('span')!.setAttribute('data-bb-chat-ui-hit-target',hit);
+  const stop=injectComposerGlass(f.document);
+  try {
+    composer.style.transition='height 240ms cubic-bezier(0.22, 1, 0.36, 1)';composer.style.height='50px';composer.setAttribute('data-promptbox-compact','');await f.tick();
+    assert.equal(composer.style.borderRadius,'25px');
+    assert.match(composer.style.transition,/height 360ms.*border-radius 360ms/);
+    composer.style.height='';composer.style.transition='';await f.tick();
+    const transition=composer.style.transition;
+    const delay=transition.match(/height 360ms cubic-bezier\(0.22, 1, 0.36, 1\) (-[\d.]+ms)/)![1];
+    assert.ok(transition.includes(`border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}`));
+    assert.equal(composer.style.borderRadius,'25px');
+    stop();assert.equal(composer.style.borderRadius,'');assert.equal(f.timers.size,0);
+  } finally {stop();f.cleanup();}
+});
+
+test('reduced motion never adds a height or corner transition over native inline sizing',async()=>{
+  const f=fixture(),{composer}=f.add();f.dom.window.matchMedia=()=>({matches:true} as MediaQueryList);
+  const stop=injectComposerGlass(f.document);
+  try {
+    composer.style.transition='height 240ms cubic-bezier(0.22, 1, 0.36, 1)';composer.style.height='50px';composer.setAttribute('data-promptbox-compact','');await f.tick();
+    assert.equal(composer.style.height,'');assert.equal(composer.style.transition,'none');
+    assert.equal(composer.style.borderRadius,'');assert.equal(f.timers.size,0);
+  } finally {stop();f.cleanup();}
+});
+
+for(const cleanupAt of [240,500]) test(`the next expansion starts at the settled compact height after native cleanup at ${cleanupAt}ms`,async()=>{
+  const f=fixture(),{composer}=f.add(),stop=injectComposerGlass(f.document);
+  const measured:string[]=[];let height=100,now=0;Object.defineProperty(f.dom.window.performance,'now',{value:()=>now});
+  composer.getBoundingClientRect=()=>{measured.push(composer.style.height);return {height,top:0,bottom:height,width:300,left:0,right:300,x:0,y:0,toJSON(){}};};
+  try {
+    composer.style.transition='height 240ms cubic-bezier(0.22, 1, 0.36, 1)';composer.style.height='50px';composer.setAttribute('data-promptbox-compact','');await f.tick();
+    now=cleanupAt;composer.style.height='';composer.style.transition='';height=50;await f.tick();
+    for(const [id,run] of [...f.timers]){f.timers.delete(id);run();}await f.tick();
+    measured.length=0;composer.style.transition='height 240ms cubic-bezier(0.22, 1, 0.36, 1)';composer.style.height='100px';composer.removeAttribute('data-promptbox-compact');await f.tick();
+    assert.ok(measured.includes('50px'),'expansion must not reuse the stale expanded height');
+  } finally {stop();f.cleanup();}
+});
+
+test('a quick reversal samples the shared curve before native transition:none commits its old target',async()=>{
+  const f=fixture(),{composer}=f.add(),stop=injectComposerGlass(f.document);
+  let now=0;Object.defineProperty(f.dom.window.performance,'now',{value:()=>now});
+  try {
+    composer.style.transition='height 240ms cubic-bezier(0.22, 1, 0.36, 1)';composer.style.height='50px';composer.setAttribute('data-promptbox-compact','');await f.tick();
+    const starts:number[]=[];const rect=composer.getBoundingClientRect;
+    composer.getBoundingClientRect=()=>{if(composer.style.transition==='none')starts.push(parseFloat(composer.style.borderRadius));return rect();};
+    now=100;composer.style.transition='none';composer.style.height='65px';composer.removeAttribute('data-promptbox-compact');composer.style.transition='height 240ms cubic-bezier(0.22, 1, 0.36, 1)';composer.style.height='100px';await f.tick();
+    assert.ok(starts.some(radius=>radius>24&&radius<25),'use the intermediate corner, not the old 25px destination');
+  } finally {stop();f.cleanup();}
 });

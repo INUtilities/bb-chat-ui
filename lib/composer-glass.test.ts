@@ -139,7 +139,7 @@ test("uses more translucent glass and soft highlights across composer controls",
   assert.match(css, /\[data-promptbox\]\s*\{[^}]*border-radius:\s*1\.375rem/);
   assert.match(
     css,
-    /\[data-promptbox\]\[data-promptbox-compact\]\s*\{[^}]*border-radius:\s*999px/,
+    /\[data-promptbox\]\[data-promptbox-compact\]\s*\{[^}]*border-radius:\s*25px/,
   );
   assert.match(
     css,
@@ -163,7 +163,7 @@ test("keeps the collapsing composer on the bottom edge", () => {
   );
   const desktop = css.slice(
     css.indexOf('html:is([data-bb-chat-ui-root-viewport="medium"], [data-bb-chat-ui-root-viewport="wide"])'),
-    css.indexOf('html[data-bb-chat-ui-root-hit-target="small"]'),
+    css.indexOf('\n  [data-scroll-footer][data-bb-chat-ui-glass] [data-promptbox] {'),
   );
   assert.ok(desktop);
   assert.match(desktop, /\[data-bb-chat-ui-compact-footer\]/);
@@ -207,12 +207,12 @@ test("keeps the collapsing composer on the bottom edge", () => {
   }), null);
 });
 
-test("eases composer height and corner with small hit targets", () => {
+test("eases finite composer corners on the height timeline for both hit targets", () => {
   const css = composerGlassCss;
-  assert.match(css, /@keyframes bb-chat-ui-composer-radius/);
+  assert.doesNotMatch(css, /@keyframes bb-chat-ui-composer-radius/);
   assert.match(
     css,
-    /html\[data-bb-chat-ui-root-hit-target="small"\][\s\S]*?\[data-promptbox\]\s*\{[^}]*height 360ms cubic-bezier\(0\.22, 1, 0\.36, 1\),\s*border-radius 480ms cubic-bezier\(0\.22, 1, 0\.36, 1\);/,
+    /\[data-scroll-footer\]\[data-bb-chat-ui-glass\] \[data-promptbox\]\s*\{[^}]*height 360ms cubic-bezier\(0\.22, 1, 0\.36, 1\),\s*border-radius 360ms cubic-bezier\(0\.22, 1, 0\.36, 1\);/,
   );
   assert.match(
     css,
@@ -226,7 +226,7 @@ test("eases composer height and corner with small hit targets", () => {
       smallHitTarget: true,
       reducedMotion: false,
     }),
-    { from: "1.375rem", to: "999px" },
+    { from: "1.375rem", to: "25px" },
   );
   assert.deepEqual(
     composerRadiusChange({
@@ -236,7 +236,7 @@ test("eases composer height and corner with small hit targets", () => {
       smallHitTarget: true,
       reducedMotion: false,
     }),
-    { from: "999px", to: "1.375rem" },
+    { from: "25px", to: "1.375rem" },
   );
   assert.equal(
     composerRadiusChange({
@@ -248,7 +248,7 @@ test("eases composer height and corner with small hit targets", () => {
     }),
     null,
   );
-  assert.equal(
+  assert.deepEqual(
     composerRadiusChange({
       previousCompact: false,
       nextCompact: true,
@@ -256,7 +256,7 @@ test("eases composer height and corner with small hit targets", () => {
       smallHitTarget: false,
       reducedMotion: false,
     }),
-    null,
+    { from: "1.375rem", to: "25px" },
   );
   assert.equal(
     composerRadiusChange({
@@ -275,21 +275,22 @@ test("eases composer height and corner with small hit targets", () => {
       setProperty(name: string, value: string) {
         writes.push(`${name}:${value}`);
       },
-      animation: "",
+      height: "",
+      transition: "",
     },
     getBoundingClientRect() {
       writes.push("measure");
     },
   };
-  applyComposerRadius(element, { from: "1.375rem", to: "999px" });
+  applyComposerRadius(element, { from: "1.375rem", to: "25px" });
   assert.deepEqual(writes, [
-    "--bb-chat-ui-radius-from:1.375rem",
-    "--bb-chat-ui-radius-to:999px",
+    "border-radius:1.375rem",
     "measure",
+    "border-radius:25px",
   ]);
   assert.equal(
-    element.style.animation,
-    "bb-chat-ui-composer-radius 480ms cubic-bezier(0.22, 1, 0.36, 1)",
+    element.style.transition,
+    "border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)",
   );
 });
 
@@ -297,7 +298,7 @@ test("lengthens the host height flip and keeps a bottom scroll pinned", () => {
   const host = "height 240ms cubic-bezier(0.22, 1, 0.36, 1)";
   assert.equal(
     composerHeightTransition(host),
-    "height 360ms cubic-bezier(0.22, 1, 0.36, 1)",
+    "height 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)",
   );
   assert.equal(composerHeightTransition("height 480ms ease"), null);
   assert.equal(composerHeightTransition(""), null);
@@ -313,7 +314,7 @@ test("lengthens the host height flip and keeps a bottom scroll pinned", () => {
   assert.equal(started.rewrite?.to, 48);
   assert.equal(
     started.rewrite?.transition,
-    "height 360ms cubic-bezier(0.22, 1, 0.36, 1)",
+    "height 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)",
   );
   assert.equal(started.resume, null);
   assert.deepEqual(started.motion, {
@@ -675,4 +676,28 @@ test("contains overscroll only on the mention candidate scroller", () => {
   );
   assert.match(contained[0]?.body ?? "", /overscroll-behavior:\s*contain;/);
   assert.equal(/addEventListener|onWheel|new MutationObserver|new IntersectionObserver/.test(composerGlassCss), false);
+});
+
+// The host clears inline sizing after 240ms. Both properties must resume at the same
+// 360ms curve position, rather than finishing the corner on the first compact frame.
+test("height and finite radius share start, easing, duration and resumed delay", () => {
+  const initial = planComposerHeight({transition:"height 240ms cubic-bezier(0.22, 1, 0.36, 1)",height:"50px",now:0,idleHeight:116,motion:null});
+  const resume = planComposerHeight({transition:"",height:"",now:240,idleHeight:116,motion:initial.motion});
+  for (const transition of [initial.rewrite!.transition, resume.resume!.transition]) {
+    const height = transition.match(/height (360ms cubic-bezier\(0.22, 1, 0.36, 1\)(?: -[\d.]+ms)?)/)![1];
+    assert.ok(transition.includes(`border-radius ${height}`), transition);
+  }
+  const writes: {height:string; radius:string; transition:string}[] = [];
+  const style = {height:"",transition:"",radius:"",setProperty(name:string,value:string) {if(name==='border-radius') this.radius=value;}};
+  const element={style,getBoundingClientRect(){writes.push({...style});}};
+  applyComposerRadius(element,{from:"22px",to:"25px"},initial.rewrite!);
+  assert.deepEqual(writes.map(s=>[s.height,s.radius,s.transition]),[["116px","22px","none"]]);
+  assert.equal(style.height,"50px"); assert.equal(style.radius,"25px");
+  assert.equal(style.transition,initial.rewrite!.transition);
+  for(const elapsedMs of [16,32,64,120,240]) {
+    const h=composerCollapseHeight({from:116,to:50,elapsedMs,durationMs:360});
+    const r=composerCollapseHeight({from:22,to:25,elapsedMs,durationMs:360});
+    assert.ok(r<25,`corner cannot finish at ${elapsedMs}ms`);
+    assert.ok(Math.abs((116-h)/66-(r-22)/3)<1e-8);
+  }
 });

@@ -1,4 +1,4 @@
-import { PHONE_NARROW, NARROW_VIEWPORT, ROOMY_VIEWPORT, SMALL_HIT_TARGET, isDesktopChrome, hasSmallHitTarget } from "./device-chrome.ts";
+import { PHONE_NARROW, NARROW_VIEWPORT, ROOMY_VIEWPORT, isDesktopChrome, hasSmallHitTarget } from "./device-chrome.ts";
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
 import { COMPOSER_HANDOFF_RESIZING, injectComposerHandoff } from "./composer-handoff.ts";
 
@@ -43,25 +43,20 @@ function darkScope(selectors: string): string {
 }
 
 export const COMPOSER_GLASS_STYLE_ID = "bb-chat-ui-composer-glass";
-export const COMPOSER_RADIUS_FROM = "--bb-chat-ui-radius-from";
-export const COMPOSER_RADIUS_TO = "--bb-chat-ui-radius-to";
 const COMPOSER_HEIGHT_MS = 360;
-const COMPOSER_RADIUS_MS = 480;
 const COMPOSER_COLLAPSE_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
-const HOST_HEIGHT_TRANSITION = /height\s+240ms\b/;
+const HOST_HEIGHT_TRANSITION = /height\s+240ms\b(?:\s+(?:cubic-bezier\([^)]*\)|[a-z-]+))?/;
 const PIN_RELEASE_PX = 8;
 const WIDE_RADIUS = "1.375rem";
-const PILL_RADIUS = "999px";
+// The native compact line is 48px plus two 1px borders. A finite endpoint
+// avoids the early clamping caused by interpolating towards 999px.
+const PILL_RADIUS = "25px";
 const SHADOW_TRANSITION = "box-shadow 320ms cubic-bezier(0.2, 0.8, 0.2, 1)";
-const COLLAPSE_TRANSITION = `height ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_EASE}, border-radius ${COMPOSER_RADIUS_MS}ms ${COMPOSER_COLLAPSE_EASE}`;
+const COLLAPSE_TRANSITION = `height ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_EASE}, border-radius ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_EASE}`;
 
 export const composerGlassCss = `
 ${glassSurfaceScopeCss}
 [${COMPOSER_HANDOFF_RESIZING}] { overflow:clip !important; }
-@keyframes bb-chat-ui-composer-radius {
-  from { border-radius: var(${COMPOSER_RADIUS_FROM}) !important; }
-  to { border-radius: var(${COMPOSER_RADIUS_TO}) !important; }
-}
 
 ${FOOTER_MARK} > .relative {
   background: transparent !important;
@@ -191,19 +186,19 @@ ${FOOTER_MARK} [data-promptbox] {
     flex-shrink: 0;
   }
 
-  ${SMALL_HIT_TARGET} ${FOOTER_MARK} [data-promptbox] {
+  ${FOOTER_MARK} [data-promptbox] {
     transition:
       ${SHADOW_TRANSITION},
       ${COLLAPSE_TRANSITION};
   }
 
 @media (prefers-reduced-motion: reduce) {
-  ${SMALL_HIT_TARGET} ${FOOTER_MARK} [data-promptbox] {
+  ${FOOTER_MARK} [data-promptbox] {
     transition: ${SHADOW_TRANSITION};
   }
 }
 ${FOOTER_MARK} [data-promptbox][data-promptbox-compact] {
-  border-radius: 999px !important;
+  border-radius: ${PILL_RADIUS} !important;
 }
 ${FOOTER_MARK} [data-promptbox][data-promptbox-compact]:has([aria-label="Exit handoff"]) {
   border-radius: 1.375rem !important;
@@ -425,7 +420,7 @@ export function composerRadiusChange(input: {
   reducedMotion: boolean;
 }): { from: string; to: string } | null {
   if (input.previousCompact === input.nextCompact) return null;
-  if (!input.smallHitTarget || input.reducedMotion) return null;
+  if (input.reducedMotion) return null;
   const from = composerCornerRadius(input.previousCompact, input.handoff);
   const to = composerCornerRadius(input.nextCompact, input.handoff);
   if (from === to) return null;
@@ -463,7 +458,7 @@ export function composerCollapseHeight(input: {
 
 export function composerHeightTransition(current: string): string | null {
   if (!HOST_HEIGHT_TRANSITION.test(current)) return null;
-  return current.replace(HOST_HEIGHT_TRANSITION, `height ${COMPOSER_HEIGHT_MS}ms`);
+  return `${current.replace(HOST_HEIGHT_TRANSITION, `height ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_EASE}`)}, border-radius ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_EASE}`;
 }
 
 function parsePx(value: string): number | null {
@@ -519,7 +514,7 @@ export function planComposerHeight(input: {
       from: input.motion.from,
       to: input.motion.to,
       remainingMs: input.motion.durationMs - elapsed,
-      transition: `height ${input.motion.durationMs}ms ${COMPOSER_COLLAPSE_EASE} -${elapsed}ms`,
+      transition: `height ${input.motion.durationMs}ms ${COMPOSER_COLLAPSE_EASE} -${elapsed}ms, border-radius ${input.motion.durationMs}ms ${COMPOSER_COLLAPSE_EASE} -${elapsed}ms`,
     },
   };
 }
@@ -567,21 +562,27 @@ export function nextPinnedScroll(input: {
   return { scrollTop: max, stick: true };
 }
 
+// Establish both starting values before one layout flush. Native inline height
+// cleanup resumes this same pair with the same negative delay, including on phone.
 export function applyComposerRadius(
   element: {
     style: {
-      setProperty(name: string, value: string): void;
-      animation: string;
+      setProperty(name: string, value: string, priority?: string): void;
+      height: string;
+      transition: string;
     };
     getBoundingClientRect(): unknown;
   },
   change: { from: string; to: string },
+  height?: { from: number; to: number; transition: string },
 ): void {
-  element.style.setProperty(COMPOSER_RADIUS_FROM, change.from);
-  element.style.setProperty(COMPOSER_RADIUS_TO, change.to);
-  element.style.animation = "none";
+  element.style.transition = "none";
+  if (height) element.style.height = `${height.from}px`;
+  element.style.setProperty("border-radius", change.from, "important");
   element.getBoundingClientRect();
-  element.style.animation = `bb-chat-ui-composer-radius ${COMPOSER_RADIUS_MS}ms ${COMPOSER_COLLAPSE_EASE}`;
+  element.style.transition = height?.transition ?? `border-radius ${COMPOSER_HEIGHT_MS}ms ${COMPOSER_COLLAPSE_EASE}`;
+  if (height) element.style.height = `${height.to}px`;
+  element.style.setProperty("border-radius", change.to, "important");
 }
 
 export function applyFadeHeight(node: PlateHeightTarget, height: number): void {
@@ -641,7 +642,7 @@ export function injectComposerGlass(document: Document): () => void {
     if (radiusWatches.has(composer) || typeof MutationObserver === "undefined") return;
     const stopHandoff = injectComposerHandoff(composer);
     let compact = composer.hasAttribute("data-promptbox-compact");
-    let generation = 0;
+    let radiusMotion: { from: string; to: string; startedAt: number } | null = null;
     let motion: ComposerHeightMotion | null = null;
     let finishTimer = 0;
     let pinFrame = 0;
@@ -649,7 +650,7 @@ export function injectComposerGlass(document: Document): () => void {
     let lastPinned: number | null = null;
     let anchorHold: { node: HTMLElement; previous: string } | null = null;
     let liftPlate: HTMLElement | null = null;
-    let radiusEnd: ((event: AnimationEvent) => void) | null = null;
+    let radiusEnd: ((event: TransitionEvent) => void) | null = null;
     const viewOf = () => composer.ownerDocument.defaultView;
 
     const clearDesktopHold = () => {
@@ -756,11 +757,21 @@ export function injectComposerGlass(document: Document): () => void {
       pinFrame = view.requestAnimationFrame(tick);
     };
 
+    const clearRadius = () => {
+      if (radiusEnd) composer.removeEventListener("transitionend", radiusEnd);
+      radiusEnd = null;
+      if (radiusMotion) composer.style.removeProperty("border-radius");
+      radiusMotion = null;
+    };
+
     const finishMotion = () => {
       motion = null;
       animating.delete(composer);
       composer.style.transition = "none";
       composer.style.height = "";
+      clearRadius();
+      const height = composer.getBoundingClientRect().height;
+      if (height > 0) idleHeights.set(composer, height);
       composer.style.transition = "";
       composer.style.willChange = "";
       composer.style.overflow = "";
@@ -770,10 +781,12 @@ export function injectComposerGlass(document: Document): () => void {
     const changes = new MutationObserver(() => {
       const nextCompact = composer.hasAttribute("data-promptbox-compact");
       const view = viewOf();
+      const now = view?.performance.now() ?? 0;
+      const handoff = composer.querySelector('[aria-label="Exit handoff"]') != null;
       const change = composerRadiusChange({
         previousCompact: compact,
         nextCompact,
-        handoff: composer.querySelector('[aria-label="Exit handoff"]') != null,
+        handoff,
         smallHitTarget: hasSmallHitTarget(document),
         reducedMotion:
           view?.matchMedia("(prefers-reduced-motion: reduce)").matches ?? false,
@@ -787,25 +800,42 @@ export function injectComposerGlass(document: Document): () => void {
         else markerNodes.get(COMPACT_MARK)!.delete(footer);
       }
       if (change != null) {
-        const current = ++generation;
-        applyComposerRadius(composer, change);
-        if (radiusEnd) composer.removeEventListener("animationend", radiusEnd);
-        const onEnd = (event: AnimationEvent) => {
-          if (event.animationName !== "bb-chat-ui-composer-radius") return;
-          composer.removeEventListener("animationend", onEnd);
-          radiusEnd = null;
-          if (current !== generation) return;
-          composer.style.animation = "";
+        // Native transition:none can already have snapped the computed radius to its
+        // old target. Sample our shared curve instead, without per-frame layout reads.
+        const px = (value: string) => Number.parseFloat(value) * (value.endsWith("rem")
+          ? Number.parseFloat(view?.getComputedStyle(document.documentElement).fontSize ?? "") || 16 : 1);
+        radiusMotion = {
+          from: radiusMotion ? `${composerCollapseHeight({
+            from: px(radiusMotion.from), to: px(radiusMotion.to),
+            elapsedMs: now - radiusMotion.startedAt, durationMs: COMPOSER_HEIGHT_MS,
+          })}px` : change.from,
+          to: change.to,
+          startedAt: now,
+        };
+        if (radiusEnd) composer.removeEventListener("transitionend", radiusEnd);
+        const onEnd = (event: TransitionEvent) => {
+          if (event.target !== composer || !event.propertyName.startsWith("border-")) return;
+          if (!motion) {
+            clearRadius();
+            composer.style.transition = "";
+          }
         };
         radiusEnd = onEnd;
-        composer.addEventListener("animationend", onEnd);
+        composer.addEventListener("transitionend", onEnd);
       }
 
+      const reducedMotion = view?.matchMedia("(prefers-reduced-motion: reduce)").matches ?? false;
+      if (reducedMotion && (motion || HOST_HEIGHT_TRANSITION.test(composer.style.transition))) {
+        stopFinish();
+        finishMotion();
+        composer.style.transition = "none";
+        return;
+      }
       const plan = planComposerHeight({
         transition: composer.style.transition,
         height: composer.style.height,
-        now: view?.performance.now() ?? 0,
-        idleHeight: idleHeights.get(composer) ?? 0,
+        now,
+        idleHeight: motion && change ? composer.getBoundingClientRect().height : idleHeights.get(composer) ?? 0,
         motion,
       });
       if (plan.rewrite) {
@@ -814,11 +844,12 @@ export function injectComposerGlass(document: Document): () => void {
         animating.add(composer);
         const scroller = scrollerOf();
         const savedScroll = scroller?.scrollTop ?? null;
-        composer.style.transition = "none";
-        composer.style.height = `${plan.rewrite.from}px`;
-        composer.getBoundingClientRect();
-        composer.style.transition = plan.rewrite.transition;
-        composer.style.height = `${plan.rewrite.to}px`;
+        radiusMotion ??= {
+          from: composerCornerRadius(compact, handoff),
+          to: composerCornerRadius(compact, handoff),
+          startedAt: now,
+        };
+        applyComposerRadius(composer, radiusMotion, plan.rewrite);
         keepScroll(scroller, savedScroll);
         startPin();
         return;
@@ -828,13 +859,14 @@ export function injectComposerGlass(document: Document): () => void {
         animating.add(composer);
         const scroller = scrollerOf();
         const savedScroll = scroller?.scrollTop ?? null;
-        composer.style.transition = "none";
-        composer.style.height = `${plan.resume.from}px`;
-        composer.getBoundingClientRect();
+        radiusMotion ??= {
+          from: composerCornerRadius(compact, handoff),
+          to: composerCornerRadius(compact, handoff),
+          startedAt: now,
+        };
+        applyComposerRadius(composer, radiusMotion, plan.resume);
         composer.style.overflow = "hidden";
         composer.style.willChange = "height";
-        composer.style.transition = plan.resume.transition;
-        composer.style.height = `${plan.resume.to}px`;
         keepScroll(scroller, savedScroll);
         if (!view) return;
         stopFinish();
@@ -844,10 +876,10 @@ export function injectComposerGlass(document: Document): () => void {
         }, plan.resume.remainingMs);
         return;
       }
+      if (change && radiusMotion) applyComposerRadius(composer, radiusMotion);
       if (motion && !plan.motion) {
-        motion = null;
-        animating.delete(composer);
-        stopPin();
+        stopFinish();
+        finishMotion();
       }
     });
     changes.observe(composer, {
@@ -857,11 +889,7 @@ export function injectComposerGlass(document: Document): () => void {
     radiusWatches.set(composer, () => {
       stopHandoff();
       changes.disconnect();
-      if (radiusEnd) {
-        composer.removeEventListener("animationend", radiusEnd);
-        if (composer.style.animation.includes("bb-chat-ui-composer-radius")) composer.style.animation = "";
-      }
-      radiusEnd = null;
+      clearRadius();
       stopFinish();
       if (motion) finishMotion();
       else stopPin();
