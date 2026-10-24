@@ -53,6 +53,7 @@ License: https://github.com/lucide-icons/lucide/blob/0.300.0/LICENSE
 
 - app.tsx: bb-chat-ui-status — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/activity.svg
 - lib/quote-pill.ts: QUOTE_ICON — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/quote.svg
+- lib/transcript-components.ts: WINDOW_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/app-window.svg
 - lib/transcript-components.ts: CODE_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/code.svg
 - lib/user-attachments.ts: FILE_ICON — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/file.svg
 

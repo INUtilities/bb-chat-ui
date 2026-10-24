@@ -48,7 +48,7 @@ test("code block 2 styles only assistant output and preserves native controls, c
 test("transcript CSS stays assistant-scoped with specific subjects, tokens, and no expensive selectors or effects", () => {
   assert.ok(transcriptComponentsCss.trim());
   assert.doesNotMatch(transcriptComponentsCss,/:has\(|backdrop-filter|#[\da-f]{3,8}\b|\b(?:oklch|rgba?|hsla?)\(/i);
-  assert.doesNotMatch(transcriptComponentsCss,/data-bb-chat-ui-transcript|button\[|blockquote/);
+  assert.doesNotMatch(transcriptComponentsCss,/data-bb-chat-ui-transcript|button\[aria-label="(?:Copy code|Wrap lines)"\]|blockquote/);
   const dom=new JSDOM(''),sheet=new dom.window.CSSStyleSheet();sheet.replaceSync(transcriptComponentsCss);
   const walk=(rules:CSSRuleList)=>{for(const rule of Array.from(rules)){
     const css=rule as CSSStyleRule & CSSGroupingRule;
@@ -56,8 +56,9 @@ test("transcript CSS stays assistant-scoped with specific subjects, tokens, and 
     if(!css.selectorText)continue;
     for(const selector of css.selectorText.split(',')){
       assert.ok(selector.trim().startsWith('[data-timeline-row-id*=":assistant:"] [data-markdown-preview] '),selector);
-      const subject=selector.trim().split(/\s+>\s+|\s+/).at(-1)!;
-      assert.match(subject,/^(div|span|pre|table|thead|th|td|\[data-clipboard-ignore\])/);
+      const subject=selector.trim().match(/(?:^|[\s>+~])((?:\[[^\]]+\]|[^\s>+~])+)$/)?.[1] ?? '';
+      if(/\bbutton\b/.test(selector))assert.ok(selector.includes('div[data-inline-vis-frame]'),selector);
+      assert.match(subject,/^(div|span|pre|table|thead|th|td|a\[aria-label|button\[aria-label|button\[data-bb-chat-ui-inline-vis-toggle|iframe|\[data-clipboard-ignore\])/);
     }
   }};
   walk(sheet.cssRules);dom.window.close();
@@ -100,5 +101,29 @@ test("table 1 keeps native semantics, alignment and scroll wrapper while only as
     assert.match(narrow.cssText,/padding-inline:\s*8px/);
   } finally {stop();}
   assert.equal(style(`${agent} table`).borderCollapse,"collapse");
+  dom.window.close();
+});
+
+test("inline-vis 2 frames and loading use a 32px outer head without changing iframe dimensions or user previews", () => {
+  const preview=`<div data-inline-vis-frame style="height:196px;position:relative"><iframe title="inline-vis: demo.html" srcdoc="<p>same document</p>" style="height:100%;width:100%"></iframe><div class="actions"><a aria-label="Open demo.html in sidebar" href="/demo.html">Open</a><button aria-label="Show source" aria-pressed="false">Source</button></div></div><div role="status" aria-busy="true" aria-label="Loading visualization demo.html" style="height:96px"></div>`;
+  const dom=new JSDOM(`<style>[data-inline-vis-frame]{box-sizing:border-box}div.actions{position:absolute;top:8px;right:8px;opacity:0}</style><section data-timeline-row-id="thread:assistant:item"><div data-markdown-preview>${preview}</div></section><section data-timeline-row-id="thread:user-seed:1"><div data-markdown-preview>${preview}</div></section><div data-markdown-preview id="outside-vis">${preview}</div>`);
+  const d=dom.window.document,agent=d.querySelector('[data-timeline-row-id*="assistant"]')!,frame=agent.querySelector('[data-inline-vis-frame]')!,iframe=frame.querySelector('iframe')!,before=iframe.outerHTML;
+  const style=(e:Element)=>dom.window.getComputedStyle(e),stop=injectTranscriptComponents(d);
+  try {
+    assert.equal(style(frame).boxSizing,'content-box');assert.equal(style(frame).paddingTop,'32px');
+    assert.equal(style(frame).height,'196px');assert.equal(style(frame).borderRadius,'12px');assert.equal(style(frame).overflow,'clip');
+    assert.equal(frame.querySelector('iframe'),iframe);assert.equal(iframe.outerHTML,before);assert.equal(style(iframe).height,'100%');
+    const actions=frame.querySelector('.actions')!;
+    assert.equal(style(actions).top,'4px');assert.equal(style(actions).right,'6px');assert.equal(style(actions).opacity,'1');
+    for(const e of actions.children){assert.equal(style(e).width,'24px');assert.equal(style(e).height,'24px');assert.equal(style(e).borderRadius,'999px');}
+    const loading=agent.querySelector('[role="status"]')!;
+    assert.equal(style(loading).paddingTop,'32px');assert.equal(style(loading).height,'96px');assert.equal(style(loading).boxSizing,'content-box');assert.equal(style(loading).borderRadius,'12px');
+    for(const selector of ['[data-timeline-row-id*="user-seed"]','#outside-vis']){const untouched=d.querySelector(selector)!.querySelector('[data-inline-vis-frame]')!;assert.equal(style(untouched).paddingTop,'0');assert.equal(style(untouched.querySelector('.actions')!).opacity,'0');}
+    const sheet=new dom.window.CSSStyleSheet();sheet.replaceSync(transcriptComponentsCss);
+    const css=sheet.cssRules;
+    assert.ok(Array.from(css).some(r=>r.cssText.includes('::before')&&r.cssText.includes('content: "html"')));
+    assert.ok(Array.from(css).some(r=>r.cssText.includes('prefers-reduced-motion')&&r.cssText.includes('animation: none')));
+  } finally {stop();}
+  assert.equal(d.querySelector('#bb-chat-ui-transcript-components'),null);assert.equal(style(frame).paddingTop,'0');assert.equal(style(frame.querySelector('.actions')!).opacity,'0');
   dom.window.close();
 });
