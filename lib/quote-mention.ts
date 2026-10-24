@@ -1,3 +1,4 @@
+import { decorateQuotePreview, clearQuotePreview } from "./quote-preview.ts";
 import { pillSlot, pillStyle } from "./pill.ts";
 import { QUOTE_MARK_MASK } from "./quote-pill.ts";
 import { decorateLegacyQuote, LEGACY_QUOTE_REMOVE, pruneLegacyQuoteControls } from "./legacy-quote-controls.ts";
@@ -72,7 +73,7 @@ export function injectQuoteMentions(doc: Document): () => void {
       if (record.type === "childList" && record.addedNodes.length && Array.from(record.addedNodes).every(node =>
         node instanceof Element && (node.hasAttribute(MESSAGE_GLYPH) || node.hasAttribute(CODE_CLONE) || node.hasAttribute(LEGACY_QUOTE_REMOVE)))) continue;
       const legacy = target?.closest("blockquote");
-      if (legacy instanceof HTMLElement) decorateLegacyQuote(legacy);
+      if (legacy instanceof HTMLElement) { decorateLegacyQuote(legacy); decorateQuotePreview(legacy); }
       const mention = target?.closest(`[${MENTION_RESOURCE}]`);
       if (mention instanceof HTMLElement) candidates.add(mention);
       if (record.attributeName === MENTION_RESOURCE && target instanceof HTMLElement) candidates.add(target);
@@ -88,10 +89,10 @@ export function injectQuoteMentions(doc: Document): () => void {
       if (parent) continue;
       if (subtree instanceof HTMLElement) {
         if (subtree.hasAttribute(MENTION_RESOURCE)) candidates.add(subtree);
-        if (subtree.tagName === "BLOCKQUOTE") decorateLegacyQuote(subtree);
+        if (subtree.tagName === "BLOCKQUOTE") { decorateLegacyQuote(subtree); decorateQuotePreview(subtree); }
       }
       for (const node of Array.from(subtree.querySelectorAll(`[${MENTION_RESOURCE}], blockquote`))) {
-        if (node instanceof HTMLElement) { if (node.tagName === "BLOCKQUOTE") decorateLegacyQuote(node); else candidates.add(node); }
+        if (node instanceof HTMLElement) { if (node.tagName === "BLOCKQUOTE") { decorateLegacyQuote(node); decorateQuotePreview(node); } else candidates.add(node); }
       }
       if (pendingCodes.size && (subtree.matches(DIFF_ICON_SOURCE) ||
         (subtree.id === "thread-prompt-banner-git-toggle" ? subtree.querySelector('[data-icon="FileDiff"]') : subtree.querySelector(DIFF_ICON_SOURCE)))) {
@@ -116,7 +117,7 @@ export function injectQuoteMentions(doc: Document): () => void {
   doc.addEventListener("click", onQuoteGesture, true);
   doc.addEventListener("pointerup", onQuoteGesture, true);
   for (const node of Array.from(doc.querySelectorAll(`[${MENTION_RESOURCE}], blockquote`))) if (node instanceof HTMLElement) {
-    if (node.tagName === "BLOCKQUOTE") decorateLegacyQuote(node); else decorate(node);
+    if (node.tagName === "BLOCKQUOTE") { decorateLegacyQuote(node); decorateQuotePreview(node); } else decorate(node);
   }
 
   return () => {
@@ -144,8 +145,9 @@ function quoteGestureFromTarget(target: EventTarget | null) {
 
 function lockQuoteMention(node: HTMLElement, doc: Document) {
   const resource = mentionResource(node);
-  if (!isQuoteMentionResource(resource)) return false;
   const root = mentionRoot(node) ?? node;
+  if (!isQuoteMentionResource(resource)) { clearQuotePreview(root); return false; }
+  decorateQuotePreview(root);
   if (root.contentEditable !== "false") root.contentEditable = "false";
   if (root.style.maxWidth !== "100%") root.style.maxWidth = "100%";
   if (root.style.whiteSpace !== "nowrap") root.style.whiteSpace = "nowrap";

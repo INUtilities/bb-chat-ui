@@ -7,6 +7,10 @@ import { composerInfoSettings } from "./lib/composer-info-settings.ts";
 export default function plugin(bb: BbPluginApi) {
   bb.settings.define(composerInfoSettings);
   bb.rpc.register(quoteRpcContract, {
+    async readQuote({ id }) {
+      const text = await bb.storage.kv.get<string>(quoteStorageKey(id));
+      return {text:typeof text === "string" ? text : null};
+    },
     async saveQuote({ id, text }) {
       await bb.storage.kv.set(quoteStorageKey(id), text);
       return { saved: true as const };

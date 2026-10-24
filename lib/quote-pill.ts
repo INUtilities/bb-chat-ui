@@ -1,3 +1,4 @@
+import { QUOTE_PREVIEW_MARK } from "./quote-preview.ts";
 import { LEGACY_QUOTE_REMOVE, LEGACY_QUOTE_HOST, installLegacyQuoteControls, legacyQuoteFromButton } from "./legacy-quote-controls.ts";
 import { pillStyle, referenceVariableStyle, referencePhoneVariableStyle, REFERENCE_PHONE } from "./pill.ts";
 
@@ -274,6 +275,7 @@ export function injectQuotePill(document: Document): () => void {
       }
       return;
     }
+    if (event.target instanceof HTMLElement && event.target.hasAttribute(QUOTE_PREVIEW_MARK) && document.activeElement === event.target && ["Enter", " ", "Tab"].includes(event.key)) return;
     const relation = quoteRelation(document);
     const inside =
       relation.inside ?? relation.partial ?? composerQuote(event.target);

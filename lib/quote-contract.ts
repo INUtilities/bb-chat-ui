@@ -54,7 +54,19 @@ const saveQuoteOutput = schema<{ saved: true }>((value) => {
   return issue("saved");
 });
 
+const readQuoteInput = schema<{id:string}>((value) => {
+  if (typeof value !== "object" || value === null) return issue("object");
+  const id = (value as {id?:unknown}).id;
+  return typeof id === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(id) ? {value:{id}} : issue("id");
+});
+const readQuoteOutput = schema<{text:string|null}>((value) => {
+  if (typeof value !== "object" || value === null) return issue("object");
+  const text = (value as {text?:unknown}).text;
+  return typeof text === "string" || text === null ? {value:{text}} : issue("text");
+});
+
 export const quoteRpcContract = defineRpcContract({
+  readQuote: {input:readQuoteInput, output:readQuoteOutput},
   saveQuote: {
     input: saveQuoteInput,
     output: saveQuoteOutput,

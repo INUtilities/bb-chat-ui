@@ -1,3 +1,4 @@
+import { registerQuoteReader } from "./quote-preview.ts";
 import { useEffect, useRef } from "react";
 import {
   experimental_usePluginId,
@@ -21,6 +22,7 @@ export function QuoteMentionBridge(): null {
   const composer = useComposer();
   const pluginId = experimental_usePluginId();
   const rpc = useRpc<typeof quoteRpcContract>();
+  useEffect(() => registerQuoteReader(document, async id => (await rpc.call("readQuote", {id})).text), [rpc]);
   const draft = composer.draft;
   const scope = JSON.stringify(composer.scope);
   const previous = useRef<{ scope: string; draft: ComposerDraftSnapshot }>({ scope, draft });

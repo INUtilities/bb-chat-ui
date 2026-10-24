@@ -10,6 +10,7 @@ import { injectComposerViewport } from "./lib/composer-viewport";
 import { injectComposerGlass } from "./lib/composer-glass";
 import { injectComposerMenuGlass } from "./lib/composer-menu-glass";
 import { injectQuoteMentions } from "./lib/quote-mention";
+import { injectQuotePreview } from "./lib/quote-preview";
 import { injectQuotePill } from "./lib/quote-pill";
 import { injectPillStyles } from "./lib/pill";
 import { injectMentionPills } from "./lib/mention-pill";
@@ -33,6 +34,7 @@ function ComposerBridges() {
 // Register composer bridges, content scripts, and locally attributed icons.
 export default definePluginApp((app) => {
   app.contentScripts.register({ id:"pill-styles", mount:() => injectPillStyles(document) });
+  app.contentScripts.register({ id:"quote-preview", mount:() => injectQuotePreview(document) });
   // Lucide 0.300.0 icons/activity.svg (ISC), inherited Feather geometry; see THIRD_PARTY_NOTICES.md.
   app.experimental_icons.register({
     name:"bb-chat-ui-status",
