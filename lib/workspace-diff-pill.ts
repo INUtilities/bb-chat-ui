@@ -1,3 +1,4 @@
+import { pillStyle } from "./pill.ts";
 import { composerDataChanged, readDiffData } from "./composer-data.ts";
 const TOGGLE_ID = "thread-prompt-banner-git-toggle";
 const BODY_ID = "thread-prompt-banner-git-body";
@@ -20,16 +21,10 @@ ${MERGE_BASE} {
   display: none !important;
 }
 #${TOGGLE_ID} {
-  width: fit-content;
-  min-height: 32px;
-  border-radius: 9999px !important;
-  border: 1px solid var(--border);
-  background: var(--card);
-  padding: 4px 10px !important;
+${pillStyle.nativeNavigation}
 }
 #${TOGGLE_ID} [data-icon-root] {
-  width: 16px;
-  height: 16px;
+${pillStyle.nativeNavigationIcon}
 }
 #${TOGGLE_ID} [${BRANCH_MARK}] {
   display: inline-flex;

@@ -1,9 +1,10 @@
+import { pillSlot, pillStyle, referenceVariableStyle, referencePhoneVariableStyle } from "./pill.ts";
 import { PHONE_NARROW } from "./device-chrome.ts";
 
 const STYLE_ID = "bb-chat-ui-mention-pill";
-const MARK = "data-bb-chat-ui-mention-pill";
-const WIDE = "data-bb-chat-ui-mention-wide";
-const REMOVE = "data-bb-chat-ui-mention-remove";
+const MARK = pillSlot.reference;
+const WIDE = pillSlot.wide;
+const REMOVE = pillSlot.remove;
 const RESOURCE = "data-prompt-mention-resource";
 // Set on the compact editor wrapper (outside ProseMirror) instead of .ProseMirror:has(.prompt-mention-pill).
 const HAS_MENTION = "data-bb-chat-ui-has-mention";
@@ -21,29 +22,17 @@ ${PAINTED} {
   flex-shrink: 0 !important;
   min-width: 0;
   width: auto;
-  height: 28px !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
-  max-width: min(140px, calc(100% - 6px)) !important;
-  gap: 4px !important;
-  margin: 3px !important;
-  padding: 4px 12px 4px 10px !important;
+${referenceVariableStyle}
   border-radius: 9999px !important;
-  font-size: 12px !important;
-  line-height: 16px !important;
   vertical-align: middle;
   white-space: nowrap !important;
   overflow: hidden;
 }
 ${PAINTED}[${WIDE}] {
-  max-width: calc(100% - 6px) !important;
+  ${pillStyle.wide}
 }
 ${PAINTED} > .truncate {
-  min-width: 0;
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+${pillStyle.label}
 }
 ${PAINTED}:not([${WIDE}]) > .truncate {
   /* Bound the label's intrinsic width when the parent sizes to its contents. */
@@ -52,39 +41,17 @@ ${PAINTED}:not([${WIDE}]) > .truncate {
 ${PAINTED} [data-icon-root],
 ${PAINTED} [data-section-mention-marker],
 ${PAINTED} [data-bb-chat-ui-quote-glyph] {
-  flex: 0 0 14px !important;
-  width: 14px !important;
-  height: 14px !important;
-  margin: 0 !important;
-  align-self: center;
+  ${pillStyle.referenceIcon}
 }
 ${PAINTED}:has(> [${REMOVE}]) {
-  padding-right: 30px !important;
+  ${pillStyle.removeReserve}
 }
 ${PAINTED} > button[${REMOVE}] {
-  position: absolute;
-  top: 50%;
-  right: 3px;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--pill-icon, currentColor);
-  cursor: pointer;
+${pillStyle.remove}
 }
 ${PAINTED} > button[${REMOVE}]::before {
   content: "";
-  width: 10px;
-  height: 10px;
+  ${pillStyle.removeGlyph}
   background: currentColor;
   opacity: 0.5;
   clip-path: polygon(12% 0, 50% 38%, 88% 0, 100% 12%, 62% 50%, 100% 88%, 88% 100%, 50% 62%, 12% 100%, 0 88%, 38% 50%, 0 12%);
@@ -93,22 +60,13 @@ ${PAINTED} > button[${REMOVE}]:hover {
   background: var(--state-hover);
 }
 ${PAINTED} > button[${REMOVE}]:focus-visible {
-  outline: 1px solid var(--ring);
-  outline-offset: -2px;
+  ${pillStyle.removeFocus}
 }
   ${PHONE_NARROW} ${PAINTED} {
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
-    max-width: min(240px, calc(100% - 8px)) !important;
-    gap: 6px !important;
-    margin: 4px !important;
-    padding: 6px 14px 6px 12px !important;
-    font-size: 14px !important;
-    line-height: 18px !important;
+${referencePhoneVariableStyle}
   }
   ${PHONE_NARROW} ${PAINTED}[${WIDE}] {
-    max-width: calc(100% - 8px) !important;
+    ${pillStyle.widePhone}
   }
   ${PHONE_NARROW} ${PAINTED}:not([${WIDE}]) > .truncate {
     max-width: calc(240px - 12px - 14px - 2px - 6px - 16px);
@@ -116,23 +74,16 @@ ${PAINTED} > button[${REMOVE}]:focus-visible {
   ${PHONE_NARROW} ${PAINTED} [data-icon-root],
   ${PHONE_NARROW} ${PAINTED} [data-section-mention-marker],
   ${PHONE_NARROW} ${PAINTED} [data-bb-chat-ui-quote-glyph] {
-    flex-basis: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
+    ${pillStyle.referenceIconPhone}
   }
   ${PHONE_NARROW} ${PAINTED}:has(> [${REMOVE}]) {
-    padding-right: 34px !important;
+    ${pillStyle.removeReservePhone}
   }
   ${PHONE_NARROW} ${PAINTED} > button[${REMOVE}] {
-    right: 4px;
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
+${pillStyle.removePhone}
   }
   ${PHONE_NARROW} ${PAINTED} > button[${REMOVE}]::before {
-    width: 12px;
-    height: 12px;
+    ${pillStyle.removeGlyphPhone}
   }
 
 [data-promptbox-compact-content][${HAS_MENTION}] .ProseMirror {

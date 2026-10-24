@@ -1,10 +1,11 @@
+import { pillSlot, pillStyle } from "./pill.ts";
 import { PHONE_NARROW } from "./device-chrome.ts";
 
 const STYLE_ID = "bb-chat-ui-user-attachments";
 // Markers set by injectUserAttachments replace :has(): in transcript rows a :has() rule with a
 // generic subject (.break-words, a, button, span) made every row insertion restyle the app.
 const BUBBLE_MARK = "data-bb-chat-ui-attach-bubble";
-const FILE_ROW = "data-bb-chat-ui-file-row";
+const FILE_ROW = pillSlot.attachment;
 const NO_BODY = "data-bb-chat-ui-attach-no-body";
 const HAS_META = "data-bb-chat-ui-attach-meta";
 const HAS_CLAMP = "data-bb-chat-ui-attach-clamp";
@@ -34,19 +35,11 @@ ${USER_BUBBLE} > .mt-2.space-y-2 > .flex:last-child {
   margin-bottom: 8px;
 }
 ${FILE_CHIP} {
-  box-sizing: border-box;
-  gap: 6px;
-  min-height: 40px;
-  padding: 6px 14px 6px 12px;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  line-height: 1.25;
+${pillStyle.attachment}
 }
 ${FILE_CHIP}::before {
   content: "";
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
+${pillStyle.attachmentIcon}
   background-color: currentColor;
   -webkit-mask: ${FILE_ICON_MASK};
   mask: ${FILE_ICON_MASK};
@@ -114,13 +107,10 @@ ${USER_BUBBLE} > .break-words[style*="mask-image"]::after {
     var(--sidebar);
 }
 ${PHONE_NARROW} ${FILE_CHIP} {
-  min-height: 64px;
-  border-radius: 20px;
+${pillStyle.attachmentPhone}
 }
 ${PHONE_NARROW} ${FILE_CHIP}::before {
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
+${pillStyle.attachmentIconPhone}
 }
 
 `;

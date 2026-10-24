@@ -309,3 +309,20 @@ Diff의 `N개 더 보기`와 접기도 공통 목록 행 모양과 gutter를 쓴
 - 컴포저 위의 휠과 한 손가락 스크롤은 대화 출력으로 전달하지 않는다. 입력 본문과
   멘션 목록 끝에서도 유지하며 확대 제스처는 막지 않는다. 대기 메시지 편집기는 기존
   팝오버의 높이·스크롤 규칙을 유지한다.
+
+## Pill 선언의 소유
+
+`lib/pill.ts`는 reference·remove·wide·navigation·attachment의 기존 선언과
+slot 이름만 소유한다. `app.tsx`의 `pill-styles` content script가 공통 device
+변수 sheet를 한 번 설치하고 해제한다. 독립 adapter fixture에는 같은 값의
+fallback을 둔다. reference 변수는 phone×narrow에서만 커지고 좁은 desktop과
+phone×roomy는 기존 desktop 값을 쓴다.
+
+원래 selector·specificity·설치 순서를 유지한다. legacy sent 인용의 면·높이,
+정보 줄의 frost, native Diff의 padding과 면, 첨부의 40/64px, legacy와 실제
+삭제 버튼의 차이를 통일하지 않는다. 데이터·선택·삭제·저장은 adapter에 둔다.
+
+정보 줄·Diff의 색 fallback 6곳은 같은 색의 토큰을 입증하지 못해 유지했다.
+현재 테마의 `--success`, `--warning`, `--destructive`와 기존 상태 fallback은
+색이 다르며, `--color-purple-500`도 fallback hex와 동일한 색은 아니다.
+테마 토큰이 없는 환경의 표시를 바꾸는 치환은 이번 이동에 포함하지 않는다.

@@ -1,3 +1,4 @@
+import { pillSlot, pillStyle } from "./pill.ts";
 import { QUOTE_MARK_MASK } from "./quote-pill.ts";
 import {
   QUOTE_CODE_ICON,
@@ -10,7 +11,7 @@ import {
 const MENTION_RESOURCE = "data-prompt-mention-resource";
 const ICON_MARK = "data-bb-chat-ui-quote-icon";
 const CODE_CLONE = "data-bb-chat-ui-code-icon";
-const MESSAGE_GLYPH = "data-bb-chat-ui-quote-glyph";
+const MESSAGE_GLYPH = pillSlot.icon;
 const DIFF_ICON_SOURCE = "#thread-prompt-banner-git-toggle [data-icon=\"FileDiff\"]";
 
 interface MentionView {
@@ -206,12 +207,7 @@ function paintMessageIcon(root: HTMLElement) {
   if (parent.querySelector(`:scope > [${MESSAGE_GLYPH}]`)) return;
   const glyph = parent.ownerDocument.createElement("span");
   glyph.setAttribute(MESSAGE_GLYPH, "");
-  glyph.style.display = "inline-block";
-  glyph.style.width = "14px";
-  glyph.style.height = "14px";
-  glyph.style.flex = "0 0 14px";
-  glyph.style.alignSelf = "center";
-  glyph.style.backgroundColor = "var(--pill-icon, currentColor)";
+  glyph.style.cssText = pillStyle.quoteGlyph;
   glyph.style.webkitMask = QUOTE_MARK_MASK;
   glyph.style.mask = QUOTE_MARK_MASK;
   parent.insertBefore(glyph, icon);

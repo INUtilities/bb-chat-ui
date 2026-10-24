@@ -1,3 +1,4 @@
+import { pillStyle } from "./pill.ts";
 import { PHONE_NARROW, SMALL_HIT_TARGET } from "./device-chrome.ts";
 
 const STYLE_ID = "bb-chat-ui-quote-pill";
@@ -97,33 +98,11 @@ export function quotePillCss(): string {
   return `
 ${USER_QUOTE},
 ${PENDING_COMPOSER_QUOTE} {
-  display: inline-flex !important;
-  align-items: center;
-  position: relative;
-  box-sizing: border-box;
-  max-width: 100%;
-  min-height: 28px;
-  min-width: 0;
-  gap: 6px;
-  margin: 0.25rem 0 !important;
-  border: 1px solid var(--pill-surface-border, var(--border)) !important;
-  border-radius: 9999px !important;
-  background: var(--pill-surface, var(--card));
-  color: var(--pill-foreground, var(--muted-foreground));
-  box-shadow: var(--pill-shadow);
-  padding: 6px 14px 6px 12px !important;
-  overflow: hidden;
-  vertical-align: middle;
-  white-space: nowrap !important;
-  user-select: none;
-  cursor: default;
+${pillStyle.legacyQuote}
 }
 ${USER_QUOTE}::before,
 ${PENDING_COMPOSER_QUOTE}::before {
-  content: "";
-  flex: 0 0 14px;
-  width: 14px;
-  height: 14px;
+${pillStyle.legacyQuoteIcon}
   background-color: var(--pill-icon, currentColor);
   -webkit-mask: ${QUOTE_MARK_MASK};
   mask: ${QUOTE_MARK_MASK};
@@ -174,16 +153,7 @@ ${COMPOSER_QUOTE}::after {
   }
 
 ${PENDING_COMPOSER_QUOTE} {
-  height: 28px !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
-  max-width: min(140px, calc(100% - 6px)) !important;
-  gap: 4px !important;
-  margin: 3px !important;
-  padding: 4px 12px 4px 10px !important;
-  font-size: 12px !important;
-  line-height: 16px !important;
-  overflow: hidden;
+${pillStyle.reference}  overflow: hidden;
 }
 ${PENDING_COMPOSER_QUOTE} > :not(:first-child) {
   display: none !important;
@@ -197,15 +167,7 @@ ${PENDING_COMPOSER_QUOTE}::before {
   height: 14px;
 }
   ${PHONE_NARROW} ${PENDING_COMPOSER_QUOTE} {
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
-    max-width: min(240px, calc(100% - 8px)) !important;
-    gap: 6px !important;
-    margin: 4px !important;
-    padding: 6px 14px 6px 12px !important;
-    font-size: 14px !important;
-    line-height: 18px !important;
+${pillStyle.referencePhone}
   }
   ${PHONE_NARROW} ${PENDING_COMPOSER_QUOTE} > :first-child {
     line-height: 18px !important;

@@ -1,3 +1,4 @@
+import { pillSlot, pillStyle } from "./pill.ts";
 import { composerDataChanged, readInfoData, readDiffData } from "./composer-data.ts";
 import { exposedInfo, infoKinds, listedInfo, type InfoKind } from "./composer-info-settings.ts";
 import { HEAD_DIFF_MARK, openChangesPanel } from "./workspace-diff-pill.ts";
@@ -77,7 +78,7 @@ export function scrollOverflowEdges(metrics: { scrollTop: number; clientHeight: 
 }
 
 const CARD_ROOT = `[${MARK}-menu], ${DETAIL}`;
-const PILL = `:is([${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump])`;
+const PILL = `:is([${pillSlot.navigation}], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump])`;
 
 export const composerInfoCss = `
 ${infoCardCss(CARD_ROOT, "[data-promptbox-shell]")}
@@ -99,11 +100,11 @@ ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD}
 /* Pills only: a card inside the bar keeps its slot sizes. */
 ${PILL}, [${MARK}-jump] { font:inherit; cursor:pointer; color:var(--foreground); }
 [${MARK}-bar] button:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
-[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:6px; height:32px; max-width:100%; padding:4px 11px; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; transition:transform 260ms cubic-bezier(.2,.9,.22,1.25); }
+[${MARK}-trigger], [${MARK}-stack-kind], [${MARK}-all] { ${pillStyle.navigation} }
 [${MARK}-trigger] { width:auto; min-width:0; }
 /* Pills are the only frost outside a card. Controls inside a card sit flat on its face (info-card.ts). */
 /* Active child stacks paint only their circles; the inactive child icon still owns a pill face. */
-${PILL}:not(:where([${MARK}-trigger="children"]:not([${MARK}-unavailable]))) { background:var(--bb-chat-ui-info-face) !important; border:0 !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 6px 18px -12px var(--bb-chat-ui-info-shadow),inset 0 1px 3px var(--bb-chat-ui-info-edge) !important; }
+${PILL}:not(:where([${MARK}-trigger="children"]:not([${MARK}-unavailable]))) { ${pillStyle.navigationFace} }
 [${MARK}-panel-source] { display:none !important; }
 [${MARK}-title-source] { display:none !important; }
 [${MARK}-stack] [${MARK}-collapse] { display:none !important; }
