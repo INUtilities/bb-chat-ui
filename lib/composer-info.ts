@@ -1,3 +1,4 @@
+import { composerInfoReflow } from "./composer-info-reflow.ts";
 import { pillSlot, pillStyle } from "./pill.ts";
 import { composerDataChanged, readInfoData, readDiffData } from "./composer-data.ts";
 import { exposedInfo, infoKinds, listedInfo, type InfoKind } from "./composer-info-settings.ts";
@@ -546,6 +547,8 @@ export function injectComposerInfo(document: Document): () => void {
     // The host keeps its own scroll logic; the visible control forwards to it.
     let jumpSource: HTMLButtonElement | null = null;
     let jumpVisible = false;
+    const jumpReflow = composerInfoReflow(bar, jump);
+    let pendingJump: ReturnType<typeof jumpReflow.capture> = null;
     const jumpWatch = new view!.MutationObserver(() => schedule(stack));
     let watchedSource: Element | null = null;
     const sourceWatch = new view!.MutationObserver(() => schedule(stack));
@@ -557,7 +560,9 @@ export function injectComposerInfo(document: Document): () => void {
         jumpSource = host;
         if (host) { host.setAttribute(`${MARK}-jump-source`, ""); jumpWatch.observe(host, { attributes:true, attributeFilter:["class", "disabled"] }); }
       }
-      jumpVisible = !!host && !host.disabled && !host.classList.contains("invisible");
+      const nextJump = !!host && !host.disabled && !host.classList.contains("invisible");
+      if (nextJump !== jumpVisible && buttons.size) pendingJump = jumpReflow.capture();
+      jumpVisible = nextJump;
       jump.toggleAttribute(`${MARK}-jump-off`, !jumpVisible);
 
     };
@@ -1216,6 +1221,7 @@ export function injectComposerInfo(document: Document): () => void {
       ownedMotion.delete(node);
     };
     const cancelOwnedMotion = () => {
+      jumpReflow.cancel(); pendingJump = null;
       for (const node of [...ownedMotion.keys()]) forgetMotion(node);
       pressHeld.clear();
     };
@@ -1880,6 +1886,11 @@ export function injectComposerInfo(document: Document): () => void {
     stack.addEventListener("focusin", pinPreview);
     orb.addEventListener("click", () => { open("all", orb); });
     const fit = (motion = true) => {
+      const jumpBefore = pendingJump; pendingJump = null;
+      if (jumpBefore) {
+        for (const animation of entryAnimations) animation.cancel();
+        entryAnimations.clear(); moves.clear(); cancelExit(); cancelStackCount();
+      }
       const scale = ["device", "viewport", "hit-target"].map(key => document.documentElement.getAttribute(`data-bb-chat-ui-root-${key}`)).join(":");
       if (scale !== measuredScale) { measuredScale = scale; measuredWidths = new WeakMap(); }
       const hadStack = appeared.has("all") && !iconStack.hidden && stackIcons.size > 0;
@@ -1949,10 +1960,16 @@ export function injectComposerInfo(document: Document): () => void {
       iconStack.hidden=readOnlyLabel!==null || folded.width===0;
       for (const [key, button] of buttons) {
         if (visible.has(key)) cancelExit(key);
-        else if (previouslyVisible.has(button) && !exits.has(key)) {
+        else if (!jumpBefore && previouslyVisible.has(button) && !exits.has(key)) {
           leave(key, button);
         }
         button.hidden = !visible.has(key);
+      }
+      if (jumpBefore) {
+        for (const [key, button] of buttons) if (!button.hidden) { appeared.add(key); positions.set(button, button.offsetLeft); }
+        if (!iconStack.hidden) { appeared.add("all"); positions.set(iconStack, iconStack.offsetLeft); }
+        jumpReflow.play(jumpBefore, jumpVisible);
+        return;
       }
       // The tail follows the last pill, including the closing exit slots.
       const moving = [...buttons.values(), iconStack].filter(button => !button.hidden && !bar.hidden);

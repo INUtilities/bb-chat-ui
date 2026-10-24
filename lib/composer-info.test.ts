@@ -6580,3 +6580,38 @@ test("a second Diff width change starts at the current animated width", async ()
     assert.deepEqual(widths[1].map(frame => frame.width), ['90px', '220px'], 'an interrupted width animation must not jump back to its cached target');
   } finally { stop(); f.dom.window.close(); }
 });
+
+test("jump fit morphs a folded pill and its icon together without animating layout", async () => {
+  const f = jumpFixture(); markDevice(f.document, 'desktop');
+  const animations: {node:HTMLElement;frames:Keyframe[];options:KeyframeAnimationOptions;animation:Animation}[]=[];
+  f.dom.window.HTMLElement.prototype.animate = function(frames,options) {
+    const animation={pause(){},play(){},cancel(){ this.oncancel?.({} as AnimationPlaybackEvent); },onfinish:null,oncancel:null,startTime:null} as unknown as Animation;
+    animations.push({node:this,frames:frames as Keyframe[],options:options as KeyframeAnimationOptions,animation}); return animation;
+  };
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();animations.length=0;
+    f.jump.classList.remove('invisible');await f.tick();
+    const motion=animations.filter(a=>a.node.hasAttribute('data-bb-chat-ui-info-reflow-key'));
+    const ghost=motion.find(a=>a.node.hasAttribute('data-bb-chat-ui-info-reflow-ghost'));
+    assert.ok(ghost,'the outgoing pill must stay visually present as an inert overlay');
+    assert.equal(ghost.node.style.position,'absolute'); assert.equal(ghost.node.getAttribute('aria-hidden'),'true');
+    assert.equal(ghost.node.style.pointerEvents,'none');
+    assert.ok(motion.some(a=>a.node.getAttribute('data-bb-chat-ui-info-reflow-key')?.startsWith('stack:')),'the destination icon fades in during the same transition');
+    assert.equal(new Set(motion.map(a=>a.animation.startTime)).size,1,'all participants share the same start after layout work');
+    for(const a of motion){
+      assert.equal(a.options.duration,460);assert.equal(a.options.easing,'cubic-bezier(.22,1,.36,1)');
+      assert.equal(a.options.delay??0,0);
+      for(const frame of a.frames)assert.ok(Object.keys(frame).every(p=>['transform','opacity','offset','easing','composite'].includes(p)),`layout property in ${JSON.stringify(frame)}`);
+    }
+    let reads=0;const bounds=f.stack.getBoundingClientRect;
+    f.stack.getBoundingClientRect=()=>{reads++;return bounds();};
+    for(let i=0;i<3;i++){f.jump.setAttribute('class',f.jump.className);await f.tick();}
+    assert.equal(reads,0,'unchanged jump state must not read layout again');
+    animations.length=0;f.jump.classList.add('invisible');await f.tick();
+    const reverse=animations.filter(a=>a.node.hasAttribute('data-bb-chat-ui-info-reflow-key'));
+    assert.ok(reverse.some(a=>a.node.getAttribute('data-bb-chat-ui-info-reflow-key')?.startsWith('pill:')));
+    for(const a of reverse){assert.equal(a.options.duration,340);assert.equal(a.options.easing,'cubic-bezier(.4,0,.2,1)');}
+    stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-info-reflow-layer]'),null,'unload cancels all temporary visuals');
+  } finally {stop();f.dom.window.close();}
+});
