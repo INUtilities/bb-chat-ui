@@ -78,6 +78,16 @@ export function cardFaceCss(selector: string): string {
   return `${selector} { ${cardStyle.face} }\n.dark ${selector}, .dark${selector} { ${cardStyle.faceDark} }`;
 }
 
+/** Native + 메뉴와 PR 머지 메뉴의 목록 inset·hover 모서리. 행 글자·높이·입력은 native가 소유한다. */
+export function nativeActionMenuCss(contents: string, items: string): string {
+  return `
+html { --bb-chat-ui-card-menu-pad:4px; --bb-chat-ui-card-menu-radius:10px; }
+html[data-bb-chat-ui-root-device="phone"] { --bb-chat-ui-card-menu-pad:8px; --bb-chat-ui-card-menu-radius:4px; }
+${contents} { padding:var(--bb-chat-ui-card-menu-pad) !important; }
+${items} { border-radius:var(--bb-chat-ui-card-menu-radius) !important; }
+`;
+}
+
 export function infoCardCss(root = `[${CARD}]`, typographyScope = ""): string {
   const card = `:is(${root})`;
   const within = typographyScope ? `:where(${typographyScope}) ` : "";
@@ -132,8 +142,6 @@ html {
   --bb-chat-ui-card-workflow-center:8px;
   --bb-chat-ui-card-pr-offset:-4px;
   --bb-chat-ui-card-pr-trailing:0px;
-  --bb-chat-ui-card-pr-menu-y:12px;
-  --bb-chat-ui-card-pr-menu-x:16px;
   --bb-chat-ui-card-nav-close-right:6px;
   --bb-chat-ui-card-queue-inline-glyph:12px;
   --bb-chat-ui-card-workflow-title-reserve:52px;
@@ -177,8 +185,6 @@ html[data-bb-chat-ui-root-device="phone"] {
   --bb-chat-ui-card-workflow-center:9px;
   --bb-chat-ui-card-pr-offset:-5px;
   --bb-chat-ui-card-pr-trailing:-3px;
-  --bb-chat-ui-card-pr-menu-y:12px;
-  --bb-chat-ui-card-pr-menu-x:16px;
   --bb-chat-ui-card-nav-close-right:8px;
   --bb-chat-ui-card-queue-inline-glyph:16px;
   --bb-chat-ui-card-workflow-title-reserve:62px;

@@ -13,7 +13,7 @@ import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
 import { attachQueueControls } from "./composer-queue-controls.ts";
 import { interceptPrMerge } from "./composer-pr-merge.ts";
 import { createBackgroundAccordions } from "./background-activity.ts";
-import { CARD_CLOSE_MASK, cardFaceCss, cardSlot, cardStyle, createCardAction, createCardClose, createCardHead, infoCardCss } from "./info-card.ts";
+import { CARD_CLOSE_MASK, nativeActionMenuCss, cardFaceCss, cardSlot, cardStyle, createCardAction, createCardClose, createCardHead, infoCardCss } from "./info-card.ts";
 
 const STACK = "[data-promptbox-shell] > .grid";
 const MARK = "data-bb-chat-ui-info";
@@ -190,7 +190,9 @@ ${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge me
 [data-bb-chat-ui-pr-menu-layer] { z-index:56 !important; }
 [data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
 ${cardFaceCss("[data-bb-chat-ui-pr-menu]")}
-[data-bb-chat-ui-pr-menu] { padding:var(--bb-chat-ui-card-pr-menu-y) var(--bb-chat-ui-card-pr-menu-x) !important; }
+${nativeActionMenuCss('[data-bb-chat-ui-pr-menu][role="menu"], [data-bb-chat-ui-pr-menu][data-persistent-drawer-content] > div[class~="overflow-y-auto"]', '[data-bb-chat-ui-pr-menu][role="menu"] > div[role="menuitem"], [data-bb-chat-ui-pr-menu][data-persistent-drawer-content] > div[class~="overflow-y-auto"] > button[role="menuitem"]')}
+/* Match the native drawer's 1px border inset without adding another border to the frost face. */
+[data-bb-chat-ui-pr-menu][data-persistent-drawer-content] { padding:1px !important; padding-bottom:calc(1px + var(--bb-safe-area-bottom,env(safe-area-inset-bottom,0px))) !important; }
 ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria-label^="Queued message"][aria-label$=" actions"]) { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }

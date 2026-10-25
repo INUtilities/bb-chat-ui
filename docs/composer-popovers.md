@@ -29,7 +29,7 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 | PR·Parent 단일 행 높이 / 왼쪽 / 닫기 위·오른쪽 | 36px / 12px / 8px·6px | 40px / 16px / 8px·8px |
 | 대기 메시지 행 padding | 2px 4px | 4px 6px |
 | 대기 메시지 행 아이콘 액션 | 20px | small hit 24px / large hit 32px |
-| PR 머지 메뉴 바깥 padding | 12px 16px | 12px 16px |
+| PR 머지 메뉴 목록 padding / 행 radius | 4px / 10px | 8px / 4px |
 
 
 | 글자 역할 | desktop | phone |
@@ -47,7 +47,7 @@ phone은 padding 12px 16px, 제목 줄 32px·행 최소 32px·padding 6px·글�
 폰 닫기는 제목 줄 중앙 위치 16px에서 사용자 시각 보정으로 0.5px 위인 top 15.5px에 둔다. PR·Parent 단일 행의 top 8px는 유지한다. 닫기 여백은 두 기기 모두 34px이며 닫기 버튼의 오른쪽 위치는 유지한다.
 Workflow 점의 보이는 크기와 선 폭은 유지한다. desktop의 점 배치 상자는 16px이며
 연결선은 새 행 padding과 점 중심에 맞춰 잇는다. Diff의 graph는 기기별 행 padding의 음수 margin으로 행 전체 높이를 잇는다.
-PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native 행·글자·키보드 동작은 유지한다.
+PR 머지 메뉴의 목록 inset·행 모서리는 컴포저 `+` 메뉴와 같은 `nativeActionMenuCss`를 쓴다. 행 높이·padding·글자·키보드 선택은 같은 native DropdownMenuItem 구현을 유지한다.
 
 - 컴포저 `+` 메뉴와 모델 선택 팝오버도 `lib/composer-menu-glass.ts`에서 같은
   18px 모서리와 frost 표면을 쓴다. + 메뉴의 접근성 이름과 모델 선택 버튼의 aria-controls 연결로
@@ -164,8 +164,16 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
   SDK 제목을 아직 읽지 못했으면 원래 PR 번호를 임시 제목으로 쓴다.
   Merge 메뉴와 닫기는 별도 영역으로 두어 제목과 겹치지 않게 한다. Merge는 테두리·배경 없이
   글자와 캐럿만 표시한다. 글자와 캐럿 모두 같은 머지 방식 메뉴를 열며, 방법을 선택할 때만 실행한다.
-- PR 머지 방식 메뉴는 바깥 면만 공통 `cardFaceCss`를 쓴다. 안쪽 행과 글자 규격,
-  키보드 선택·실행 동작은 native 구현을 유지한다.
+- PR 머지 방식 메뉴는 공통 `cardFaceCss` 면에 `+` 메뉴와 같은 항목 규격을 쓴다.
+  `lib/info-card.ts`의 `nativeActionMenuCss`가 목록 padding(desktop 4px·phone 8px)과
+  행 radius(10px·4px)를 두 메뉴에 함께 적용한다. native 행 padding은 5px 8px·8px,
+  실측 높이는 26px·36px, 글자는 12/16·14/20이며 font·높이·동작을 별도로 덮지 않는다.
+  native focus·last-hovered 배경은 같은 BB `state-hover` 토큰을 유지한다.
+- phone의 `+` 메뉴는 `[data-persistent-drawer-content]` 안의 `div[aria-label="Prompt actions"]`다.
+  PR drawer에 겹치던 12px 16px padding을 제거하고 native 안쪽 목록 padding 8px만 둔다.
+  `+` drawer의 native 테두리 1px와 같은 전체 inset을 만들기 위해 PR frost 면에는
+  테두리 대신 안쪽 여유 1px를 둔다. 두 메뉴의 hover 왼쪽·오른쪽 끝은 면에서 9px다.
+  safe-area-bottom과 drawer handle, Escape·키보드 선택·실행 동작은 유지한다.
 
 ## 공통 규격과 컴포넌트 연결
 

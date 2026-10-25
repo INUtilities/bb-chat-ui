@@ -11,7 +11,7 @@ test("the shared row radius can be reused without replacing native menu row geom
   try {
     assert.match(cardStyle.rowRadius, /border-radius:10px/);
     const item = f.document.querySelector('[role="menuitem"]')!;
-    assert.equal(declaration(f.document, item, 'border-radius'), '10px');
+    assert.equal(resolvedStyle(item).borderRadius, '10px');
     const s = resolvedStyle(item);
     assert.equal(s.padding, '6px 12px'); assert.equal(s.minHeight, '36px');
   } finally { stop(); f.restore(); }
