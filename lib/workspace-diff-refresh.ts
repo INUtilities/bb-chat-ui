@@ -1,7 +1,8 @@
 import type { useSdk } from "@get-bb/plugin-sdk/app";
 import { readWorkspaceDiff, type WorkspaceDiffSnapshot } from "./workspace-diff-data.ts";
+import { readPullRequest, type PullRequestResult } from "./pull-request-rpc.ts";
 
-type Sdk = Pick<ReturnType<typeof useSdk>, "threads" | "environments" | "subscribe">;
+type Sdk = Pick<ReturnType<typeof useSdk>, "threads" | "environments" | "plugins" | "subscribe">;
 
 export function startWorkspaceDiffRefresh(sdk:Sdk, threadId:string, publish:(summary:WorkspaceDiffSnapshot | null) => void) {
   const controller = new AbortController();
@@ -14,7 +15,7 @@ export function startWorkspaceDiffRefresh(sdk:Sdk, threadId:string, publish:(sum
   let pending = false;
   let published = false;
   let prDirty = true;
-  let prCache:{ environmentId:string; expiresAt:number; value:Awaited<ReturnType<Sdk["environments"]["pullRequest"]>> } | null = null;
+  let prCache:{ environmentId:string; expiresAt:number; value:PullRequestResult } | null = null;
   const startedAt = Date.now();
   const refresh = async (forcePr = false) => {
     if (signal.aborted) return;
@@ -57,7 +58,7 @@ export function startWorkspaceDiffRefresh(sdk:Sdk, threadId:string, publish:(sum
           // Keep the regular 30s boundary even after a forced read between ticks.
           const expiresAt = startedAt + (Math.floor((refreshAt - startedAt) / 30000) + 1) * 30000;
           try {
-            const value = await sdk.environments.pullRequest(args);
+            const value = await readPullRequest(sdk,args);
             if (value.outcome === "unavailable") return cached?.value ?? value;
             if (!stale()) { prCache = { environmentId:args.environmentId, expiresAt, value }; prDirty = false; }
             return value;

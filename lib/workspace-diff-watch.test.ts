@@ -15,8 +15,8 @@ function fixture(){
       get:async()=>{calls.push('environment');return {mergeBaseBranch:'main'};},
       status:async()=>{calls.push('status');return {outcome:'not_applicable',reason:'non_git_environment'};},
       diffFiles:async()=>{calls.push('files');return {outcome:'not_applicable'};},
-      pullRequest:async()=>{calls.push('pr');return {outcome:'absent'};},
     },
+    plugins:{callRpc:async()=>{calls.push('pr');return {env:{outcome:'absent'}};}},
     subscribe:({event,callback}:{event:string;callback:Function})=>{handlers.set(event,callback);return()=>{handlers.delete(event);};},
   };
   const view={document:{visibilityState:'visible'},

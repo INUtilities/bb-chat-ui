@@ -24,6 +24,7 @@ function fixture(reads:Record<string,boolean> = {}, host:{pullRequest?:boolean} 
   let title='부모';
   let timeline={ goal:{ objective:'목표' } };
   let loadTimeline=async()=>timeline;
+  let loadPr:()=>Promise<any>=async()=>({outcome:'absent'});
   let loadParent=async(id:string)=>({id,title,titleFallback:null,providerId:'codex'});
   let loadChildren=async(args:{offset?:number})=>childRows.slice(args.offset??0,(args.offset??0)+100);
   let loadThread=async()=>({ id:'thread', parentThreadId:parentId, environmentId:'env', archivedAt:archived?1:null,
@@ -36,11 +37,12 @@ function fixture(reads:Record<string,boolean> = {}, host:{pullRequest?:boolean} 
       list:async(args:{offset?:number;archived?:boolean})=>{calls.push(`children:${args.offset}`);assert.equal(args.archived,false);return loadChildren(args);},
       queuedMessages:{list:async()=>{calls.push('queue');return [{id:'queued'}];}},
     },
-    environments:host.pullRequest===false ? {} : {pullRequest:async()=>{calls.push('pr');return {outcome:'absent'};}},
+    plugins:host.pullRequest===false ? {} : {callRpc:async(args:any)=>{calls.push('pr');assert.equal(args.pluginId,'bb--github-pr-status');assert.equal(args.method,'pullRequests');assert.deepEqual(args.input,{keys:['env']});return args.outputSchema.parse({env:await loadPr()});}},
     subscribe:(args:{event:string;callback:(event:any)=>void})=>{handlers.set(args.event,args.callback);return()=>{handlers.delete(args.event);};},
   };
   const controller=startComposerInfoRefresh(sdk,'thread',snapshot=>snapshots.push(snapshot),error=>errors.push(error),reads);
   return {...controller,calls,executionCalls,snapshots,errors,handlers,
+    setPr:(read:typeof loadPr)=>{loadPr=read;},
     setExecutionRead:(read:typeof loadExecution)=>{loadExecution=read;},
     emit:(id:string|undefined,changes:string[],eventTypes?:string[])=>handlers.get('thread:changed')?.({id,changes,...(eventTypes?{metadata:{eventTypes}}:{})}),
     reconnect:()=>handlers.get('realtime:connection')?.({state:'connected',reconnected:true}),
@@ -272,5 +274,32 @@ test('reading a known child refreshes its read state without loading the parent 
   f.emit('child',['read-state-changed']);await flush(t);
   assert.deepEqual(f.calls,['children:0']);
   assert.equal(f.snapshots.at(-1).children[0].lastReadAt,100);
+  f.stop();
+});
+
+
+test('available RPC metadata preserves the PR title, number, state and URL',async t=>{
+  const f=await ready();
+  const pullRequest={number:42,title:'PR 정보 복구',state:'draft',url:'https://github.com/example/repo/pull/42',baseRefName:'develop',headRefName:'feature/chat'};
+  f.setPr(async()=>({outcome:'available',pullRequest}));
+  f.refresh();await flush(t);
+  assert.deepEqual(f.snapshots.at(-1).pullRequest,{outcome:'available',pullRequest});
+  assert.equal(f.errors.at(-1),false);f.stop();
+});
+
+test('rejected, unavailable and malformed PR RPC reads leave all other composer data available',async t=>{
+  const f=await ready();
+  for(const read of [
+    async()=>{throw new Error('plugin_disabled');},
+    async()=>({outcome:'unavailable',message:'offline'}),
+    async()=>({outcome:'available',pullRequest:{title:'invalid'}}),
+  ]){
+    f.setPr(read);f.refresh();await flush(t);
+    const snapshot=f.snapshots.at(-1);
+    assert.notEqual(snapshot.pullRequest?.outcome,'available');
+    assert.equal(snapshot.children[0].id,'child');
+    assert.equal(snapshot.timeline.goal.objective,'목표');
+    assert.equal(snapshot.parent.id,'parent');assert.equal(f.errors.at(-1),false);
+  }
   f.stop();
 });

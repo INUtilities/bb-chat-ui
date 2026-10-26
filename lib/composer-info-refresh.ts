@@ -2,17 +2,17 @@ import type { composerInfoReads } from "./composer-info-settings.ts";
 import type { useSdk } from "@get-bb/plugin-sdk/app";
 import { childEventRefreshes, childListArgs, timelineEventTypes, visibleChildren, type ChildChangeEvent } from "./composer-child.ts";
 import { loadParent, parentEventMatters, type ParentSummary } from "./composer-parent.ts";
+import { readPullRequest, type PullRequestResult } from "./pull-request-rpc.ts";
 
-type Sdk = Pick<ReturnType<typeof useSdk>, "threads" | "environments" | "subscribe">;
+type Sdk = Pick<ReturnType<typeof useSdk>, "threads" | "plugins" | "subscribe">;
 type Timeline = Awaited<ReturnType<Sdk["threads"]["timeline"]>>;
 type ChildRows = Awaited<ReturnType<Sdk["threads"]["list"]>>;
 type ChildExecution = Awaited<ReturnType<Sdk["threads"]["defaultExecutionOptions"]>>;
 type Children = (ChildRows[number] & {executionOptions?:ChildExecution})[];
 type Queue = Awaited<ReturnType<Sdk["threads"]["queuedMessages"]["list"]>>;
-type PullRequest = Awaited<ReturnType<Sdk["environments"]["pullRequest"]>>;
 export interface ComposerInfoSnapshot {
   threadId:string; timeline:Timeline|null; children:Children; parent:ParentSummary|null;
-  queue:Queue; pullRequest:PullRequest|null; readOnly:{label:string|null;canRestore:boolean};
+  queue:Queue; pullRequest:PullRequestResult|null; readOnly:{label:string|null;canRestore:boolean};
 }
 type Part = "timeline" | "children" | "context" | "parent";
 const all:readonly Part[] = ["timeline", "children", "context", "parent"];
@@ -99,8 +99,8 @@ export function startComposerInfoRefresh(
     const environmentId=thread.environmentId;
     const results=await Promise.allSettled([
       label && reads.queue!==false ? sdk.threads.queuedMessages.list({threadId,signal}) : Promise.resolve([] as Queue),
-      // Newer hosts drop environments.pullRequest; a synchronous TypeError must not fail the other sources.
-      reads.pullRequest!==false && environmentId ? Promise.resolve().then(()=>sdk.environments.pullRequest({environmentId,signal})) : Promise.resolve(null),
+      // PR plugin failures remain isolated from the other composer sources.
+      reads.pullRequest!==false && environmentId ? readPullRequest(sdk,{environmentId,signal}) : Promise.resolve(null),
     ]);
     return {queue:results[0].status==="fulfilled" ? results[0].value : [],
       pullRequest:results[1].status==="fulfilled" ? results[1].value : null,readOnly,parentThreadId:thread.parentThreadId};

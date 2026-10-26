@@ -16,8 +16,8 @@ function deferred<T>() {
 type DiffSnapshot = NonNullable<Awaited<ReturnType<typeof readWorkspaceDiff>>>;
 type PrResponse = Awaited<ReturnType<Parameters<typeof readWorkspaceDiff>[0]['pullRequest']>>;
 type StatusResponse = Awaited<ReturnType<Parameters<typeof readWorkspaceDiff>[0]["status"]>>;
-function fixture(initialStatus?:() => Promise<StatusResponse>) {
-  let environmentId:string | null = 'env_main';
+function fixture(initialStatus?:() => Promise<StatusResponse>, initialEnvironmentId='env_main') {
+  let environmentId:string | null = initialEnvironmentId;
   let count = 3;
   let reads = 0;
   let prReads = 0;
@@ -35,7 +35,8 @@ function fixture(initialStatus?:() => Promise<StatusResponse>) {
   } }));
   const sdk = {
     threads:{ get:() => loadThread() },
-    environments:{ diffFiles:async () => {fileReads++;return {outcome:'available',files:fileLines?[{path:'draft.ts',additions:fileLines,deletions:0}]:[],truncated:false};}, get:async () => ({ mergeBaseBranch:'main' }), status:(args:Parameters<typeof loadStatus>[0]) => {statusReads++;return loadStatus(args);}, pullRequest:async () => {prReads++;return loadPr();} },
+    environments:{ diffFiles:async () => {fileReads++;return {outcome:'available',files:fileLines?[{path:'draft.ts',additions:fileLines,deletions:0}]:[],truncated:false};}, get:async () => ({ mergeBaseBranch:'main' }), status:(args:Parameters<typeof loadStatus>[0]) => {statusReads++;return loadStatus(args);} },
+    plugins:{callRpc:async(args:any)=>{prReads++;assert.equal(args.pluginId,'bb--github-pr-status');assert.equal(args.method,'pullRequests');return {[args.input.keys[0]]:await loadPr()};}},
     subscribe:(args:{ event:string; callback:(event:{ id:string; changes:string[] }) => void }) => { handlers.set(args.event,args.callback); return () => { handlers.delete(args.event); }; },
   };
   const running = startWorkspaceDiffRefresh(sdk, 'thread', summary => output.push(summary));
@@ -257,4 +258,15 @@ test('a forced focus refresh between polls does not postpone the next 30-second 
   const f=fixture();await initialResult(t);t.mock.timers.tick(500);await f.refresh(true);assert.equal(f.prReads,2);
   t.mock.timers.tick(30000-Date.now());await f.refresh();
   assert.equal(f.prReads,3,'focus must not postpone the boundary to the 35-second worktree tick');f.stop();
+});
+
+
+test('an initially disabled or failed PR RPC still publishes the workspace with its default base',async t=>{
+  for(const read of [async()=>{throw new Error('plugin_disabled');},async()=>({outcome:'unavailable',message:'offline'})]){
+    const f=fixture(undefined,'env_feature');f.setPr(read);
+    await initialResult(t);
+    assert.equal(f.prReads,1);
+    assert.equal(f.output.at(-1)?.detail.baseRef,'origin/main');
+    assert.equal(f.output.at(-1)?.detail.branch,'feature/chat');f.stop();
+  }
 });
