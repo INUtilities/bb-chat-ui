@@ -83,7 +83,7 @@ const PILL = `:is([${pillSlot.navigation}], [${MARK}-stack-kind], [${MARK}-all],
 
 export const composerInfoCss = `
 ${infoCardCss(CARD_ROOT, "[data-promptbox-shell]")}
-[${MARK}-stack] { --bb-chat-ui-info-row-gap:2px; --bb-chat-ui-info-max-height:min(50dvh,26rem); --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
+[${MARK}-stack] { --bb-chat-ui-info-max-height:min(50dvh,26rem); --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
 .dark [${MARK}-stack] { --bb-chat-ui-info-face:${DARK_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,black 60%,transparent); }
 [${MARK}-stack]::after { display:none !important; }
 [${WRAP}] { display:contents !important; }
@@ -230,7 +230,7 @@ ${WORKFLOW_PHASES} > div { position:relative; min-width:0; }
 ${WORKFLOW_PHASE_ROW} { gap:var(--bb-chat-ui-card-gap); opacity:1; }
 ${WORKFLOW_PHASE_ROW.split(", ").map(selector => `${selector}::before`).join(", ")} { content:""; position:relative; z-index:1; display:inline-block; flex:none; width:var(--bb-chat-ui-card-workflow-dotbox); height:var(--bb-chat-ui-card-workflow-dotbox); border:0; border-radius:999px; background:radial-gradient(circle,var(--subtle-foreground) 0 4px,transparent 4.5px); }
 ${WORKFLOW_PHASES} > div:not(:last-child)::after { content:""; position:absolute; top:var(--bb-chat-ui-card-workflow-top); bottom:calc(-1 * var(--bb-chat-ui-card-workflow-tail)); left:var(--bb-chat-ui-card-workflow-left); width:2px; background:color-mix(in oklab,var(--foreground) 22%,transparent); pointer-events:none; }
-${WORKFLOW_PHASES} > div[class~="items-center"]:not(:last-child)::after { left:var(--bb-chat-ui-card-workflow-inset); }
+${WORKFLOW_PHASES} > div[class~="items-center"]:not(:last-child)::after { left:calc(var(--bb-chat-ui-card-row-pad) + var(--bb-chat-ui-card-workflow-left)); }
 ${WORKFLOW_PHASES} > div > button[aria-expanded] > svg { order:3; margin-left:auto; flex:none; color:var(--subtle-foreground); }
 ${WORKFLOW_PHASES} > div > button[aria-expanded] > span[class~="font-medium"] { flex:1; }
 ${WORKFLOW_PHASES} > div[class~="items-center"] > span[aria-hidden="true"] { display:none; }
@@ -359,7 +359,7 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-file] > span { flex-shrink:0; ${cardStyle.secondaryText} }
 [${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }
-[${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:var(--bb-chat-ui-card-secondary-size) !important; line-height:var(--bb-chat-ui-card-line); color:var(--subtle-foreground); }
+[${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:var(--bb-chat-ui-card-secondary-size) !important; line-height:var(--bb-chat-ui-card-meta-line); color:var(--subtle-foreground); }
 [${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
 ${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
 ${DETAIL}[aria-label="Queued messages"] > :not([${cardSlot.head}]) { min-height:0; }
@@ -428,7 +428,7 @@ ${DETAIL}.agentation-staging-shell > .grid,
 ${DETAIL}.agentation-staging-shell > .grid > div { overflow:visible !important; }
 ${DETAIL}.agentation-staging-shell > .grid > div > div { padding:0 !important; }
 ${DETAIL}.agentation-staging-shell ul { max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; overflow:visible !important; }
-${DETAIL}.agentation-staging-shell ul { display:flex; flex-direction:column; row-gap:2px; }
+${DETAIL}.agentation-staging-shell ul { display:flex; flex-direction:column; row-gap:var(--bb-chat-ui-info-row-gap); }
 ${DETAIL}.agentation-staging-shell li { display:flex !important; align-items:center; gap:var(--bb-chat-ui-card-gap); min-width:0; margin-top:0 !important; margin-bottom:0 !important; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${DETAIL}.agentation-staging-shell li:is(:hover, :focus-within) { ${cardStyle.rowHover} }
 ${DETAIL}.agentation-staging-shell li > button { ${cardStyle.action} }

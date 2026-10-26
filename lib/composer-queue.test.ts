@@ -102,7 +102,7 @@ test("managed queue uses plain list rows and leaves standalone message bubbles i
       assert.equal(style(text).boxShadow, 'none');
       assert.equal(style(actions).boxShadow, 'none');
     }
-    assert.equal(style(text.querySelector('.truncate')!).fontSize, '12px', 'user message prose uses the smallest tier');
+    assert.equal(style(text.querySelector('.truncate')!).fontSize, '11px', 'user message prose uses the smallest tier');
     assert.equal(actions.querySelector('[data-send]'), send, 'native actions remain on their original nodes');
     f.click('[data-send]'); assert.equal(f.sent(), 1);
     stopInfo();
@@ -126,12 +126,12 @@ test("queue actions stay vertically centered in compact rows with appropriate hi
     try {
       f.click('[data-bb-chat-ui-info-trigger="queue"]'); await f.tick();
       const style=(node:Element)=>resolvedStyle(node);
-      assert.equal(style(row).padding,"4px 6px",'message rows use the compact vertical density and shared horizontal gutter');
+      assert.equal(style(row).padding,"2px 4px",'message rows use the compact vertical density and shared horizontal gutter');
       assert.equal(style(row.querySelector('.flex')!).alignItems,'center','controls follow the entire message row, including wrapped text');
       assert.equal(style(actions).alignSelf,'center');
       assert.equal(style(actions.querySelector('button')!).height,'20px','mobile retains a larger touch target');
       assert.equal(style(text).padding,'0px','only the row supplies vertical padding on both hit targets');
-      assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'0px 6px','the scroller holds the hover gutter without adding a vertical inset');
+      assert.equal(style(f.queue.querySelector('[data-queued-messages-scroll]')!).padding,'0px 4px','the scroller holds the hover gutter without adding a vertical inset');
       assert.equal(style(f.queue).maxHeight,'var(--bb-chat-ui-info-max-height)');
       assert.equal(actions.parentElement,original,'native action controls retain their parent');
       f.click('[data-send]'); assert.equal(f.sent(),1);

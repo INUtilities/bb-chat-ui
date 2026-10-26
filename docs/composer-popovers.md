@@ -8,6 +8,8 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 
 ## 카드와 제목
 
+제목 13px/12px는 실제 DOM에서 영문 descender·한글의 픽셀이 잘려 desktop 줄 높이를 15px로 보정했다. 닫기는 카드 위 여백 12px + (제목 줄 30px − 닫기 20px) / 2 = 17px로 제목·아이콘·액션의 중심을 맞춘다. 본문 줄 높이와 보조 줄 높이는 각각 `--bb-chat-ui-card-prose-line`, `--bb-chat-ui-card-meta-line`이며 목록의 `--bb-chat-ui-card-line`과 독립이다.
+
 
 정보 카드의 기기별 여백은 다음 표를 기준으로 한다. 루트 CSS 변수만 바꾸며 카드 스타일시트를 복제하지 않는다.
 기기 속성이 없으면 desktop 값이다. 컴포저·32px pill·모델 메뉴는 이 축소 대상에서 제외한다.
@@ -15,22 +17,33 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 | 규격 | desktop | phone |
 |---|---|---|
 | 상세 카드 padding | 12px 16px | 12px 16px |
-| 제목 줄 / 본문 간격 | 24px / 6px | 28px / 8px |
-| 제목의 닫기 여백 | 26px (20+6) | 32px (24+8) |
+| 제목 줄 / 본문 간격 | 30px / 10px | 32px / 10px |
+| 제목의 닫기 여백 | 34px | 34px |
 | 아이콘 액션 / 액션 glyph | 20px / 12px | 24px / 14px |
-| 닫기 크기 / 위 / 오른쪽 | 20px / 14px / 10px | 24px / 14px / 8px |
-| 글자 액션 높이 / 좌우 padding | 24px / 10px | 28px (large hit 32px) / 12px |
-| 목록 행 최소 높이 / padding / gutter / radius | 28px / 6px / 6px / 8px | 32px / 8px / 8px / 10px |
-| 형제 행 간격 | 2px | 2px |
-| Workflow 단계 최소 높이 / padding | 24px / 4px 6px | 28px / 6px 8px |
+| 닫기 크기 / 위 / 오른쪽 | 20px / 17px / 10px | 24px / 16px / 8px |
+| 글자 액션 높이 / 좌우 padding | 24px / 8px | 32px (모든 hit) / 10px |
+| 목록 행 최소 높이 / padding / gutter / radius | 24px / 4px / 4px / 8px | 32px / 6px / 6px / 10px |
+| 형제 행 간격 | 6px | 6px |
+| Workflow 단계 최소 높이 / padding | 24px / 2px 4px | 28px / 4px 6px |
 | PR·Parent 단일 행 높이 / 왼쪽 / 닫기 위·오른쪽 | 36px / 12px / 8px·6px | 40px / 16px / 8px·8px |
-| 대기 메시지 행 padding | 4px 6px | 6px 8px |
+| 대기 메시지 행 padding | 2px 4px | 4px 6px |
 | 대기 메시지 행 아이콘 액션 | 20px | small hit 24px / large hit 32px |
 | PR 머지 메뉴 바깥 padding | 12px 16px | 12px 16px |
 
+
+| 글자 역할 | desktop | phone |
+|---|---|---|
+| 제목 | 13px/15px · 600 | 14px/18px · 600 |
+| PR·Parent 단일 행 제목 | 13px/15px · 400 | 14px/18px · 400 |
+| 목록·일반 안내·글자 액션 | 12px/14px | 13px/16px |
+| 긴 본문·사용자 메시지 | 11px/18px | 12px/18px |
+| 보조·Diff 파일/커밋 | 11px/18px | 12px/18px |
+
+Diff 파일/커밋과 대기 메시지 목록의 형제 간격은 기존 0을 유지한다. Workflow 연결선은 6px 행 간격에 맞춰 desktop tail 14px, phone tail 16px·시작 18px로 잇는다.
+
 닫기의 오른쪽 위치는 ×의 글자 advance box 끝과 본문 오른쪽 시작 여백이 맞도록 정한다.
-phone은 바깥 padding만 12px 16px로 줄이며 제목 줄 28px·행 32px·padding 8px·액션 28/32px·닫기 24px를 유지한다.
-phone 제목의 닫기 여백은 32px(24+8)을 유지하고 닫기를 위 14px·오른쪽 8px로 옮겨 새 본문 가장자리와 맞춘다.
+phone은 padding 12px 16px, 제목 줄 32px·행 최소 32px·padding 6px·글자 액션 32px·닫기 24px다.
+닫기는 12 + (32 − 24) / 2 = 16px 위에 둔다. 닫기 여백은 두 기기 모두 34px이며 × 오른쪽 advance 정렬은 유지한다.
 Workflow 점의 보이는 크기와 선 폭은 유지한다. desktop의 점 배치 상자는 16px이며
 연결선은 새 행 padding과 점 중심에 맞춰 잇는다. Diff의 graph는 기기별 행 padding의 음수 margin으로 행 전체 높이를 잇는다.
 PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native 행·글자·키보드 동작은 유지한다.
@@ -78,26 +91,26 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
   긴 카드는 Code Diff와 같은 `--bb-chat-ui-info-max-height`에서 스크롤한다.
 - 상세 카드 제목은 읽기 전용이다. 제목 클릭으로 카드를 접지 않으며 hover 배경·pointer를
   추가하지 않는다. 실제 액션과 본문 내부의 펼치기·접기는 유지한다.
-- 제목 행은 desktop 24px·phone 28px, 제목 글자는 desktop 12px/16px·phone 14px/18px이며 굵기 600·왼쪽 정렬이다. native 제목의
+- 제목 행은 desktop 30px·phone 32px, 제목 글자는 desktop 13px/15px·phone 14px/18px이며 굵기 600·왼쪽 정렬이다. native 제목의
   가운데 정렬·`font-normal`을 그대로 남기지 않는다. 제목의 아이콘·외부 열기·닫기는
   이 행의 세로 중심선을 공유한다. 32px 터치 액션도 제목 행을 아래로 밀지 않는다.
 - 제목 왼쪽에는 해당 정보 아이콘을 둔다. 전체 정보 목록 제목은 예외다.
 - 제목 영역(아이콘 포함)과 본문은 카드의 같은 왼쪽 시작점을 쓴다. 목록 hover를
-  좌우 8px 넓히는 여백을 본문 전체에 적용하지 않는다. 들여쓰기된 하위 목록은
+  좌우 device별 row padding만큼 넓히는 여백을 본문 전체에 적용하지 않는다. 들여쓰기된 하위 목록은
   계층을 유지하되 첫 본문 줄을 제목보다 왼쪽으로 당기지 않는다.
 - 글자가 많은 Goal·Plan 본문과 대기 사용자 메시지, 피드백 본문, 작업 진행 설명은
-  최소 크기 12px/16px다. 문단과 `cardSlot.prose`는 공통 `cardStyle.prose`에 연결한다.
-  native·SDK, phone·desktop 모두 같은 크기를 쓰며 문단 안 강조·링크도 크기를 키우지 않는다.
-- 짧은 안내 문장도 문단이면 12px/16px 본문 규칙을 유지한다. 문장 길이를 이유로
+  desktop 11px/18px·phone 12px/18px다. 문단과 `cardSlot.prose`는 공통 `cardStyle.prose`에 연결한다.
+  native·SDK 모두 같은 역할의 기기 값을 쓰며 문단 안 강조·링크도 크기를 키우지 않는다.
+- 짧은 안내 문장도 문단이면 기기별 본문 규칙을 유지한다. 문장 길이를 이유로
   목록 이름·글자 액션의 device별 규격으로 바꾸지 않는다.
-- 목록 이름과 일반 안내는 desktop 12px/16px·phone 13px/16px다. native `text-xs`·`text-sm`와 목록 행은
+- 목록 이름과 일반 안내는 desktop 12px/14px·phone 13px/16px다. native `text-xs`·`text-sm`와 목록 행은
   `cardStyle.text`를 쓴다. Diff의 파일 경로·커밋 목록은 예외로 `cardStyle.secondaryText`의
-  desktop 11px/16px·phone 12px/16px를 쓰며 코드 글꼴은 유지한다.
+  desktop 11px/18px·phone 12px/18px를 쓰며 코드 글꼴은 유지한다.
   호스트의 모바일 14px·`leading-relaxed`가 이 세 단계에 섞이지 않게 한다.
-- 글자 액션도 desktop 12px/16px·phone 13px/16px다. Merge·해제·복구·더 보기의 크기를 목록과 맞추고,
+- 글자 액션도 desktop 12px/14px·phone 13px/16px다. Merge·해제·복구·더 보기의 크기를 목록과 맞추고,
   버튼의 클릭 영역 높이와 글자의 줄 높이를 분리한다.
 - Goal의 사용량·상태, Workflow의 진행 수·대기 상태·시간·모델, 백그라운드 시간,
-  Diff의 비교 통계·미푸시 안내와 SDK 대기 메시지 상태는 보조 정보로 desktop 11px/16px·phone 12px/16px다.
+  Diff의 비교 통계·미푸시 안내와 SDK 대기 메시지 상태는 보조 정보로 desktop 11px/18px·phone 12px/18px다.
   제목·액션·보조 정보 slot, 코드·입력·편집기와 그 자식은 본문 글자 규칙에서 제외한다.
   native `text-2xs`와 작은 개수 배지도 같은 device별 보조 크기를 쓴다.
   대기 메시지의 예약 시간도 보조 크기다. 말줄임 글자에 사용자 메시지 본문의 12px을 적용하지 않는다.
@@ -120,7 +133,7 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
 - ×의 오른쪽 끝은 글자 advance box를 기준으로 맞추며 모든 카드에 같은 기준을 쓴다.
   글꼴의 실제 ink 폭을 카드마다 따로 보정하지 않는다.
 - 닫기 위치와 제목의 닫기 여백은 위 기기별 표를 따른다.
-  글자 액션은 desktop 24px·phone 28px이며 phone large hit에서는 32px다. 카드 안 아이콘 액션과
+  글자 액션은 desktop 24px·phone 32px이며 phone large hit에서는 32px다. 카드 안 아이콘 액션과
   닫기는 desktop 20px·phone 24px이며 추가 frost 면·그림자를 겹치지 않는다.
 - Parent 탐색은 아래의 `single-row` 규격을 쓴다. 별도의 `Parent` 제목·계열 아이콘은
   추가하지 않으며 provider 아이콘·부모 제목·닫기만 한 줄에 둔다.
@@ -131,12 +144,12 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
   ↑ 전송 → 휴지통 삭제 → × 닫기 순서다. 아이콘만 표시해도 tooltip과 접근성
   이름에는 `Send all` / `Discard all`을 남긴다.
 - Agentation 목록 안 Mention·Send·Discard도 공통 device별 원형 아이콘 액션과 glyph를 쓴다.
-- Workflow는 첫 줄에 아이콘·제목·패널 열기·닫기를 둔다. 제목 줄은 desktop 24px·phone 28px이며,
+- Workflow는 첫 줄에 아이콘·제목·패널 열기·닫기를 둔다. 제목 줄은 desktop 30px·phone 32px이며,
   진행 수는 아래 줄의 왼쪽에, 시간은 오른쪽에 둔다. 가운데 구분점은 쓰지 않는다. 전체 너비의 분할 진행 막대는
   요약 아래에 둔다. native 데이터 갱신과 실제 패널 열기는 유지한다.
 - Workflow 단계는 번호 없이 점과 연결선이 이어지는 그래프로 표시한다. 점 크기는
   모든 상태에서 동일하며 완료·진행 중만 밝게, 나머지는 연하게 표시한다. 연결선은
-  2px 한 겹으로 점 사이에만 그려 겹침에 따른 밝기 차이를 없앤다. 단계 행의 최소 높이와 padding은 desktop 24px·4px 6px, phone 28px·6px 8px이며 상태와 관계없이 같은 hover 규격을 쓴다.
+  2px 한 겹으로 점 사이에만 그려 겹침에 따른 밝기 차이를 없앤다. 단계 행의 최소 높이와 padding은 desktop 24px·2px 4px, phone 28px·4px 6px이며 상태와 관계없이 같은 hover 규격을 쓴다.
   단계 펼치기 캐럿과 대기 상태는 행 오른쪽에 둔다. 펼친 에이전트는 연결선 안쪽에
   들여쓰고, 작업 이름 아래에 provider·model·reasoning 정보를 작은 보조 줄로 표시한다.
   제목·에이전트 이름·보조 정보는 카드 안쪽 여백에서 한 줄 말줄임한다.
@@ -155,13 +168,13 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
 
 | 글자 역할 | desktop 크기 / 줄 높이 | phone 크기 / 줄 높이 | 연결 |
 |---|---|---|---|
-| 제목 | 12px / 16px, 굵기 600 | 14px / 18px, 굵기 600 | `cardSlot.head`, `cardSlot.title`, `cardStyle.titleText` |
-| 단일 행 PR·Parent 제목 | 12px / 16px, 굵기 400 | 14px / 18px, 굵기 400 | `single-row`, `cardStyle.titleText` |
-| 긴 본문·사용자 메시지 | 12px / 16px | 12px / 16px | `cardSlot.prose`, `cardStyle.prose`, 일반 문단·native 대기 메시지 preview |
-| 목록 이름·일반 안내 | 12px / 16px | 13px / 16px | `cardStyle.text`, 목록 행·native `text-xs`·`text-sm` |
-| Diff 파일 경로·커밋 목록 | 11px / 16px, 코드 글꼴 | 12px / 16px, 코드 글꼴 | `cardStyle.secondaryText` |
-| 글자 액션 | 12px / 16px | 13px / 16px | `cardStyle.button`, PR Merge, Diff 더 보기 |
-| 상태·시간·개수·모델 등 보조 정보 | 11px / 16px | 12px / 16px | `cardSlot.meta`, `cardSlot.section`, `cardStyle.secondaryText`, native `text-2xs` |
+| 제목 | 13px / 15px, 굵기 600 | 14px / 18px, 굵기 600 | `cardSlot.head`, `cardSlot.title`, `cardStyle.titleText` |
+| 단일 행 PR·Parent 제목 | 13px / 15px, 굵기 400 | 14px / 18px, 굵기 400 | `single-row`, `cardStyle.titleText` |
+| 긴 본문·사용자 메시지 | 11px / 18px | 12px / 18px | `cardSlot.prose`, `cardStyle.prose`, 일반 문단·native 대기 메시지 preview |
+| 목록 이름·일반 안내 | 12px / 14px | 13px / 16px | `cardStyle.text`, 목록 행·native `text-xs`·`text-sm` |
+| Diff 파일 경로·커밋 목록 | 11px / 18px, 코드 글꼴 | 12px / 18px, 코드 글꼴 | `cardStyle.secondaryText` |
+| 글자 액션 | 12px / 14px | 13px / 16px | `cardStyle.button`, PR Merge, Diff 더 보기 |
+| 상태·시간·개수·모델 등 보조 정보 | 11px / 18px | 12px / 18px | `cardSlot.meta`, `cardSlot.section`, `cardStyle.secondaryText`, native `text-2xs` |
 
 native·SDK는 같은 역할 규칙을 쓴다. 글자 값은 `html` 루트의 CSS 변수로 한 번 정의하고
 `html[data-bb-chat-ui-root-device="phone"]`에서 phone 값만 덮어쓴다. 속성이 없으면 desktop 값이다.
@@ -169,13 +182,13 @@ native·SDK는 같은 역할 규칙을 쓴다. 글자 값은 `html` 루트의 CS
 컴포저 안으로 제한한 글자 선택자 범위도 유지한다.
 색·굵기·배치는 각 역할을 따르고 입력·편집기·코드 본문의 자체 크기는 유지한다.
 아이콘 전용 액션과 ×의 글자는 일반 글자 액션의 줄 높이로 덮지 않는다.
-Child Thread 등 목록 안의 이름은 desktop 12px/16px·phone 13px/16px다.
-읽기 전용 대기 메시지 preview는 양쪽 모두 12px지만 편집기는 원래 크기를 유지한다.
+Child Thread 등 목록 안의 이름은 desktop 12px/14px·phone 13px/16px다.
+읽기 전용 대기 메시지 preview는 desktop 11px·phone 12px지만 편집기는 원래 크기를 유지한다.
 제목 줄·목록 행·액션·닫기의 기기별 크기와 여백은 위 표를 따른다.
 
 | 규격 | 구성과 여백 | 연결 |
 |---|---|---|
-| 기본 상세 카드 | desktop 24px 제목·6px 간격·12px 16px padding, phone 28px 제목·8px 간격·12px 16px padding | `cardSlot.head`, `cardSlot.body` |
+| 기본 상세 카드 | desktop 30px 제목·10px 간격·12px 16px padding, phone 32px 제목·10px 간격·12px 16px padding | `cardSlot.head`, `cardSlot.body` |
 | 제목 단독 카드 (`heading-only`) | 본문 없이 기기별 제목 줄만 표시, 하단 본문 간격 없음 | 공통 `heading-only` layout |
 | 상태 액션이 있는 카드 (`with-actions`) | 기기별 제목 줄·상태 액션·닫기 열, 본문은 아래 전체 너비 | `cardSlot.head`, `cardSlot.endAction`, `cardSlot.body`; native Goal controls와 fallback status는 adapter가 연결 |
 | 단일 행 카드 (`single-row`) | 테두리·안쪽 면 없이 기기별 높이 36/40px인 카드 하나, 바깥 패딩 0, 내용 왼쪽 desktop 12px·phone 16px, 닫기 여유 desktop 32px·phone 40px | Parent는 `cardSlot.row`와 `cardSlot.navigation`, PR은 native/SDK 행을 `cardSlot.head`에, 원래 링크를 `cardSlot.navigation`에 연결, 공통 `cardSlot.layout="single-row"` |
@@ -188,16 +201,16 @@ Child Thread 등 목록 안의 이름은 desktop 12px/16px·phone 13px/16px다.
 - 부모 metadata가 늦게 오거나 native 링크만 있어도 같은 단일 행을 쓴다.
   관계가 제거된 경우의 기존 비활성 처리와 native 복원 동작은 유지한다.
 - native Child 목록, Goal 본문, 백그라운드 목록, Workflow scroll area, Queue scroll/list의
-  추가 상하 패딩을 제거한다. 본문 사이의 간격과 목록 행 자체의 8px 패딩은 유지한다.
+  추가 상하 패딩을 제거한다. 본문 사이의 간격과 목록 행 자체의 기기별 패딩은 유지한다.
 - `cardSlot.endAction`은 제목 줄 끝의 액션이다. native 글자 버튼에는
   `cardSlot.buttonLabel`로 짧은 표시 이름을 연결하고, 원래 글자·아이콘이 중복 표시되지 않게 한다.
   상세 열기 액션은 이 slot 앞에 배치한다. 닫기·native 재렌더·플러그인 해제 시 추가 layout과 slot을 복원한다.
 - SDK Goal은 기존 `cardSlot.head`를 재사용하고 `cardSlot.body`를 제목 아래 전체 너비에 둔다.
   native Goal의 해제 액션용 grid 열은 SDK 카드에 적용하지 않는다. 닫기·해제 시 SDK가 만든
   제목과 slot은 보존하고 adapter가 추가한 제목·slot만 정리한다.
-- Queue 제목 아래도 desktop 6px·phone 8px 간격을 쓴다. 빈 정보 안내는 본문의 끝에 추가 margin을 남기지 않는다.
+- Queue 제목 아래도 두 기기 모두 10px 간격을 쓴다. 빈 정보 안내는 본문의 끝에 추가 margin을 남기지 않는다.
   Queue의 마지막 그룹 경계가 잘리지 않도록 확보한 하단 12px는 기능 여백이므로 유지한다.
-- 대기 메시지 행은 공통 행의 밀도 예외로 desktop 4px 6px·phone 6px 8px 패딩과 형제 간격 0을 쓴다.
+- 대기 메시지 행은 공통 행의 밀도 예외로 desktop 2px 4px·phone 4px 6px 패딩과 형제 간격 0을 쓴다.
   기기별 최소 높이·radius·gutter와 6% hover는 유지하고 행 구분선은 없앤다.
   그룹 경계·드래그·편집·전송 동작과 기존 hit target은 유지한다.
   메시지 글자 블록의 내부 세로 패딩은 0이다. 행 패딩을 겹쳐 넣지 않고,
@@ -233,11 +246,11 @@ Child Thread 등 목록 안의 이름은 desktop 12px/16px·phone 13px/16px다.
 
 | 항목 | 기준 |
 |---|---|
-| 최소 높이 | desktop 28px, phone 32px |
-| 내부 패딩 | desktop 6px, phone 8px |
-| 글자 / 줄 높이 | desktop 12px / 16px, phone 13px / 16px |
-| 형제 행 사이 | 2px (`--bb-chat-ui-info-row-gap`) |
-| Workflow phase와 펼친 agent 목록 사이 | 같은 2px |
+| 최소 높이 | desktop 24px, phone 32px |
+| 내부 패딩 | desktop 4px, phone 6px |
+| 글자 / 줄 높이 | desktop 12px / 14px, phone 13px / 16px |
+| 형제 행 사이 | 6px (`--bb-chat-ui-info-row-gap`) |
+| Workflow phase와 펼친 agent 목록 사이 | 같은 device별 형제 간격 |
 | hover 배경 radius | desktop 8px, phone 10px |
 | hover 배경 | 테마 foreground 6% |
 | 배경 전환 | 150ms ease-out |
@@ -247,7 +260,7 @@ Workflow도 위 기기별 규격을 적용한다. 목록 행 높이는 최소값
 
 - 행 간격은 부모의 gap으로 관리한다. native `space-y-*`의 위·아래 margin을
   겹쳐 넣지 않는다. 목록 마지막에 불필요한 행 간격도 남기지 않는다.
-- 내용의 시작점은 제목과 맞춘다. hover 배경은 내용 좌우로 8px 확장하되 카드
+- 내용의 시작점은 제목과 맞춘다. hover 배경은 내용 좌우로 desktop 4px·phone 6px 확장하되 카드
   가장자리에는 여백을 남긴다. 둥근 배경이 안쪽 reveal wrapper에서 잘리지 않게 한다.
   reveal의 grid 자식은 `min-width:0`으로 축소할 수 있게 두어 긴 내용이 카드와 행을
   가로로 밀어내지 않게 한다. 할 일과 일반 본문의 긴 경로·공백 없는 문자열은
@@ -283,10 +296,10 @@ Agentation의 피드백·위치 두 줄, 대기 메시지 본문·편집기는 �
 높아진다. 이 경우에도 내용과 배경의 padding, 둥근 모서리, 제목과의 정렬 원칙은
 같다. Diff 커밋 연결선과 파일·통계의 정렬도 유지한다.
 
-Diff 파일·커밋 행도 desktop padding 6px·radius 8px, phone padding 8px·radius 10px와 6% hover·기기별 gutter를 쓴다.
+Diff 파일·커밋 행도 desktop padding 4px·radius 8px, phone padding 6px·radius 10px와 6% hover·기기별 gutter를 쓴다.
 이 두 목록의 형제 간격은 0이다. 커밋 graph는 위아래 패딩을 포함한 행 전체 높이를
 이어 붙이며, 첫·끝 항목과 접힌 목록 끝에서만 연결선을 끊는다.
-Diff의 `N개 더 보기`와 접기도 공통 목록 행 모양과 gutter를 쓴다. 기기별 최소 높이·padding·radius와 6% hover·desktop 12px/16px·phone 13px/16px이며 보조 색과 펼침 캐럿을 유지한다.
+Diff의 `N개 더 보기`와 접기도 공통 목록 행 모양과 gutter를 쓴다. 기기별 최소 높이·padding·radius와 6% hover·desktop 12px/14px·phone 13px/16px이며 보조 색과 펼침 캐럿을 유지한다.
 
 입력·코드·편집기, standalone native 카드는 이 목록 규칙으로 덮지 않는다.
 
@@ -320,12 +333,9 @@ Diff의 `N개 더 보기`와 접기도 공통 목록 행 모양과 gutter를 쓴
 `lib/pill.ts`는 reference·remove·wide·navigation·attachment의 기존 선언과
 slot 이름만 소유한다. `app.tsx`의 `pill-styles` content script가 공통 device
 변수 sheet를 한 번 설치하고 해제한다. 독립 adapter fixture에는 같은 값의
-fallback을 둔다. reference 변수는 phone×narrow에서만 커지고 좁은 desktop과
-phone×roomy는 기존 desktop 값을 쓴다.
+fallback을 둔다. reference 변수는 device=phone이면 viewport와 무관하게 phone 값을 쓰며 속성이 없으면 desktop 값을 쓴다.
 
-원래 selector·specificity·설치 순서를 유지한다. legacy sent 인용의 면·높이,
-정보 줄의 frost, native Diff의 padding과 면, 첨부의 40/64px, legacy와 실제
-삭제 버튼의 차이를 통일하지 않는다. 데이터·선택·삭제·저장은 adapter에 둔다.
+인용·멘션·예전 인용은 같은 reference 규격과 flat 면을 쓴다. 정보 줄의 frost·32px navigation, native Diff의 면·첨부 40/64px는 별도 역할이다. 데이터·선택·삭제·저장은 adapter에 둔다.
 
 정보 줄·Diff의 색 fallback 6곳은 같은 색의 토큰을 입증하지 못해 유지했다.
 현재 테마의 `--success`, `--warning`, `--destructive`와 기존 상태 fallback은
@@ -344,3 +354,14 @@ phone×roomy는 기존 desktop 값을 쓴다.
 - 동작 줄이기 설정에서는 높이·모서리를 즉시 바꾼다. Handoff의 기존 모션과
   native 햅틱·입력·전송 동작은 유지한다. 컴포저 분리·플러그인 해제 시
   모서리 inline 스타일·종료 listener와 기존 높이 timer를 정리한다.
+
+## 조절판 확정 reference 값
+
+| 문장 속 reference | desktop | phone |
+|---|---|---|
+| 높이 / 글자 / 줄 높이 | 22px / 13px / 16px | 24px / 14px / 18px |
+| 왼쪽 padding | 10px | 12px |
+| 삭제 원 / 가상 터치 영역 | 16px / 기존 원 | 18px / 24px 이상 |
+| 세로 / 가로 margin | −2px / 3px | −2px / 4px |
+
+왼쪽 padding은 `--bb-chat-ui-pill-reference-pad-left`, 삭제 원은 `--bb-chat-ui-pill-reference-remove`로 선택한다. 높이 22px에서 세로 margin 0은 desktop 입력 줄(22px)을 1.17px 늘려 −2px로 보정했다. 입력 줄 22px·보낸 줄 24px의 pill 유무 높이 차이는 0을 유지한다. phone 24px pill도 입력 27px·보낸 줄 24px에서 높이 차이 0을 유지하도록 세로 margin −2px를 쓴다.

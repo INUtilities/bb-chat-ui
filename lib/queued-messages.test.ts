@@ -18,11 +18,11 @@ test("managed user message previews use the smallest card size without resizing 
   dom.window.document.documentElement.setAttribute('data-bb-chat-ui-root-device',phone?'phone':'desktop');
   const scheduled=resolvedStyle(dom.window.document.querySelector('[data-scheduled]')!);
   assert.equal(scheduled.fontSize,phone?'12px':'11px','scheduled metadata must not inherit the user message preview override');
-  assert.equal(scheduled.lineHeight,'16px');
+  assert.equal(scheduled.lineHeight,'18px');
   const preview=resolvedStyle(dom.window.document.querySelector('[data-preview]')!);
-  assert.equal(preview.getPropertyValue('--text-xs'),'12px','native !text-xs reads the small prose token rather than the phone 14px token');
-  assert.equal(preview.fontSize,'12px');
-  assert.equal(preview.lineHeight,'16px');
+  assert.equal(preview.getPropertyValue('--text-xs'),phone?'12px':'11px','native !text-xs reads the small prose token rather than the phone 14px token');
+  assert.equal(preview.fontSize,phone?'12px':'11px');
+  assert.equal(preview.lineHeight,'18px');
   for(const [selector,lineHeight] of [['[data-editor]','20px'],['[data-standalone]','1.625']]){
     const s=resolvedStyle(dom.window.document.querySelector(selector)!);
     assert.equal(s.fontSize,'14px');
@@ -255,4 +255,20 @@ test("keeps the standalone legacy queue layout outside managed information popov
     css,
     /\[data-queued-message-actions\]\s*\{[^}]*background:\s*var\(--surface-raised-solid\) !important;/,
   );
+});
+
+test('managed queue line height beats the native important leading-4 in its utilities layer', () => {
+  // JSDOM does not apply cascade-layer priority; inspect that boundary here and
+  // verify the actual computed line height in the Chrome native-DOM harness.
+  const d=new JSDOM(`<style>${queuedMessagesCss}</style>`);
+  try {
+    const layers=Array.from(d.window.document.styleSheets[0].cssRules).filter(r=>'name' in r&&r.name==='utilities');
+    assert.equal(layers.length,1,'the important native utility and override must share a layer');
+    const layer=layers[0] as CSSGroupingRule;
+    const rule=Array.from(layer.cssRules).find(r=>'selectorText' in r&&r.selectorText.includes('.truncate:not(')) as CSSStyleRule;
+    assert.ok(rule,'only managed message previews receive the override');
+    assert.equal(rule.style.getPropertyValue('line-height'),'var(--bb-chat-ui-card-prose-line)');
+    assert.equal(rule.style.getPropertyPriority('line-height'),'important');
+    assert.match(rule.selectorText,/\[data-queued-message-row\]/);
+  } finally {d.window.close();}
 });

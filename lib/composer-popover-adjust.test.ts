@@ -22,14 +22,14 @@ test(`queued message rows use the compact density exception without separators (
   const f = makeSurface("queue", '<div data-queued-messages-scroll-frame><div data-queued-messages-scroll><ul><li data-queued-message-row>First</li><li data-queued-message-row>Second</li><li data-queued-message-group-divider><button>Messages above send together</button></li></ul></div></div>', "small", '[data-queued-message-row]{border-bottom:1px solid; padding:4px 0}');
   try {
     const row = f.css("[data-queued-message-row]");
-    assert.equal(row.minHeight, phone ? "32px" : "28px");
-    assert.equal(row.padding, phone ? "6px 8px" : "4px 6px");
+    assert.equal(row.minHeight, phone ? "32px" : "24px");
+    assert.equal(row.padding, phone ? "4px 6px" : "2px 4px");
     assert.equal(row.borderRadius, phone ? "10px" : "8px");
     assert.equal(row.borderBottomWidth, "0px");
-    assert.equal(row.marginLeft, phone ? "-8px" : "-6px");
+    assert.equal(row.marginLeft, phone ? "-6px" : "-4px");
     assert.equal(row.transition, "background-color 150ms ease-out");
     assert.equal(f.css("ul").rowGap, "0px");
-    assert.equal(f.css("[data-queued-messages-scroll]").paddingLeft, phone ? "8px" : "6px");
+    assert.equal(f.css("[data-queued-messages-scroll]").paddingLeft, phone ? "6px" : "4px");
     assert.equal(f.document.querySelectorAll("[data-queued-message-group-divider] button").length, 1);
   } finally { f.dom.window.close(); }
 });
@@ -52,10 +52,10 @@ test(`Diff expansion controls are secondary list rows with the common gutter (${
   const f = makeSurface("diff", '<div data-bb-chat-ui-info-diff><button data-bb-chat-ui-info-diff-toggle="files" aria-expanded="false"><span>7개 더 보기</span><svg /></button></div>', "large");
   try {
     const row = f.css("button");
-    assert.equal(row.minHeight, phone ? "32px" : "28px"); assert.equal(row.padding, phone ? "8px" : "6px");
-    assert.equal(row.borderRadius, phone ? "10px" : "8px"); assert.equal(row.marginLeft, phone ? "-8px" : "-6px");
-    assert.equal(row.width, phone ? "calc(100% + 16px)" : "calc(100% + 12px)");
-    assert.equal(row.fontSize, phone ? "13px" : "12px"); assert.equal(row.lineHeight, "16px");
+    assert.equal(row.minHeight, phone ? "32px" : "24px"); assert.equal(row.padding, phone ? "6px" : "4px");
+    assert.equal(row.borderRadius, phone ? "10px" : "8px"); assert.equal(row.marginLeft, phone ? "-6px" : "-4px");
+    assert.equal(row.width, phone ? "calc(100% + 12px)" : "calc(100% + 8px)");
+    assert.equal(row.fontSize, phone ? "13px" : "12px"); assert.equal(row.lineHeight, phone ? "16px" : "14px");
     assert.equal(f.document.querySelectorAll("button svg").length, 1);
   } finally { f.dom.window.close(); }
 });
@@ -65,14 +65,14 @@ test(`Diff rows share the hover gutter while their zero-gap graph spans the padd
   try {
     for (const selector of ['[data-bb-chat-ui-info-diff-file]', '[data-bb-chat-ui-info-diff-commit]']) {
       const row = f.css(selector);
-      assert.equal(row.padding, phone ? '8px' : '6px'); assert.equal(row.borderRadius, phone ? '10px' : '8px');
-      assert.equal(row.minHeight, phone ? '32px' : '28px'); assert.equal(row.marginLeft, phone ? '-8px' : '-6px');
+      assert.equal(row.padding, phone ? '6px' : '4px'); assert.equal(row.borderRadius, phone ? '10px' : '8px');
+      assert.equal(row.minHeight, phone ? '32px' : '24px'); assert.equal(row.marginLeft, phone ? '-6px' : '-4px');
       assert.equal(row.transition, 'background-color 150ms ease-out');
     }
     assert.equal(f.css('[data-bb-chat-ui-info-diff-commits]').rowGap, '0px');
     const graph = f.css('[data-bb-chat-ui-info-diff-graph]');
     assert.equal(graph.alignSelf, 'stretch');
-    assert.equal(graph.marginTop, phone ? '-8px' : '-6px'); assert.equal(graph.marginBottom, phone ? '-8px' : '-6px');
+    assert.equal(graph.marginTop, phone ? '-6px' : '-4px'); assert.equal(graph.marginBottom, phone ? '-6px' : '-4px');
     assert.equal(f.css('code').fontSize, phone ? '12px' : '11px'); assert.equal(f.css('[data-bb-chat-ui-info-diff-file] > span').fontSize, phone ? '12px' : '11px');
   } finally { f.dom.window.close(); }
 });
@@ -123,10 +123,10 @@ test(`a native single background command shares row geometry without changing it
   const f = makeSurface("background", '<div class="flex"><div role="button" tabindex="0" class="px-3" aria-label="Background command: npm test"><span>npm test</span></div><button data-bb-chat-ui-card-head>Background</button></div>');
   try {
     const row = f.css('[role="button"]');
-    assert.equal(row.padding, phone ? "8px" : "6px");
-    assert.equal(row.minHeight, phone ? "32px" : "28px");
+    assert.equal(row.padding, phone ? "6px" : "4px");
+    assert.equal(row.minHeight, phone ? "32px" : "24px");
     assert.equal(row.borderRadius, phone ? "10px" : "8px");
-    assert.equal(row.marginLeft, phone ? "-8px" : "-6px");
+    assert.equal(row.marginLeft, phone ? "-6px" : "-4px");
     assert.equal(row.transition, "background-color 150ms ease-out");
     assert.equal(f.document.querySelector('[role="button"]')!.getAttribute("tabindex"), "0");
   } finally { f.dom.window.close(); }

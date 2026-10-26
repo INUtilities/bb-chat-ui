@@ -21,7 +21,7 @@ test("Machine Retry fixture uses the common text action and restores its native 
     f.click('[data-bb-chat-ui-info-trigger="machine"]'); await f.tick();
     const s = resolvedStyle(retry);
     assert.equal(s.height, "24px"); assert.equal(s.borderRadius, '999px');
-    assert.equal(s.fontSize, '12px'); assert.equal(s.lineHeight, '16px');
+    assert.equal(s.fontSize, '12px'); assert.equal(s.lineHeight, '14px');
     assert.equal(retry.parentElement, parent); retry.click(); assert.equal(calls, 1);
     assert.equal(machine.querySelector('button[aria-expanded="false"]:not(#machine-status-toggle)')!.hasAttribute('data-bb-chat-ui-card-button'), false);
     machine.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')!.click();
@@ -80,15 +80,15 @@ test("native and SDK Goal and user message prose use the smallest card size belo
   try {
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="goal"]');await f.tick();
     const objective=goal.querySelector('p')!,meta=goal.querySelector('.text-muted-foreground')!;
-    assert.equal(style(objective).fontSize,'12px');
-    assert.equal(style(objective).lineHeight,'16px','native leading-relaxed must not enlarge the main body line');
-    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,phone?'14px':'12px');
+    assert.equal(style(objective).fontSize,phone?'12px':'11px');
+    assert.equal(style(objective).lineHeight,'18px','native leading-relaxed must not enlarge the main body line');
+    assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-head]')!).fontSize,phone?'14px':'13px');
     assert.equal(style(goal.querySelector('[data-bb-chat-ui-card-button-label]')!).fontSize,phone?'13px':'12px','actions keep the normal tier');
     assert.equal(style(meta).fontSize,phone?'12px':'11px','native Goal usage is secondary information');
-    assert.equal(style(meta).lineHeight,'16px');
+    assert.equal(style(meta).lineHeight,'18px');
     objective.outerHTML='<p class="text-xs leading-relaxed">Rerendered objective <code>code</code></p><textarea>draft</textarea>';
     await f.tick();
-    assert.equal(style(goal.querySelector('p')!).lineHeight,'16px','native rerenders keep the shared body type');
+    assert.equal(style(goal.querySelector('p')!).lineHeight,'18px','native rerenders keep the shared body type');
     for(const field of goal.querySelectorAll('code,textarea')){
       assert.equal(style(field).fontSize,'14px','code and inputs retain their own typography');
       assert.equal(style(field).lineHeight,'20px');
@@ -102,11 +102,11 @@ test("native and SDK Goal and user message prose use the smallest card size belo
       f.document.querySelector('[data-promptbox-shell] > .grid')!.append(sdk);await f.tick();
       f.click(`[data-bb-chat-ui-info-trigger="${kind}"]`);await f.tick();
       const paragraphs=sdk.querySelectorAll('p');
-      assert.equal(style(paragraphs[0]).fontSize,'12px',`${kind}: long content uses the smallest tier`);
-      assert.equal(style(paragraphs[0]).lineHeight,'16px');
+      assert.equal(style(paragraphs[0]).fontSize,phone?'12px':'11px',`${kind}: long content uses the smallest tier`);
+      assert.equal(style(paragraphs[0]).lineHeight,'18px');
       assert.equal(style(paragraphs[1]).fontSize,phone?'12px':'11px',`${kind}: SDK status uses the same secondary size`);
-      assert.equal(style(paragraphs[1]).lineHeight,'16px');
-      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,phone?'14px':'12px');
+      assert.equal(style(paragraphs[1]).lineHeight,'18px');
+      assert.equal(style(sdk.querySelector('[data-bb-chat-ui-card-title]')!).fontSize,phone?'14px':'13px');
       f.click(`[aria-label="${kind==='goal'?'Goal':'대기 메시지'} 닫기"]`);sdk.remove();
     }
   } finally {stop();}
@@ -135,7 +135,7 @@ test("Workflow and background metadata keep one secondary size across host devic
       for(const node of dom.window.document.querySelectorAll('[data-main],[data-meta]')){
         const s=resolvedStyle(node),meta=node.hasAttribute('data-meta');
         assert.equal(s.fontSize,meta?(phone?'12px':'11px'):(phone?'13px':'12px'),`${phone?'phone':'desktop'}: ${node.textContent}`);
-        assert.equal(s.lineHeight,'16px',`${node.textContent}: one line-height for both roles`);
+        assert.equal(s.lineHeight,meta?'18px':phone?'16px':'14px',`${node.textContent}: role line-height`);
       }
     } finally {dom.window.close();}
   }
@@ -148,7 +148,7 @@ test("Diff file paths and commit subjects share the secondary size while retaini
   for(const text of dom.window.document.querySelectorAll('code')){
     const s=resolvedStyle(text);
     assert.equal(s.fontSize,phone?'12px':'11px');
-    assert.equal(s.lineHeight,'16px');
+    assert.equal(s.lineHeight,'18px');
     assert.match(s.fontFamily,/mono/,'code labels retain their code font');
   }
   assert.equal(resolvedStyle(dom.window.document.querySelector('span')!).fontSize,phone?'12px':'11px');
@@ -261,7 +261,7 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
     }
     const [label,trigger]=Array.from(group.querySelectorAll('button'));
     assert.equal(style(label).fontSize,'12px','Merge shares the common text action size');
-    assert.equal(style(label).lineHeight,'16px');
+    assert.equal(style(label).lineHeight,'14px');
     assert.equal(style(label).pointerEvents,'none');
     assert.equal(style(label).height,'20px');
     assert.equal(style(trigger).position,'absolute');
@@ -411,7 +411,7 @@ test("the catalog hover gutter never pulls a detail body left of its heading", a
     assert.equal(parseFloat(bodyStyle.marginRight) || 0, 0);
     f.click('[data-bb-chat-ui-info-all]'); await f.tick();
     const choice = f.document.querySelector('[data-bb-chat-ui-info-choice]')!;
-    assert.equal(resolvedStyle(choice.parentElement!).marginLeft, "-6px", "only the catalog extends its hover paint");
+    assert.equal(resolvedStyle(choice.parentElement!).marginLeft, "-4px", "only the catalog extends its hover paint");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -431,7 +431,7 @@ test("native child titles and rows use the shared card typography and gutter", a
     assert.equal(resolvedStyle(label).fontWeight, '600');
     assert.equal(resolvedStyle(label).flexGrow, '0');
     const row = card.querySelector('li > a')!;
-    assert.equal(resolvedStyle(row).padding, "6px");
+    assert.equal(resolvedStyle(row).padding, "4px");
     assert.equal(resolvedStyle(row).borderRadius, "8px");
     assert.equal(label.parentElement, parent, 'native title nodes keep their parent');
   } finally { stop(); }
@@ -449,8 +449,8 @@ test("todo rows extend their hover gutter once while the list keeps the title ed
     const list = body.querySelector('ul')!;
     assert.equal(parseFloat(resolvedStyle(list).marginLeft) || 0, 0);
     const row = list.querySelector('li')!;
-    assert.equal(resolvedStyle(row).marginLeft, "-6px");
-    assert.equal(resolvedStyle(row).paddingLeft, "6px");
+    assert.equal(resolvedStyle(row).marginLeft, "-4px");
+    assert.equal(resolvedStyle(row).paddingLeft, "4px");
   } finally { stop(); f.dom.window.close(); }
 });
 
@@ -546,7 +546,7 @@ test("native body adapters remove duplicate vertical insets and keep the common 
         assert.equal(style.paddingTop, '0px', `${kind}: the card owns the top inset`);
         assert.equal(style.paddingBottom, '0px', `${kind}: the card owns the bottom inset`);
       }
-      if (kind === 'queue') assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom, "6px");
+      if (kind === 'queue') assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-card-head]')!).marginBottom, "10px");
     } finally { stop(); f.dom.window.close(); }
   }
 });
@@ -558,7 +558,7 @@ test("a touch-sized Goal action keeps the shared title and close on the 28px lin
   try {
     f.click('[data-bb-chat-ui-info-trigger="goal"]'); await f.tick();
     const card=f.document.querySelector('section[aria-label="Goal"]')!;
-    assert.equal(resolvedStyle(card).gridTemplateRows,"24px auto");
+    assert.equal(resolvedStyle(card).gridTemplateRows,"30px auto");
     assert.equal(resolvedStyle(card.querySelector('[aria-label="Clear active Goal"]')!).height,'24px');
   } finally { stop(); f.dom.window.close(); }
 });
@@ -916,8 +916,8 @@ test("SDK Goal reuses its shared heading and keeps the body below it without nat
       assert.equal(card.querySelector('h3'),head,'reuse the React-owned heading');
       assert.equal(css(card).display,'block','SDK content must not fall into native Goal action columns');
       assert.equal(css(card).gridTemplateColumns,'none');
-      assert.equal(css(head).marginBottom,"6px",'the common title/body gap remains');
-      assert.equal(css(head).paddingRight,"26px",'the common close-button gutter remains');
+      assert.equal(css(head).marginBottom,"10px",'the common title/body gap remains');
+      assert.equal(css(head).paddingRight,"34px",'the common close-button gutter remains');
       assert.equal(body.previousElementSibling,head);
       assert.equal(body.parentElement,card);
       assert.equal(card.querySelectorAll('[data-bb-chat-ui-card-close]').length,1);
@@ -971,7 +971,7 @@ test("Goal keeps its native removal action beside the title and close without re
     assert.equal(style(body).gridArea,'body');
     const dismiss=goal.querySelector('[aria-label="Goal 닫기"]')!;
     assert.equal(style(dismiss).position,'absolute','the shared close sits on the card');
-    assert.equal(style(dismiss).top,"14px",'centered on the 28px head line');
+    assert.equal(style(dismiss).top,"17px",'centered on the 28px head line');
     assert.equal(style(clear).height,"24px",'Goal 해제 is the shared text action');
     assert.equal(style(clear).borderTopWidth,'1px');
     assert.equal(style(goal).alignItems,'center');
@@ -1018,7 +1018,7 @@ test("queue and list cards share the same horizontal content gutter as their hea
       const gutter=inset(outer.paddingLeft)+inset(row.marginLeft)+inset(row.paddingLeft)+(scroll?inset(resolvedStyle(scroll).paddingLeft):0)+(frame?inset(resolvedStyle(frame).marginLeft):0);
       assert.equal(gutter,inset(outer.paddingLeft),`${key}: body starts at the same inset as its header`);
       assert.equal(outer.paddingLeft,outer.paddingRight,'left and right card gutters match');
-      if (key === 'queue') assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,"6px",'queue uses the common title-to-body gap');
+      if (key === 'queue') assert.equal(resolvedStyle(card.querySelector('[data-bb-chat-ui-info-close-heading]')!).marginBottom,"10px",'queue uses the common title-to-body gap');
       gutters.push(gutter);
     }
     assert.equal(new Set(gutters).size,1,'the queue does not get an extra horizontal gutter');
@@ -1066,8 +1066,8 @@ test("native card layout padding does not add another indent inside managed popo
       }
       const heading=card.querySelector('[data-bb-chat-ui-info-close-heading]');
       if(heading) {
-        assert.equal(getStyle(heading).paddingRight,kind==='goal'?'0px':'26px','the close keeps either an empty grid column or the head gutter');
-        assert.equal(getStyle(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,"14px",`${kind}: one close position`);
+        assert.equal(getStyle(heading).paddingRight,kind==='goal'?'0px':'34px','the close keeps either an empty grid column or the head gutter');
+        assert.equal(getStyle(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,"17px",`${kind}: one close position`);
       }
       const nested=card.querySelector('.ml-4');
       if(nested) assert.equal(getStyle(nested).marginLeft,'16px','nested phase indentation remains');
@@ -1107,9 +1107,9 @@ test("popover headings stay flat on focus while background rows gain an inset wi
     assert.ok(['transparent', 'rgba(0, 0, 0, 0)'].includes(header.backgroundColor), 'the title focus/hover rule must not paint a second face');
     const row = resolvedStyle(body.querySelector('div.px-3')!);
     assert.equal(row.borderRadius, "8px");
-    assert.equal(row.paddingLeft, "6px");
-    assert.equal(row.paddingRight, "6px");
-    assert.equal(row.marginLeft, "-6px", 'padding and inset keep the text aligned with the heading');
+    assert.equal(row.paddingLeft, "4px");
+    assert.equal(row.paddingRight, "4px");
+    assert.equal(row.marginLeft, "-4px", 'padding and inset keep the text aligned with the heading');
     assert.equal(row.cursor, 'text', 'a decorative row hover must preserve its existing cursor');
     assert.equal(row.transition, 'background-color 150ms ease-out');
   } finally { stop(); f.dom.window.close(); }
@@ -1500,7 +1500,7 @@ test("named native actions stay separate from popover close", async () => {
     const otherTitle = other.querySelector("h3.px-3")!;
     assert.equal(otherTitle.hasAttribute("data-bb-chat-ui-info-close-heading"), true);
     assert.equal(paint(otherTitle).paddingLeft, "0px", "open Other title lines up with the common gutter");
-    assert.equal(paint(otherTitle).paddingRight, "26px", "open Other title keeps the shared close reserve");
+    assert.equal(paint(otherTitle).paddingRight, "34px", "open Other title keeps the shared close reserve");
     f.click('[data-bb-chat-ui-info-trigger="workflow"]');
     const workflow = stack.querySelector('section[aria-label="Workflow"]')!;
     const flatFace = (value: string) => value === "rgba(0, 0, 0, 0)" || value === "transparent" || value === "color-mix(in oklab, var(--foreground) 6%, transparent)";
@@ -2674,8 +2674,8 @@ test("Agentation uses the browser picker icon and count while retaining native c
     assert.equal(resolvedStyle(wrapper).overflow, 'visible', 'native body wrappers must not clip the widened row background');
   }
   const rowStyle = resolvedStyle(shell.querySelector('li')!);
-  assert.equal(rowStyle.paddingLeft, "6px");
-  assert.equal(rowStyle.marginLeft, "-6px", 'row content aligns with the heading while hover extends into the gutter');
+  assert.equal(rowStyle.paddingLeft, "4px");
+  assert.equal(rowStyle.marginLeft, "-4px", 'row content aligns with the heading while hover extends into the gutter');
   assert.ok(pill.querySelector('[data-picker-icon]'), 'expanding the native card keeps the picker glyph');
   assert.ok(decodeURIComponent(stack.style.getPropertyValue('--bb-chat-ui-feedback-icon')).includes('data-picker-icon'), 'popup header and row masks use the picker glyph');
   assert.equal(resolvedStyle(shell.querySelector('[data-feedback-icon]')!).display, 'none', 'the old header icon is hidden without removing its native DOM');
@@ -2704,7 +2704,7 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(resolvedStyle(send).height,"24px");
   f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
   assert.equal(resolvedStyle(send).height,"24px",'recovery actions retain the shared touch height');
-  assert.equal(resolvedStyle(shell).gridTemplateRows,"24px auto",'a larger action keeps the title on its shared line');
+  assert.equal(resolvedStyle(shell).gridTemplateRows,"30px auto",'a larger action keeps the title on its shared line');
   f.document.documentElement.removeAttribute('data-bb-chat-ui-root-hit-target');
   send.innerHTML='<svg data-native-up><path d="M12 19V5m-7 7 7-7 7 7" /></svg>Sending…';
   (send as HTMLButtonElement).disabled=true;await f.tick();
@@ -2726,7 +2726,7 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(paint(sendParent!).marginTop,'0px');
   assert.ok(collapse.hasAttribute('data-bb-chat-ui-card-close'),'the native collapse is the shared close');
   assert.equal(paint(collapse).position,'absolute');
-  assert.equal(paint(collapse).top,"14px");
+  assert.equal(paint(collapse).top,"17px");
   assert.ok(header.querySelector('p')!.hasAttribute('data-bb-chat-ui-card-head'),'the native title is the head line');
   assert.equal(paint(shell).alignItems,'center');
   assert.equal(paint(shell.querySelector('.grid')!).gridArea,'body');
@@ -4265,7 +4265,7 @@ test("restore action text keeps the compact size when desktop button defaults ar
       const action=f.document.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-unarchive]')!;
       const css=resolvedStyle(action);
       assert.equal(css.fontSize,'12px',`${text}: desktop button defaults do not enlarge the shared text action`);
-      assert.equal(css.lineHeight,'16px','compact text keeps its matching line height');
+      assert.equal(css.lineHeight,'14px','compact text keeps its matching line height');
       assert.equal(css.minHeight,"24px",'a pointer uses the shared 28px text action');
       f.document.documentElement.setAttribute('data-bb-chat-ui-root-hit-target','large');
       assert.equal(resolvedStyle(action).minHeight,"24px",'a finger keeps the 32px hit target');
@@ -6084,7 +6084,7 @@ test("the close stays on the first 28px head line without measuring or observing
   try{
     f.click('[data-bb-chat-ui-info-trigger="todos"]');await f.tick();
     const close=card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!;
-    assert.equal(resolvedStyle(close).top,"14px",'a wrapped head keeps the close on its first line');
+    assert.equal(resolvedStyle(close).top,"17px",'a wrapped head keeps the close on its first line');
     assert.equal(measured,0,'the head is never measured for the close');
     assert.equal(card.style.getPropertyValue('--bb-chat-ui-info-title-height'),'52px','the card style is left untouched');
     assert.equal(title.parentElement,originalParent);
@@ -6102,7 +6102,7 @@ test("all static list statuses share padded rounded hover rows and Goal control 
     for(const [key,root,selector] of [['todos',card,'li'],['workflow',workflow,'div.min-h-7']] as const){
       f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${key}"]`);await f.tick();
       for(const row of root.querySelectorAll(selector)){
-        const s=resolvedStyle(row);assert.equal(s.padding,key==='workflow'?'4px 6px':'6px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,"8px");assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
+        const s=resolvedStyle(row);assert.equal(s.padding,key==='workflow'?'2px 4px':'4px',`${key}: all statuses have the same inner gutter`);assert.equal(s.borderRadius,"8px");assert.equal(s.transition,'background-color 150ms ease-out');assert.equal(s.cursor,'default');
       }
     }
   }finally{stop();f.dom.window.close();}
@@ -6137,11 +6137,11 @@ test("native list viewports leave room for rounded row backgrounds without clipp
           const row=style(viewport.querySelector('li')!);
           assert.equal(parseFloat(row.marginLeft)+parseFloat(row.paddingLeft),0,'only the row extends its hover paint; its content stays at the title edge');
         }else{
-          assert.equal(s.paddingLeft,"6px");assert.equal(s.paddingRight,"6px");assert.equal(s.marginLeft,"-6px");assert.equal(s.marginRight,"-6px");assert.equal(s.width,"calc(100% + 12px)");
+          assert.equal(s.paddingLeft,"4px");assert.equal(s.paddingRight,"4px");assert.equal(s.marginLeft,"-4px");assert.equal(s.marginRight,"-4px");assert.equal(s.width,"calc(100% + 8px)");
         }
         assert.equal(s.overflow,'visible','the shared popover handles scrolling without clipping row corners');
       }
-      if(key==='workflow')for(const row of c.querySelectorAll('[data-detail-scroll-area] > *')){const s=style(row);assert.equal(s.width,"calc(100% + 12px)");assert.equal(s.marginLeft,"-6px");assert.equal(s.borderRadius,"8px");}
+      if(key==='workflow')for(const row of c.querySelectorAll('[data-detail-scroll-area] > *')){const s=style(row);assert.equal(s.width,"calc(100% + 8px)");assert.equal(s.marginLeft,"-4px");assert.equal(s.borderRadius,"8px");}
       if(key==='todos')assert.equal(style(c.querySelector('ul')!).maxHeight,'none');
     }
   }finally{stop();}
@@ -6198,13 +6198,13 @@ test("compact information lists share the background row density without native 
     ] as const){
       f.click('[data-bb-chat-ui-info-all]');f.click(`[data-bb-chat-ui-info-choice="${kind}"]`);await f.tick();
       const card=stack.querySelector(`[data-bb-chat-ui-info-open="${kind}"]`)!;
-      assert.equal(paint(stack).getPropertyValue('--bb-chat-ui-info-row-gap'),'2px','the background row gap is the shared reference');
+      assert.equal(paint(stack).getPropertyValue('--bb-chat-ui-info-row-gap'),'6px','the background row gap is the shared reference');
       for(const row of card.querySelectorAll(rowSelector)){
-        const css=paint(row);assert.equal(css.minHeight,kind==='workflow'?'24px':'28px');assert.equal(css.padding,kind==='workflow'?'4px 6px':'6px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'16px');
+        const css=paint(row);assert.equal(css.minHeight,'24px');assert.equal(css.padding,kind==='workflow'?'2px 4px':'4px');assert.equal(css.fontSize,'12px');assert.equal(css.lineHeight,'14px');
         assert.equal(css.marginTop,'0px');assert.equal(css.marginBottom,'0px','native space-y margins do not add another gap');
       }
-      for(const selector of groups)assert.equal(paint(card.querySelector(selector)!).rowGap,'var(--bb-chat-ui-info-row-gap)',`${kind}: peers use one gap`);
-      if(kind==='workflow')assert.equal(paint(card.querySelector('.mt-1')!).marginTop,'var(--bb-chat-ui-info-row-gap)','phase-to-agent spacing follows peer spacing');
+      for(const selector of groups)assert.equal(paint(card.querySelector(selector)!).rowGap,'6px',`${kind}: peers use one gap`);
+      if(kind==='workflow')assert.equal(paint(card.querySelector('.mt-1')!).marginTop,'6px','phase-to-agent spacing follows peer spacing');
     }
   }finally{stop();}
   assert.equal(paint(f.document.querySelector('#todos li')!).marginBottom,'4px','unload restores the native list spacing');
@@ -6228,7 +6228,7 @@ test("Workflow header keeps its title above live metadata without moving native 
   try {
     f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();
     assert.equal(paint(header).display,'grid');
-    assert.equal(paint(header).paddingRight,"26px",'reserve the shared close gutter even with native px-3');
+    assert.equal(paint(header).paddingRight,"34px",'reserve the shared close gutter even with native px-3');
     assert.equal(paint(count).gridColumn,'1 / 3','metadata starts at the same left edge as list rows');
     assert.equal(paint(header).paddingBottom,'6px','leave a small gap below metadata without restoring both native gutters');
     assert.equal(paint(card.querySelector('[data-detail-scroll-area]')!).paddingTop,'0px','list starts directly below metadata with only its row padding');
@@ -6237,7 +6237,7 @@ test("Workflow header keeps its title above live metadata without moving native 
     assert.equal(paint(count).gridRow,'2');assert.equal(paint(time).gridRow,'2');assert.equal(paint(progress).gridRow,'2');
     assert.equal(paint(header.querySelector('[data-bb-chat-ui-info-title-icon]')!).gridRow,'1');
     assert.equal(paint(header.querySelector('.ml-auto')!).display,'none');
-    assert.equal(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,"14px",'the shared close sits on the 28px title row above the metadata');
+    assert.equal(paint(card.querySelector('[data-bb-chat-ui-info-native-dismiss]')!).top,"17px",'the shared close sits on the 28px title row above the metadata');
     assert.equal(title.parentElement,summary);assert.equal(count.parentElement,summary);assert.equal(progress.parentElement,header);
     header.click();assert.equal(header.getAttribute('aria-expanded'),'true','title remains read-only');
     count.textContent='2/3 agents';time.textContent='1m';await f.tick();
@@ -6317,7 +6317,7 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     const controls=header.parentElement as HTMLElement;
     assert.equal(paint(controls).display,'grid');
     assert.equal(paint(controls).gridTemplateColumns,"14px fit-content(calc(100% - 52px)) 20px minmax(0,1fr)",'the workflow title sizes the external-action position');
-    assert.equal(paint(controls).gridTemplateRows,"24px auto 12px");
+    assert.equal(paint(controls).gridTemplateRows,"30px auto 12px");
     assert.equal(paint(header).display,'contents','read-only title content shares the controls grid without moving nodes');
     assert.equal(paint(summary).display,'contents');
     assert.equal(paint(title).gridRow,'1');
@@ -6346,10 +6346,10 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     const dismiss=card.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-native-dismiss]')!;
     assert.ok(dismiss,'one close for the Workflow card');
     assert.equal(paint(dismiss).position,'absolute','the shared close sits on the card, beside the head gutter');
-    assert.equal(paint(dismiss).top,"14px",'on the 28px head line with the side-panel action');
+    assert.equal(paint(dismiss).top,"17px",'on the 28px head line with the side-panel action');
     assert.equal(paint(dismiss).width,paint(sideIcon).width);
     assert.equal(paint(dismiss).height,paint(sideIcon).height);
-    assert.equal(paint(controls).paddingRight,"26px",'the head reserves the close gutter after the side-panel action');
+    assert.equal(paint(controls).paddingRight,"34px",'the head reserves the close gutter after the side-panel action');
     const agentRow=run.querySelector<HTMLElement>('[data-agent]')!;
     const agentLabel=agentRow.querySelector<HTMLElement>('[data-agent-label]')!;
     assert.equal(paint(agentRow).minWidth,'0px');
@@ -6380,7 +6380,7 @@ test("a grouped workflow card keeps native controls, graph rows and split metada
     const action=run.querySelector<HTMLElement>('[data-agent-action]')!;
     for (const row of [phase,agent,action]) {
       assert.equal(paint(row).minHeight,"24px");
-      assert.equal(paint(row).padding,"4px 6px");
+      assert.equal(paint(row).padding,"2px 4px");
       assert.equal(flat(paint(row).backgroundColor),true,`${row.getAttribute('data-phase')??row.getAttribute('data-agent')??'action'} drops the native wash`);
       assert.equal(paint(row).boxShadow,'none');
     }
@@ -6475,11 +6475,11 @@ test("every opened card shares one anatomy: one frost face, a 28px head, a fixed
       const closes=Array.from(card.querySelectorAll('[data-bb-chat-ui-card-close]')).filter(node=>css(node).display!=='none');
       assert.equal(closes.length,1,`${kind}: exactly one close slot`);
       assert.equal(css(closes[0]).position,'absolute',`${kind}: close sits on the card, not in a per-card grid`);
-      assert.equal(css(closes[0]).top,kind==='pullRequest'?'8px':'14px',`${kind}: close centers on its row`);
+      assert.equal(css(closes[0]).top,kind==='pullRequest'?'8px':'17px',`${kind}: close centers on its row`);
       assert.equal(css(closes[0]).right,kind==='pullRequest'?'6px':'10px',`${kind}: close uses its card inset`);
       const head=card.querySelector('[data-bb-chat-ui-card-head]');
       assert.ok(head,`${kind}: a head slot`);
-      assert.equal(css(head!).minHeight,kind==='pullRequest'?'36px':'24px',`${kind}: one row height`);
+      assert.equal(css(head!).minHeight,kind==='pullRequest'?'36px':'30px',`${kind}: one row height`);
       surfaceFree(card,kind);
       f.click('[data-bb-chat-ui-card-close]');
       await f.tick();

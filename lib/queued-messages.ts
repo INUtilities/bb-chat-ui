@@ -287,16 +287,22 @@ ${MANAGED_QUEUE} [data-queued-message-row] > .flex > .min-w-0 {
 }
 ${MANAGED_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .prompt-mention-pill *) {
   /* The host's layered !text-xs takes priority over unlayered !important. */
-  --text-xs: 12px;
-  --text-xs--line-height: 16px;
-  font-size: 12px !important;
-  line-height: 16px !important;
+  --text-xs: var(--bb-chat-ui-card-prose-size);
+  --text-xs--line-height: var(--bb-chat-ui-card-prose-line);
+  font-size: var(--bb-chat-ui-card-prose-size) !important;
+  line-height: var(--bb-chat-ui-card-prose-line) !important;
+}
+/* Native !leading-4 is important inside Tailwind's utilities layer. Matching
+   that layer lets our managed selector win without changing the host spacing token. */
+@layer utilities {
+  ${MANAGED_QUEUE} [data-queued-message-row] .truncate:not(.prompt-mention-pill, .prompt-mention-pill *) { line-height:var(--bb-chat-ui-card-prose-line) !important; }
+  ${MANAGED_QUEUE} [data-queued-message-row] .text-2xs .truncate { line-height:var(--bb-chat-ui-card-meta-line) !important; }
 }
 /* A truncated schedule caption is secondary information, not user-message prose. */
 ${MANAGED_QUEUE} [data-queued-message-row] .text-2xs .truncate {
   --text-xs: var(--bb-chat-ui-card-secondary-size);
   font-size: var(--bb-chat-ui-card-secondary-size) !important;
-  line-height: var(--bb-chat-ui-card-line) !important;
+  line-height: var(--bb-chat-ui-card-meta-line) !important;
 }
 ${MANAGED_QUEUE} [data-queued-message-actions] {
   display: none !important;

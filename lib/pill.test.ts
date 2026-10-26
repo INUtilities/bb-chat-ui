@@ -7,8 +7,8 @@ import { userAttachmentsCss } from './user-attachments.ts';
 import { composerInfoCss } from './composer-info.ts';
 
 test('shared pill declarations preserve distinct reference, navigation and attachment geometry', () => {
-  assert.match(pillStyle.reference, /height: 18px !important/);
-  assert.match(pillStyle.referencePhone, /height: 20px !important/);
+  assert.match(pillStyle.reference, /height: 22px !important/);
+  assert.match(pillStyle.referencePhone, /height: 24px !important/);
   assert.match(pillStyle.reference, /padding: 0px 12px 0px 10px !important/);
   assert.match(pillStyle.referencePhone, /padding: 0px 14px 0px 12px !important/);
   assert.ok(quotePillCss().includes(referenceVariableStyle));

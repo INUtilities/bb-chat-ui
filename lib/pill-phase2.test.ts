@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {injectMentionPills} from './mention-pill.ts';
 import {injectQuotePill} from './quote-pill.ts';
+import {resolvedStyle} from './test-style.ts';
 import {injectPillStyles} from './pill.ts';
 
 function fixture(phone=false) {
@@ -29,7 +30,7 @@ for(const phone of[false,true]) test(`all quote formats keep reference geometry 
    const e=f.d.getElementById(id)!;e.tabIndex=0;
    for(const focused of[false,true]){
     if(focused)e.focus();const s=resolvedStyle(e);
-    assert.equal(s.height,phone?'20px':'18px',id);assert.equal(s.fontSize,phone?'14px':'12px',id);
+    assert.equal(s.height,phone?'24px':'22px',id);assert.equal(s.fontSize,phone?'14px':'13px',id);
     assert.equal(s.maxWidth,phone?'min(240px, 100% - 8px)':'min(140px, 100% - 6px)',id);
     assert.equal(s.whiteSpace,'nowrap',id);
    }
@@ -40,7 +41,7 @@ for(const phone of[false,true]) test(`all quote formats keep reference geometry 
 
 for(const phone of[false,true])test(`reference remove action stays visible and circular (${phone?'phone':'desktop'})`,()=>{
  const f=fixture(phone);try{const button=f.d.querySelector<HTMLButtonElement>('#quote [data-bb-chat-ui-mention-remove]')!;assert.ok(button);
-  const s=f.dom.window.getComputedStyle(button);assert.equal(s.width,phone?'18px':'16px');assert.equal(s.height,s.width);assert.equal(s.borderRadius,'999px');
+  const s=resolvedStyle(button);assert.equal(s.width,phone?'18px':'16px');assert.equal(s.height,s.width);assert.equal(s.borderRadius,'999px');
   assert.equal(s.opacity,'1');assert.equal(s.display,'inline-flex');assert.ok(button.getAttribute('aria-label'));
   const sheet=f.d.getElementById('bb-chat-ui-mention-pill')!.textContent!;assert.match(sheet,/foreground\) 9%, transparent/);assert.match(sheet,/foreground\) 16%, transparent/);assert.match(sheet,/opacity:\s*0\.75/);assert.match(sheet,/outline: 2px solid var\(--ring\)/);
   assert.doesNotMatch(f.d.getElementById('bb-chat-ui-quote-pill')!.textContent!,/hover::after/);
@@ -49,15 +50,15 @@ for(const phone of[false,true])test(`reference remove action stays visible and c
 
 for(const phone of[false,true])test(`legacy quote label reserves the real control width (${phone?'phone':'desktop'})`,async()=>{const f=fixture(phone);try{const{resolvedStyle}=await import('./test-style.ts');assert.equal(resolvedStyle(f.d.getElementById('pending')!).paddingRight,phone?'28px':'26px');}finally{f.stop();}});
 
-for(const phone of [false,true])test(`inline references fit inside text lines without vertical margins (${phone?'phone':'desktop'})`,async()=>{
+for(const phone of [false,true])test(`inline references preserve visible height with a layout-neutral vertical margin (${phone?'phone':'desktop'})`,async()=>{
  const f=fixture(phone);const {resolvedStyle}=await import('./test-style.ts');
  try{
   for(const id of ['pending','sent','quote','mention']){
    const s=resolvedStyle(f.d.getElementById(id)!);
-   assert.equal(s.height,phone?'20px':'18px',`${id}: reference must fit inside the native text line`);
-   assert.equal(parseFloat(s.marginTop),0);assert.equal(parseFloat(s.marginBottom),0);assert.equal(s.marginLeft,phone?'4px':'3px');
+   assert.equal(s.height,phone?'24px':'22px',`${id}: reference must fit inside the native text line`);
+   assert.equal(parseFloat(s.marginTop),-2);assert.equal(parseFloat(s.marginBottom),-2);assert.equal(s.marginLeft,phone?'4px':'3px');
    assert.equal(parseFloat(s.paddingTop),0);assert.equal(parseFloat(s.paddingBottom),0);
-   assert.equal(s.fontSize,phone?'14px':'12px');assert.equal(s.lineHeight,phone?'18px':'16px');
+   assert.equal(s.fontSize,phone?'14px':'13px');assert.equal(s.lineHeight,phone?'18px':'16px');
    assert.equal(s.overflow,'visible','layout-free phone hit areas must not be clipped by the pill');
   }
   const button=f.d.querySelector<HTMLElement>('#quote [data-bb-chat-ui-mention-remove]')!,s=resolvedStyle(button);
