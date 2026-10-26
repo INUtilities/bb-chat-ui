@@ -11,7 +11,7 @@ function deferred<T>() {
   const promise = new Promise<T>((yes,no) => { resolve=yes; reject=no; });
   return { promise, resolve, reject };
 }
-function fixture(reads:Record<string,boolean> = {}) {
+function fixture(reads:Record<string,boolean> = {}, host:{pullRequest?:boolean} = {}) {
   const calls:string[]=[];
   const executionCalls:string[]=[];
   let loadExecution=async()=>({model:"gpt-6.1-sol",reasoningLevel:"high"});
@@ -36,7 +36,7 @@ function fixture(reads:Record<string,boolean> = {}) {
       list:async(args:{offset?:number;archived?:boolean})=>{calls.push(`children:${args.offset}`);assert.equal(args.archived,false);return loadChildren(args);},
       queuedMessages:{list:async()=>{calls.push('queue');return [{id:'queued'}];}},
     },
-    environments:{pullRequest:async()=>{calls.push('pr');return {outcome:'absent'};}},
+    environments:host.pullRequest===false ? {} : {pullRequest:async()=>{calls.push('pr');return {outcome:'absent'};}},
     subscribe:(args:{event:string;callback:(event:any)=>void})=>{handlers.set(args.event,args.callback);return()=>{handlers.delete(args.event);};},
   };
   const controller=startComposerInfoRefresh(sdk,'thread',snapshot=>snapshots.push(snapshot),error=>errors.push(error),reads);
@@ -60,6 +60,17 @@ test('active thread reads PR metadata for the popover title without loading the 
   assert.equal(f.calls.includes('pr'),true);
   assert.equal(f.calls.includes('queue'),false);
   assert.equal(f.snapshots.at(-1).pullRequest?.outcome,'absent');
+  f.stop();
+});
+
+test('a host SDK without the PR read still publishes every other source',async()=>{
+  const f=fixture({},{pullRequest:false});await tick();
+  assert.deepEqual(f.errors,[false]);
+  const snapshot=f.snapshots.at(-1);
+  assert.equal(snapshot.pullRequest,null);
+  assert.equal(snapshot.timeline.goal.objective,'목표');
+  assert.deepEqual(snapshot.children.map((row:{id:string})=>row.id),['child']);
+  assert.equal(snapshot.parent?.id,'parent');
   f.stop();
 });
 

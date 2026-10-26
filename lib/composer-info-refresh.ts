@@ -96,9 +96,11 @@ export function startComposerInfoRefresh(
       : lifecycle==="removing" ? "Machine removal in progress" : lifecycle==="cleanup-failed" ? "Machine cleanup failed"
       : environment?.status==="destroyed" ? "Environment unavailable" : null;
     const readOnly={label,canRestore:thread.canRestoreEnvironment};
+    const environmentId=thread.environmentId;
     const results=await Promise.allSettled([
       label && reads.queue!==false ? sdk.threads.queuedMessages.list({threadId,signal}) : Promise.resolve([] as Queue),
-      reads.pullRequest!==false && thread.environmentId ? sdk.environments.pullRequest({environmentId:thread.environmentId,signal}) : Promise.resolve(null),
+      // Newer hosts drop environments.pullRequest; a synchronous TypeError must not fail the other sources.
+      reads.pullRequest!==false && environmentId ? Promise.resolve().then(()=>sdk.environments.pullRequest({environmentId,signal})) : Promise.resolve(null),
     ]);
     return {queue:results[0].status==="fulfilled" ? results[0].value : [],
       pullRequest:results[1].status==="fulfilled" ? results[1].value : null,readOnly,parentThreadId:thread.parentThreadId};
