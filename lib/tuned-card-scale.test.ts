@@ -68,9 +68,9 @@ test('approved phone card keeps readable roles and 32px touch actions on either 
       assert.equal(get(cardSlot.row).minHeight,'32px'); assert.equal(get(cardSlot.row).padding,'6px'); assert.equal(get(cardSlot.list).rowGap,'6px');
       assert.equal(get(cardSlot.row).fontSize,'13px'); assert.equal(get(cardSlot.row).lineHeight,'16px');
       assert.equal(get(cardSlot.button).height,'32px'); assert.equal(get(cardSlot.button).paddingLeft,'10px');
-      assert.equal(get(cardSlot.close).height,'24px'); assert.equal(get(cardSlot.close).top,'16px');
+      assert.equal(get(cardSlot.close).height,'24px'); assert.equal(get(cardSlot.close).top,'15.5px');
       const headCenter = 12 + Number.parseFloat(get(cardSlot.head).height)/2, closeCenter = Number.parseFloat(get(cardSlot.close).top)+12;
-      assert.ok(Math.abs(headCenter-closeCenter)<=1);
+      assert.equal(closeCenter-headCenter,-0.5,'approved phone close sits 0.5px above the head center');
       const root = d.window.getComputedStyle(d.window.document.documentElement);
       assert.equal(root.getPropertyValue('--bb-chat-ui-card-workflow-top').trim(),'18px');
       assert.equal(root.getPropertyValue('--bb-chat-ui-card-workflow-tail').trim(),'16px');

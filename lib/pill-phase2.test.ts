@@ -69,3 +69,18 @@ for(const phone of [false,true])test(`inline references preserve visible height 
   }
  }finally{f.stop();}
 });
+
+for(const phone of[false,true])test(`reference remove cross shrinks without changing touch geometry (${phone?'phone':'desktop'})`,()=>{
+ const f=fixture(phone);try{
+  for(const [sheetId,attribute] of [['bb-chat-ui-mention-pill','data-bb-chat-ui-mention-remove'],['bb-chat-ui-quote-pill','data-bb-chat-ui-legacy-quote-remove']]){
+   const sheet=f.d.getElementById(sheetId) as HTMLStyleElement;
+   const rules=Array.from(sheet.sheet!.cssRules).filter(rule=>'selectorText' in rule && String(rule.selectorText).endsWith(`button[${attribute}]::before`)) as CSSStyleRule[];
+   const rule=rules.find(rule=>rule.selectorText.startsWith('html')===phone);assert.ok(rule,`${sheetId}: device cross rule`);
+   assert.equal(rule.style.width,phone?'9px':'8px');assert.equal(rule.style.height,phone?'9px':'8px');
+  }
+  const remove=f.d.querySelector('#quote [data-bb-chat-ui-mention-remove]')!;
+  assert.equal(resolvedStyle(remove).width,phone?'18px':'16px');assert.equal(resolvedStyle(remove).height,phone?'18px':'16px');
+  assert.equal(resolvedStyle(remove).alignItems,'center');assert.equal(resolvedStyle(remove).justifyContent,'center');
+  if(phone){const hit=Array.from((f.d.getElementById('bb-chat-ui-mention-pill') as HTMLStyleElement).sheet!.cssRules).find(rule=>'selectorText'in rule&&String(rule.selectorText).endsWith('button[data-bb-chat-ui-mention-remove]::after')) as CSSStyleRule;assert.equal(hit.style.width,'24px');assert.equal(hit.style.height,'24px');}
+ }finally{f.stop();}
+});

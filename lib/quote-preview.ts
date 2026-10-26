@@ -1,4 +1,4 @@
-import { CARD, cardSlot, cardStyle, infoCardCss } from './info-card.ts';
+import { CARD, createCardClose, cardSlot, cardStyle, infoCardCss } from './info-card.ts';
 import { isQuoteMentionResource } from './quote-text.ts';
 import { acceptJumpPulse, postHaptic, readHapticBridge } from './send-haptic.ts';
 import { popoverRise } from './motion.ts';
@@ -71,7 +71,7 @@ export function injectQuotePreview(doc:Document,options:QuotePreviewOptions={}):
  async function open(trigger:HTMLElement,event:Event){if(active?.trigger===trigger){close(true,true,event);return;}close(false,false);decorateQuotePreview(trigger);
   const card=doc.createElement('section');card.setAttribute(PANEL,'');card.setAttribute(CARD,'');card.setAttribute('role','dialog');card.setAttribute('aria-label','인용 원문');card.setAttribute('aria-busy','true');
   const head=doc.createElement('header');head.setAttribute(cardSlot.head,'');const title=doc.createElement('span');title.setAttribute(cardSlot.title,'');title.textContent='인용 원문';head.append(title);
-  const button=doc.createElement('button');button.type='button';button.setAttribute(cardSlot.close,'');button.setAttribute('aria-label','인용 원문 닫기');button.textContent='×';
+  const button=createCardClose(doc,'인용 원문 닫기');button.removeAttribute('title');
   const body=doc.createElement('div');body.setAttribute(cardSlot.body,'');const meta=doc.createElement('p');meta.setAttribute(cardSlot.meta,'');
   const source=legacyQuoteFromPreview(trigger)??trigger;
   const data=resource(source),label=typeof data?.label==='string'?data.label:null;meta.textContent=label?`표시 이름: ${label} · 원문 위치 정보 없음`:'원문 위치 정보 없음';

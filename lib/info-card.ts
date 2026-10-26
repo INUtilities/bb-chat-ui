@@ -8,6 +8,11 @@ import { LARGE_HIT_TARGET } from "./device-chrome.ts";
  * through `cardStyle`, so every card reads its geometry from this file.
  */
 export const CARD = "data-bb-chat-ui-card";
+/** Symmetric geometry shared by DOM/React closes and the native Agentation mask. */
+export const CARD_CLOSE_ICON = "data-bb-chat-ui-card-close-icon";
+export const CARD_CLOSE_PATH = "M2 2l8 8M10 2l-8 8";
+export const CARD_CLOSE_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="${CARD_CLOSE_PATH}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`)}")`;
+
 export const cardSlot = {
   layout: `${CARD}-layout`,
   head: `${CARD}-head`,
@@ -52,6 +57,7 @@ export const cardStyle = {
   icon: "display:inline-flex; align-items:center; justify-content:center; flex:none; width:14px; height:14px;",
   title: `flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${TITLE_TYPE}`,
   action: `display:inline-flex; align-items:center; justify-content:center; align-self:center; flex:none; box-sizing:border-box; width:var(--bb-chat-ui-card-icon); height:var(--bb-chat-ui-card-icon); min-width:var(--bb-chat-ui-card-icon); min-height:var(--bb-chat-ui-card-icon); margin:0; padding:0 !important; border:0 !important; border-radius:999px !important; color:var(--subtle-foreground); font-family:inherit; font-size:12px; font-weight:400; line-height:1; cursor:pointer; transition:background-color 150ms ease-out, color 150ms ease-out; ${FLAT}`,
+  closeIcon: "display:block; flex:none; width:var(--bb-chat-ui-card-close-glyph); height:var(--bb-chat-ui-card-close-glyph); pointer-events:none;",
   close: "position:absolute !important; top:var(--bb-chat-ui-card-close-top) !important; right:var(--bb-chat-ui-card-close-right) !important; z-index:1;",
   body: "min-width:0; margin-top:0 !important; margin-bottom:0 !important; padding-top:0 !important; padding-bottom:0 !important;",
   button: `display:inline-flex; align-items:center; justify-content:center; gap:4px; flex:none; box-sizing:border-box; height:var(--bb-chat-ui-card-button); min-height:var(--bb-chat-ui-card-button); margin:0; padding:0 var(--bb-chat-ui-card-button-pad) !important; border-width:1px !important; border-style:solid !important; border-color:var(--border) !important; border-radius:999px !important; color:var(--foreground); font-family:inherit; font-size:var(--bb-chat-ui-card-text-size) !important; font-weight:500; line-height:var(--bb-chat-ui-card-line) !important; white-space:nowrap; cursor:pointer; transition:background-color 150ms ease-out; ${FLAT}`,
@@ -102,6 +108,7 @@ html {
   --bb-chat-ui-card-close-gutter:34px;
   --bb-chat-ui-card-icon:20px;
   --bb-chat-ui-card-glyph:12px;
+  --bb-chat-ui-card-close-glyph:8px;
   --bb-chat-ui-card-close-top:17px;
   --bb-chat-ui-card-close-right:10px;
   --bb-chat-ui-card-button:24px;
@@ -138,7 +145,7 @@ html[data-bb-chat-ui-root-device="phone"] {
   --bb-chat-ui-card-prose-line:18px;
   --bb-chat-ui-card-meta-line:18px;
   --bb-chat-ui-info-row-gap:6px;
-  --bb-chat-ui-card-close-top:16px;
+  --bb-chat-ui-card-close-top:15.5px;
   --bb-chat-ui-card-title-line:18px;
   --bb-chat-ui-card-text-size:13px;
   --bb-chat-ui-card-secondary-size:12px;
@@ -147,6 +154,7 @@ html[data-bb-chat-ui-root-device="phone"] {
   --bb-chat-ui-card-close-gutter:34px;
   --bb-chat-ui-card-icon:24px;
   --bb-chat-ui-card-glyph:14px;
+  --bb-chat-ui-card-close-glyph:9px;
   --bb-chat-ui-card-close-right:8px;
   --bb-chat-ui-card-button:32px;
   --bb-chat-ui-card-button-pad:10px;
@@ -200,6 +208,7 @@ ${s.title} { ${cardStyle.title} }
 :is(${s.action}, ${s.close}) { ${cardStyle.action} }
 :is(${s.action}, ${s.close}) :is(svg, [data-icon-root]) { width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); }
 ${s.close} { ${cardStyle.close} }
+${s.close} > svg[${CARD_CLOSE_ICON}] { ${cardStyle.closeIcon} }
 ${s.button} { ${cardStyle.button} }
 ${s.endAction} { grid-area:actions; margin-left:auto; }
 ${s.button}${s.endAction} { gap:0; font-size:0 !important; }
@@ -232,7 +241,12 @@ ${card} :focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 export function createCardClose(document: Document, label: string): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = "×";
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [name, value] of Object.entries({ [CARD_CLOSE_ICON]:"", viewBox:"0 0 12 12", fill:"none", stroke:"currentColor", "stroke-width":"1.5", "stroke-linecap":"round", "aria-hidden":"true", focusable:"false" })) icon.setAttribute(name, value);
+  const path = document.createElementNS(icon.namespaceURI, "path");
+  path.setAttribute("d", CARD_CLOSE_PATH);
+  icon.append(path);
+  button.append(icon);
   button.setAttribute(cardSlot.close, "");
   button.setAttribute("aria-label", label);
   button.title = label;

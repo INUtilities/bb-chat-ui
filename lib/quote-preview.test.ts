@@ -28,3 +28,12 @@ test('legacy ProseMirror accessibility stays outside the native document and rem
   f.d.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(f.d.activeElement,button);assert.equal(button.getAttribute('aria-expanded'),'false');assert.equal(q.outerHTML,original);
  }finally{stop();controls();f.cleanup();}
 });
+
+for (const phone of [false, true]) test(`quote preview close is a centered accessible geometric icon (${phone?'phone':'desktop'})`,async()=>{
+ const f=fixture(phone),stop=injectQuotePreview(f.d,{readQuote:async()=> 'text'});
+ try { f.q.click();await tick();const close=f.d.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')!;
+  assert.equal(close.getAttribute('aria-label'),'인용 원문 닫기');assert.equal(close.type,'button');assert.equal(close.getAttribute('title'),null,'preserve the original absence of a tooltip');
+  const icon=close.querySelector('svg[data-bb-chat-ui-card-close-icon]');assert.ok(icon);assert.equal(icon.getAttribute('aria-hidden'),'true');assert.equal(close.textContent,'');
+  close.click();assert.equal(f.d.querySelector(`[${MARK}]`),null);assert.equal(f.d.activeElement,f.q);
+ } finally {stop();f.cleanup();}
+});

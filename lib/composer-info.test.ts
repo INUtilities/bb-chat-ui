@@ -1652,7 +1652,10 @@ test("native popovers replace only their bottom collapse with a small close with
       assert.notEqual(resolvedStyle(node.querySelector('[aria-label="Collapse internal list"]')!).display,'none','internal list folds remain available');
       const dismiss = node.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-native-dismiss]');
       assert.ok(dismiss,`${kind}: a dedicated visual close is present`);
-      assert.equal(dismiss.textContent,'×');
+      assert.ok(dismiss.querySelector('svg[data-bb-chat-ui-card-close-icon]'),'native dismiss uses the shared geometric close');
+      assert.equal(dismiss.textContent,'');
+      assert.match(dismiss.getAttribute('aria-label')!,/ 닫기$/);
+      assert.equal(dismiss.title,dismiss.getAttribute('aria-label'));
       const title=node.querySelector('[data-bb-chat-ui-info-close-heading]');
       if (kind==='goal') {
         assert.ok(title?.matches('h3'));
@@ -1735,6 +1738,8 @@ test("Parent uses the shared single-row card without a family heading", async ()
     f.click('[data-bb-chat-ui-info-trigger="parent"]'); await f.tick();
     const head = card.querySelector<HTMLElement>("[data-bb-chat-ui-card-head]")!;
     assert.equal(head, null, "the parent navigation is the only content line");
+    const closeIcon = card.querySelector('[data-bb-chat-ui-card-close] > svg[data-bb-chat-ui-card-close-icon]');
+    assert.ok(closeIcon);assert.equal(style(closeIcon).display,'block','Parent hides obsolete native artwork while keeping the geometric close visible');
     assert.equal(card.getAttribute('data-bb-chat-ui-card-layout'), 'single-row', "the adapter binds Parent to the common navigation variant");
     assert.equal(card.querySelector('[data-bb-chat-ui-info-title-icon="parent"]'), null);
     const row = card.querySelector<HTMLButtonElement>("[data-bb-chat-ui-info-parent-row]")!;
@@ -2725,6 +2730,12 @@ test("Agentation uses the browser picker icon and count while retaining native c
   assert.equal(paint(sendParent!).gridArea,'actions');
   assert.equal(paint(sendParent!).marginTop,'0px');
   assert.ok(collapse.hasAttribute('data-bb-chat-ui-card-close'),'the native collapse is the shared close');
+  const crossRule = Array.from(f.document.styleSheets).flatMap(sheet=>Array.from(sheet.cssRules)).find(rule=>'selectorText' in rule && String(rule.selectorText).endsWith('button[aria-label="Collapse staged annotations"]::after')) as CSSStyleRule;
+  assert.ok(crossRule);
+  assert.equal(crossRule.style.content,'""','Agentation close must not render a platform-font cross');
+  assert.match(crossRule.style.getPropertyValue('mask-image'),/data:image\/svg\+xml/);
+  assert.equal(crossRule.style.width,'8px');assert.equal(crossRule.style.height,'8px');
+  assert.equal(crossRule.style.getPropertyValue('background-color'),'currentcolor');
   assert.equal(paint(collapse).position,'absolute');
   assert.equal(paint(collapse).top,"17px");
   assert.ok(header.querySelector('p')!.hasAttribute('data-bb-chat-ui-card-head'),'the native title is the head line');

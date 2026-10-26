@@ -55,10 +55,10 @@
 - 이 플러그인의 제품 규칙은 이 절에 쓴다.
 - 정보 팝오버 UI를 만들거나 고치기 전에 `docs/composer-popovers.md`를 읽고 카드·제목·목록 행의 공통 규격을 따른다.
 - 정보 팝오버 글자는 desktop에서 제목 13px/15px·600, 목록·글자 액션 12px/14px, 긴 본문·사용자 메시지 11px/18px, 보조 정보 11px/18px를 쓴다. phone은 제목 14px/18px·600, 목록·글자 액션 13px/16px, 본문·보조 12px/18px다. 단일 행 PR·Parent 제목은 같은 제목 크기에 굵기 400이다. native·SDK에 같은 역할 규칙을 적용하고 html의 data-bb-chat-ui-root-device 속성으로 CSS 변수를 선택한다. 속성이 없으면 desktop 값이며 창 너비로 기기를 정하지 않는다.
-- 정보 카드 여백은 루트 CSS 변수로 device별 선택한다. 안쪽은 12px 16px이며 desktop은 제목 줄 30px·본문 간격 10px·닫기 여백 34px, 아이콘 액션·닫기 20px(위 17px), 목록 행 최소 24px·padding 4px·radius 8px·형제 간격 6px다. phone은 제목 줄 32px·간격 10px·닫기 여백 34px·닫기 24px(위 16px), 행 32px·padding 6px·형제 간격 6px다. Diff·대기 메시지의 형제 간격 0은 유지한다. 컴포저 상단 정보 pill과 모델 메뉴의 기존 규격은 바꾸지 않는다.
+- 정보 카드 여백은 루트 CSS 변수로 device별 선택한다. 안쪽은 12px 16px이며 desktop은 제목 줄 30px·본문 간격 10px·닫기 여백 34px, 아이콘 액션·닫기 20px(위 17px), 목록 행 최소 24px·padding 4px·radius 8px·형제 간격 6px다. phone은 제목 줄 32px·간격 10px·닫기 여백 34px·닫기 24px(위 15.5px), 행 32px·padding 6px·형제 간격 6px다. Diff·대기 메시지의 형제 간격 0은 유지한다. 컴포저 상단 정보 pill과 모델 메뉴의 기존 규격은 바꾸지 않는다.
 - PR의 Merge 버튼과 오른쪽 캐럿은 같은 머지 방식 메뉴를 연다. `Merge`, `Squash merge`, `Rebase and merge` 중 하나를 선택했을 때만 실행한다.
 - UI 구현 때마다 같은 제품 코드를 직접 쓰고 검수 데이터를 주입하는 데모를 함께 갱신해 사용자에게 띄운다. 데모는 `thread-storage`에 두고 검증한 커밋을 표시하며, 외부 변경 액션만 검수용 콜백으로 대체한다.
-- 정보 팝오버 제목은 읽기 전용이며, 제목·액션·닫기는 세로 중앙선을 맞춘다. 실제 액션과 내부 목록 펼치기는 유지한다. 목록 hover는 상태별로 달라지지 않게 padding·radius·전환을 통일하며, 장식용 행에 pointer를 추가하지 않는다.
+- 정보 팝오버 제목은 읽기 전용이며, 제목·액션·닫기는 세로 중앙선을 맞추되 phone 일반 카드의 닫기는 사용자 시각 보정으로 0.5px 위에 둔다. 닫기 기하 아이콘은 desktop 8px·phone 9px, SVG stroke 1.5이며 버튼·터치 영역은 유지한다. PR·Parent 단일 행은 기존 닫기 top 8px를 유지한다. 실제 액션과 내부 목록 펼치기는 유지한다. 목록 hover는 상태별로 달라지지 않게 padding·radius·전환을 통일하며, 장식용 행에 pointer를 추가하지 않는다.
 - 정보 pill 팝오버와 전체 정보 목록은 Code Diff의 공통 최대 높이 변수를 공유한다. 내용이 짧으면 내용만큼만 높아지고, 긴 내용은 해당 상한에서 스크롤한다.
 
-- 문장 안 reference pill(인용·멘션·예전 인용)은 desktop 22px·phone 24px이며 글자는 13/16·14/18이다. 세로 padding은 0, 세로 margin은 두 기기 모두 −2px이며 가로 margin은 3px·4px다. −2px는 desktop 입력 22px·보낸 줄 24px, phone 입력 27px·보낸 줄 24px의 증가를 막는 보정이다. ×의 보이는 원은 16px·18px이고 phone의 투명한 가상 터치 영역은 24px 이상이다. 라벨만 잘라 말줄임하며 일반 글줄의 높이를 늘리지 않는다. 상단 navigation pill 32px와 첨부 칩은 이 규칙의 대상이 아니다.
+- 문장 안 reference pill(인용·멘션·예전 인용)은 desktop 22px·phone 24px이며 글자는 13/16·14/18이다. 세로 padding은 0, 세로 margin은 두 기기 모두 −2px이며 가로 margin은 3px·4px다. −2px는 desktop 입력 22px·보낸 줄 24px, phone 입력 27px·보낸 줄 24px의 증가를 막는 보정이다. × 도형은 desktop 8px·phone 9px이며 보이는 원은 16px·18px이고 phone의 투명한 가상 터치 영역은 24px 이상이다. 라벨만 잘라 말줄임하며 일반 글줄의 높이를 늘리지 않는다. 상단 navigation pill 32px와 첨부 칩은 이 규칙의 대상이 아니다.

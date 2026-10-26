@@ -20,7 +20,8 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 | 제목 줄 / 본문 간격 | 30px / 10px | 32px / 10px |
 | 제목의 닫기 여백 | 34px | 34px |
 | 아이콘 액션 / 액션 glyph | 20px / 12px | 24px / 14px |
-| 닫기 크기 / 위 / 오른쪽 | 20px / 17px / 10px | 24px / 16px / 8px |
+| 닫기 크기 / 위 / 오른쪽 | 20px / 17px / 10px | 24px / 15.5px / 8px |
+| 닫기 × SVG 상자 | 8px | 9px |
 | 글자 액션 높이 / 좌우 padding | 24px / 8px | 32px (모든 hit) / 10px |
 | 목록 행 최소 높이 / padding / gutter / radius | 24px / 4px / 4px / 8px | 32px / 6px / 6px / 10px |
 | 형제 행 간격 | 6px | 6px |
@@ -41,9 +42,9 @@ native 카드 연결은 `lib/composer-info.ts`, 대기 큐의 편집·액션은
 
 Diff 파일/커밋과 대기 메시지 목록의 형제 간격은 기존 0을 유지한다. Workflow 연결선은 6px 행 간격에 맞춰 desktop tail 14px, phone tail 16px·시작 18px로 잇는다.
 
-닫기의 오른쪽 위치는 ×의 글자 advance box 끝과 본문 오른쪽 시작 여백이 맞도록 정한다.
+닫기의 버튼 위치는 위 표를 유지한다. ×는 글꼴의 advance나 ink metric에 의존하지 않는 SVG 대각선 두 줄이며 버튼의 정중앙에 놓는다.
 phone은 padding 12px 16px, 제목 줄 32px·행 최소 32px·padding 6px·글자 액션 32px·닫기 24px다.
-닫기는 12 + (32 − 24) / 2 = 16px 위에 둔다. 닫기 여백은 두 기기 모두 34px이며 × 오른쪽 advance 정렬은 유지한다.
+폰 닫기는 제목 줄 중앙 위치 16px에서 사용자 시각 보정으로 0.5px 위인 top 15.5px에 둔다. PR·Parent 단일 행의 top 8px는 유지한다. 닫기 여백은 두 기기 모두 34px이며 닫기 버튼의 오른쪽 위치는 유지한다.
 Workflow 점의 보이는 크기와 선 폭은 유지한다. desktop의 점 배치 상자는 16px이며
 연결선은 새 행 padding과 점 중심에 맞춰 잇는다. Diff의 graph는 기기별 행 padding의 음수 margin으로 행 전체 높이를 잇는다.
 PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native 행·글자·키보드 동작은 유지한다.
@@ -93,7 +94,7 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
   추가하지 않는다. 실제 액션과 본문 내부의 펼치기·접기는 유지한다.
 - 제목 행은 desktop 30px·phone 32px, 제목 글자는 desktop 13px/15px·phone 14px/18px이며 굵기 600·왼쪽 정렬이다. native 제목의
   가운데 정렬·`font-normal`을 그대로 남기지 않는다. 제목의 아이콘·외부 열기·닫기는
-  이 행의 세로 중심선을 공유한다. 32px 터치 액션도 제목 행을 아래로 밀지 않는다.
+  이 행의 세로 중심선을 공유하되 phone 닫기는 0.5px 위로 시각 보정한다. 32px 터치 액션도 제목 행을 아래로 밀지 않는다.
 - 제목 왼쪽에는 해당 정보 아이콘을 둔다. 전체 정보 목록 제목은 예외다.
 - 제목 영역(아이콘 포함)과 본문은 카드의 같은 왼쪽 시작점을 쓴다. 목록 hover를
   좌우 device별 row padding만큼 넓히는 여백을 본문 전체에 적용하지 않는다. 들여쓰기된 하위 목록은
@@ -128,10 +129,12 @@ PR 머지 메뉴는 바깥 여백만 공통 변수에 연결하며 안쪽 native
   진행 중·비활성·오류 상태와 원래 복구 동작을 유지한다.
 - Machine의 `Retry`는 공통 글자 액션을 쓴다. 원래 버튼과 클릭 동작은 유지하며
   닫기·해제 때 adapter가 붙인 slot만 제거한다. 현재 검수 근거는 Machine fixture다.
-- 제목·액션·닫기의 세로 중앙선을 맞춘다. 닫기는 desktop 20px·phone 24px 원형 영역의 ×다.
+- 제목·액션·닫기의 세로 중앙선을 맞추되 phone 일반 카드 닫기는 사용자 시각 보정으로 0.5px 위에 둔다. 닫기는 desktop 20px·phone 24px 원형 영역의 ×다.
   액션은 × 왼쪽에 두며, 제목과 겹치지 않게 별도 열 또는 닫기 여백을 확보한다.
-- ×의 오른쪽 끝은 글자 advance box를 기준으로 맞추며 모든 카드에 같은 기준을 쓴다.
-  글꼴의 실제 ink 폭을 카드마다 따로 보정하지 않는다.
+- 닫기 ×는 desktop 8px·phone 9px SVG 상자, 12×12 viewBox의 대칭 대각선 두 줄,
+  `currentColor`·stroke 1.5·round cap을 쓴다. Agentation collapse는 같은 SVG의 mask를 쓰고
+  기존 native 버튼·이벤트를 유지한다. 글꼴별 baseline 보정은 하지 않는다.
+  아이콘 상자의 가로·세로 중심은 버튼 중심과 같고, 접근성 이름은 버튼에 둔다.
 - 닫기 위치와 제목의 닫기 여백은 위 기기별 표를 따른다.
   글자 액션은 desktop 24px·phone 32px이며 phone large hit에서는 32px다. 카드 안 아이콘 액션과
   닫기는 desktop 20px·phone 24px이며 추가 frost 면·그림자를 겹치지 않는다.
@@ -181,7 +184,7 @@ native·SDK는 같은 역할 규칙을 쓴다. 글자 값은 `html` 루트의 CS
 창 너비로 글자 크기를 선택하지 않으며 기기별 카드 스타일시트를 두 벌 만들지 않는다.
 컴포저 안으로 제한한 글자 선택자 범위도 유지한다.
 색·굵기·배치는 각 역할을 따르고 입력·편집기·코드 본문의 자체 크기는 유지한다.
-아이콘 전용 액션과 ×의 글자는 일반 글자 액션의 줄 높이로 덮지 않는다.
+아이콘 전용 액션과 기하 SVG ×는 일반 글자 액션의 줄 높이로 덮지 않는다.
 Child Thread 등 목록 안의 이름은 desktop 12px/14px·phone 13px/16px다.
 읽기 전용 대기 메시지 preview는 desktop 11px·phone 12px지만 편집기는 원래 크기를 유지한다.
 제목 줄·목록 행·액션·닫기의 기기별 크기와 여백은 위 표를 따른다.
@@ -195,7 +198,7 @@ Child Thread 등 목록 안의 이름은 desktop 12px/14px·phone 13px/16px다.
 | 본문 가장자리 | 본문 wrapper의 상하 패딩·margin은 0, 첫·끝 문단의 바깥 margin은 0 | SDK는 `cardSlot.body`, native는 `NATIVE_BODY` 선택자가 `cardStyle.body`를 재사용 |
 
 - `single-row`의 닫기는 desktop 위 8px·오른쪽 6px, phone 위·오른쪽 8px로 각 카드의 중앙에 놓인다.
-  기기별 내용 왼쪽 여백은 닫기 안의 × 글자 advance box 오른쪽 여백과 맞춘다.
+  기기별 내용 왼쪽 여백과 닫기 버튼 위치는 위 표를 유지하며 기하 ×를 버튼 중앙에 둔다.
   `cardSlot.navigation`이 카드 전체를 덮고, 닫기·Merge는 그 위의 별도 클릭 영역이다.
   전체 면에 같은 hover·키보드 focus 표시를 쓰고 긴 제목은 닫기·Merge 앞에서 한 줄 말줄임한다.
 - 부모 metadata가 늦게 오거나 native 링크만 있어도 같은 단일 행을 쓴다.
@@ -362,6 +365,7 @@ fallback을 둔다. reference 변수는 device=phone이면 viewport와 무관하
 | 높이 / 글자 / 줄 높이 | 22px / 13px / 16px | 24px / 14px / 18px |
 | 왼쪽 padding | 10px | 12px |
 | 삭제 원 / 가상 터치 영역 | 16px / 기존 원 | 18px / 24px 이상 |
+| 삭제 × 도형 | 8px | 9px |
 | 세로 / 가로 margin | −2px / 3px | −2px / 4px |
 
-왼쪽 padding은 `--bb-chat-ui-pill-reference-pad-left`, 삭제 원은 `--bb-chat-ui-pill-reference-remove`로 선택한다. 높이 22px에서 세로 margin 0은 desktop 입력 줄(22px)을 1.17px 늘려 −2px로 보정했다. 입력 줄 22px·보낸 줄 24px의 pill 유무 높이 차이는 0을 유지한다. phone 24px pill도 입력 27px·보낸 줄 24px에서 높이 차이 0을 유지하도록 세로 margin −2px를 쓴다.
+왼쪽 padding은 `--bb-chat-ui-pill-reference-pad-left`, 삭제 원은 `--bb-chat-ui-pill-reference-remove`로 선택한다. 원 안의 × 도형은 desktop 10→8px·phone 12→9px로 축소하며 원 16px·18px와 phone 24px 투명 터치 영역은 유지한다. 높이 22px에서 세로 margin 0은 desktop 입력 줄(22px)을 1.17px 늘려 −2px로 보정했다. 입력 줄 22px·보낸 줄 24px의 pill 유무 높이 차이는 0을 유지한다. phone 24px pill도 입력 27px·보낸 줄 24px에서 높이 차이 0을 유지하도록 세로 margin −2px를 쓴다.

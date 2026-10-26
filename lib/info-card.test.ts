@@ -25,7 +25,7 @@ test(`one card face: frost once, 18px radius, 16px 24px padding, no border (${de
   f.dom.window.close();
 });
 
-test(`the head line is 28px and reserves the close gutter; icon, title, actions and close share its center (${device})`, () => {
+test(`the device head reserves the close gutter and applies the approved close offset (${device})`, () => {
   const f = makePage(`<section ${CARD}></section>`);
   const card = f.document.querySelector<HTMLElement>(`[${CARD}]`)!;
   const close = createCardClose(f.document, "Goal 닫기");
@@ -47,12 +47,28 @@ test(`the head line is 28px and reserves the close gutter; icon, title, actions 
   assert.equal(f.style(title).whiteSpace, "nowrap");
   const c = f.style(close);
   assert.equal(c.position, "absolute");
-  assert.equal(c.top, phone ? "16px" : "17px", "16px padding + (28px line - 24px button) / 2");
+  assert.equal(c.top, phone ? "15.5px" : "17px", "phone close sits 0.5px above the title center; desktop stays centered");
   assert.equal(c.right, phone ? "8px" : "10px");
   assert.equal(c.width, phone ? "24px" : "20px");
   assert.equal(c.height, phone ? "24px" : "20px");
   assert.equal(close.getAttribute("aria-label"), "Goal 닫기");
-  assert.equal(close.textContent, "×");
+  assert.equal(close.title, "Goal 닫기");
+  const cross = close.querySelector('svg[data-bb-chat-ui-card-close-icon]');
+  assert.ok(cross, "close uses geometric strokes rather than font metrics");
+  assert.equal(cross.getAttribute("viewBox"), "0 0 12 12");
+  assert.equal(cross.getAttribute("aria-hidden"), "true");
+  assert.equal(cross.getAttribute("focusable"), "false");
+  assert.equal(cross.getAttribute("stroke"), "currentColor");
+  assert.equal(cross.getAttribute("stroke-width"), "1.5");
+  assert.equal(cross.getAttribute("stroke-linecap"), "round");
+  assert.equal(cross.querySelector("path")?.getAttribute("d"), "M2 2l8 8M10 2l-8 8");
+  assert.equal(close.textContent, "", "the cross does not depend on the platform font");
+  const glyph = f.style(cross);
+  assert.equal(glyph.width, phone ? "9px" : "8px");
+  assert.equal(glyph.height, phone ? "9px" : "8px");
+  assert.equal(glyph.display, "block");
+  assert.equal(c.alignItems, "center");
+  assert.equal(c.justifyContent, "center");
   const a = f.style(action);
   assert.equal(a.width, phone ? "24px" : "20px");
   assert.equal(a.height, phone ? "24px" : "20px");

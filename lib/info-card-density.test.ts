@@ -25,7 +25,7 @@ test('device card density keeps phone targets and compacts desktop geometry with
         assert.equal(css('#card header').marginBottom,'10px');
         assert.equal(css('#card header').paddingRight,'34px');
         assert.equal(css('#card [data-bb-chat-ui-card-close]').width,phone?'24px':'20px');
-        assert.equal(css('#card [data-bb-chat-ui-card-close]').top,phone?'16px':'17px');
+        assert.equal(css('#card [data-bb-chat-ui-card-close]').top,phone?'15.5px':'17px');
         assert.equal(css('#card [data-bb-chat-ui-card-close]').right,phone?'8px':'10px');
         assert.equal(css('#card [data-bb-chat-ui-card-action]').width,phone?'24px':'20px');
         assert.equal(css('#card [data-bb-chat-ui-card-action] svg').width,phone?'14px':'12px');

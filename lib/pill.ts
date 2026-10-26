@@ -133,8 +133,8 @@ export const pillStyle = {
   removeReservePhone: "padding-right: 28px !important;",
   removeHitPhone: 'content:""; position:absolute; width:24px; height:24px; left:50%; top:50%; transform:translate(-50%,-50%);',
   removeCross: `content:""; background:currentColor; opacity:0.75; clip-path:polygon(12% 0,50% 38%,88% 0,100% 12%,62% 50%,100% 88%,88% 100%,50% 62%,12% 100%,0 88%,38% 50%,0 12%);`,
-  removeGlyph: "width: 10px; height: 10px;",
-  removeGlyphPhone: "width: 12px; height: 12px;",
+  removeGlyph: "width: 8px; height: 8px;",
+  removeGlyphPhone: "width: 9px; height: 9px;",
   removeHover: "background: color-mix(in oklab, var(--foreground) 16%, transparent);",
   removeFocus: "outline: 2px solid var(--ring); outline-offset: 0;",
 } as const;

@@ -6,7 +6,7 @@ import { composerInfoReads, infoKinds, listedInfo } from "./composer-info-settin
 import { childExecutionLabel, childState, childUnread } from "./composer-child.ts";
 import { startComposerInfoRefresh, type ComposerInfoSnapshot } from "./composer-info-refresh.ts";
 import { createThreadRestorer, type RestoreState } from "./composer-restore.ts";
-import { cardSlot } from "./info-card.ts";
+import { cardSlot, CARD_CLOSE_ICON, CARD_CLOSE_PATH } from "./info-card.ts";
 
 const mark = "data-bb-chat-ui-info";
 
@@ -60,7 +60,7 @@ export function ComposerInfoBridge() {
   }, createElement("h3", { [cardSlot.head]:"" },
     createElement("span", { [cardSlot.icon]:"", "aria-hidden":true }, createElement(experimental_Icon, { name:icon, "aria-hidden":true })),
     createElement("span", { [cardSlot.title]:"" }, title)),
-    kind === "children" ? createElement("button", { type:"button", [`${mark}-dismiss`]:kind, [cardSlot.close]:"", "aria-label":"Child Threads 닫기", title:"Child Threads 닫기" }, "×") : null, content);
+    kind === "children" ? createElement("button", { type:"button", [`${mark}-dismiss`]:kind, [cardSlot.close]:"", "aria-label":"Child Threads 닫기", title:"Child Threads 닫기" }, createElement("svg", { [CARD_CLOSE_ICON]:"", viewBox:"0 0 12 12", fill:"none", stroke:"currentColor", strokeWidth:1.5, strokeLinecap:"round", "aria-hidden":true, focusable:"false" }, createElement("path", { d:CARD_CLOSE_PATH }))) : null, content);
   return createElement(Fragment, null,
     createElement("span", {
       ref:source, hidden:true,

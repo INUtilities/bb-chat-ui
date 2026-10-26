@@ -13,7 +13,7 @@ import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
 import { attachQueueControls } from "./composer-queue-controls.ts";
 import { interceptPrMerge } from "./composer-pr-merge.ts";
 import { createBackgroundAccordions } from "./background-activity.ts";
-import { cardFaceCss, cardSlot, cardStyle, createCardAction, createCardClose, createCardHead, infoCardCss } from "./info-card.ts";
+import { CARD_CLOSE_MASK, cardFaceCss, cardSlot, cardStyle, createCardAction, createCardClose, createCardHead, infoCardCss } from "./info-card.ts";
 
 const STACK = "[data-promptbox-shell] > .grid";
 const MARK = "data-bb-chat-ui-info";
@@ -115,7 +115,7 @@ ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="pullRequest"] :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-parent-thread-toggle, #thread-prompt-banner-parent-thread-body) { display:none !important; }
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > :not([${MARK}-parent-row]):not([${MARK}-dismiss]):not([${cardSlot.head}]),
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] #thread-prompt-banner-parent-thread-body,
-${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(svg, [data-icon-root]):not([${MARK}-parent-row] *):not([${cardSlot.head}] *),
+${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(svg, [data-icon-root]):not([${MARK}-parent-row] *):not([${cardSlot.head}] *):not([${cardSlot.close}] *),
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row]:not([${MARK}-with-parent-body]) :is([${MARK}-parent-link-wrap], a[href*="/threads/"]) { display:none !important; }
 ${NATIVE_DETAIL} :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"]):not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
 ${NATIVE_DETAIL} > button[aria-expanded][aria-controls][class~="px-3"]:not([${cardSlot.head}]) { padding-left:0 !important; padding-right:0 !important; }
@@ -414,7 +414,7 @@ ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child { display
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > [data-icon="ChatFeedback"] { display:none !important; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:first-child > p { grid-area:heading; margin:0; padding-right:0 !important; overflow:hidden; white-space:nowrap; }
 ${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"] :is(svg, [data-icon-root]) { display:none; }
-${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"]::after { content:"×"; font:inherit; }
+${DETAIL}.agentation-staging-shell button[aria-label="Collapse staged annotations"]::after { content:""; ${cardStyle.closeIcon} background-color:currentColor; mask-image:${CARD_CLOSE_MASK}; -webkit-mask-image:${CARD_CLOSE_MASK}; mask-size:100% 100%; -webkit-mask-size:100% 100%; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child { grid-area:actions; display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-end; gap:4px; margin-top:0; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:first-child { order:2; }
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:last-child { order:1; }
