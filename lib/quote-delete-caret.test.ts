@@ -7,7 +7,7 @@ import { injectMentionPills } from "./mention-pill.ts";
 
 // The native transaction maps an unrelated old cursor through deletion. The
 // control must explicitly choose a valid text position in the resulting doc.
-for (const kind of ["legacy", "mention"] as const) {
+for (const kind of ["legacy", "mention", "mention-attr"] as const) {
   for (const action of ["click", "Backspace", "Delete"] as const) {
     test(`${kind} ${action} leaves the caret at the deleted quote, using the resulting document`, () => {
       const dom = new JSDOM(`<div data-promptbox-editor-scroll><div data-promptbox-editor-content><div class="ProseMirror" contenteditable="true"><p>앞</p>${kind === "legacy" ? '<blockquote><p>인용</p></blockquote>' : '<p><span class="prompt-mention-pill" data-prompt-mention data-prompt-mention-resource=\'{"kind":"plugin","itemId":"quote:test","icon":"Quote"}\'>인용</span></p>'}<p>뒤의 긴 글</p></div></div></div>`, { pretendToBeVisual:true });
@@ -18,7 +18,7 @@ for (const kind of ["legacy", "mention"] as const) {
       const editor = document.querySelector<HTMLElement>(".ProseMirror")!;
       const quote = document.querySelector<HTMLElement>(kind === "legacy" ? "blockquote" : "[data-prompt-mention]")!;
       const from = 3, to = kind === "legacy" ? 9 : 4;
-      const beforeDoc = { resolve(pos:number) { return { pos, document:"before" }; }, nodeAt() { return { isAtom:true, isInline:true, attrs:{resource:{}}, nodeSize:to-from }; } };
+      const beforeDoc = { resolve(pos:number) { return { pos, document:"before" }; }, nodeAt() { return { isAtom:true, isInline:true, attrs:kind === "mention-attr" ? {mention:{kind:"plugin",pluginId:"bb-chat-ui",provider:"quote",id:"test"}} : {resource:{}}, nodeSize:to-from }; } };
       const afterDoc = { resolve(pos:number) { return { pos:pos + (kind === "legacy" ? 1 : 0), document:"after" }; }, content:{size:16} };
       class Selection {
         static near(point:{pos:number;document:string}, bias:number) {

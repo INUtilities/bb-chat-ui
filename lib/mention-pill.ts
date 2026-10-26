@@ -117,7 +117,7 @@ interface MentionResource {
 interface MentionNode {
   isAtom: boolean;
   isInline: boolean;
-  attrs: { resource?: unknown };
+  attrs: { resource?: unknown; mention?: unknown };
   nodeSize: number;
 }
 
@@ -168,7 +168,7 @@ function removeMention(pill: HTMLElement): void {
     const from = view.posAtDOM(pill, 0, -1);
     if (!Number.isInteger(from) || from < 0) return;
     const node = view.state.doc.nodeAt(from);
-    if (!node?.isAtom || !node.isInline || !node.attrs.resource ||
+    if (!node?.isAtom || !node.isInline || !(node.attrs.resource ?? node.attrs.mention) ||
         !view.nodeDOM(from)?.contains(pill)) return;
     deleteWithCaret(view, from, from + node.nodeSize);
   } catch {

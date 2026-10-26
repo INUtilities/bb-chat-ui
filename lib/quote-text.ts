@@ -13,12 +13,11 @@ export function quoteStorageKey(id: string): string {
 
 export function isQuoteMentionResource(resource: unknown): boolean {
   if (typeof resource !== "object" || resource === null) return false;
-  const record = resource as { kind?: unknown; itemId?: unknown };
-  return (
-    record.kind === "plugin" &&
-    typeof record.itemId === "string" &&
-    record.itemId.startsWith(`${QUOTE_PROVIDER_ID}:`)
-  );
+  const record = resource as { kind?: unknown; itemId?: unknown; pluginId?: unknown; provider?: unknown };
+  if (record.kind !== "plugin") return false;
+  if (typeof record.itemId === "string") return record.itemId.startsWith(`${QUOTE_PROVIDER_ID}:`);
+  // BB 0.47 (SDK 0.6.80) node.attrs.mention: { kind, pluginId, provider, id }.
+  return record.pluginId === "bb-chat-ui" && record.provider === QUOTE_PROVIDER_ID;
 }
 
 export function quoteMentionIcon(

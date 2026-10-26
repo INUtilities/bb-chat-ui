@@ -25,7 +25,7 @@ interface MentionView {
 interface MentionDesc {
   posBefore: number;
   posAfter: number;
-  node?: { attrs?: { resource?: unknown } };
+  node?: { attrs?: { resource?: unknown; mention?: unknown } };
   view: MentionView;
 }
 
@@ -247,7 +247,7 @@ function mentionRoot(node: HTMLElement): HTMLElement | null {
   while (current) {
     if (current instanceof HTMLElement) {
       const desc = (current as MentionElement).pmViewDesc;
-      if (desc?.node && isQuoteMentionResource(desc.node.attrs?.resource)) return current;
+      if (desc?.node && isQuoteMentionResource(desc.node.attrs?.resource ?? desc.node.attrs?.mention)) return current;
     }
     current = current.parentElement;
   }

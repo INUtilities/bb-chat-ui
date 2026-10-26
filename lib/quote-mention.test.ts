@@ -81,4 +81,17 @@ test("recognizes only this plugin's quote mentions", () => {
     isQuoteMentionResource({ kind: "plugin", itemId: "file:abc" }),
     false,
   );
+  // BB 0.47 (SDK 0.6.80) stores the mention as attrs.mention with provider and id.
+  assert.equal(
+    isQuoteMentionResource({ kind: "plugin", pluginId: "bb-chat-ui", provider: "quote", id: "abc" }),
+    true,
+  );
+  assert.equal(
+    isQuoteMentionResource({ kind: "plugin", pluginId: "other", provider: "quote", id: "abc" }),
+    false,
+  );
+  assert.equal(
+    isQuoteMentionResource({ kind: "plugin", pluginId: "bb-chat-ui", provider: "file", id: "abc" }),
+    false,
+  );
 });
