@@ -278,6 +278,25 @@ test("PR uses a compact 40px navigation card with a separate text-and-caret Merg
   } finally {stop();f.dom.window.close();}
 });
 
+test("PR controls inside github-pr-status plugin slots keep the native row as the 36px header", async () => {
+  const f=fixture();
+  const context=f.document.querySelector('section[aria-label="Thread context before sending"]')!;
+  context.innerHTML='<div class="flex items-center gap-0.5 p-1"><div data-bb-plugin-root data-bb-plugin="bb--github-pr-status" class="contents"><span role="group" aria-label="Pull request" class="contents"><a aria-label="Pull request 12: Open, No checks" href="https://example.com/pr/12" class="px-2"><span title="Open, No checks" class="flex"><svg /></span><span data-promptbox-hide-compact>PR #12</span></a></span></div><button type="button" id="thread-prompt-banner-git-toggle" aria-expanded="false" aria-controls="thread-prompt-banner-git-body">+12 −4 · 3 files</button><div data-bb-plugin-root data-bb-plugin="bb--github-pr-status" class="contents"><div data-promptbox-hide-tiny class="flex"><div class="inline-flex overflow-hidden rounded border"><button>Merge</button><button aria-label="Choose pull request merge method" aria-expanded="false"><svg /></button></div></div></div></div><section id="thread-prompt-banner-git-body" hidden>lib/composer-info.ts</section>';
+  const native=f.document.createElement('style');native.textContent='.contents { display:contents; }';f.document.head.append(native);
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');await f.tick();
+    const row=context.firstElementChild!,group=context.querySelector('.inline-flex')!,link=context.querySelector('a')!;
+    assert.ok(row.hasAttribute('data-bb-chat-ui-card-head'),'the native row, not the display:contents plugin slot, is the header');
+    assert.equal(context.querySelectorAll('[data-bb-chat-ui-card-head]').length,1);
+    assert.equal(resolvedStyle(row).height,'36px');
+    assert.equal(resolvedStyle(row).paddingLeft,'12px','the GitHub mark keeps the card inset');
+    assert.equal(link.nextElementSibling?.getAttribute('data-bb-chat-ui-info-pr-title'),'','the title follows the link inside its slot');
+    assert.equal(resolvedStyle(group.parentElement!).marginLeft,'auto','Merge sits at the close end');
+    assert.ok(group.parentElement!.hasAttribute('data-bb-chat-ui-card-end-action'),'the end action is the visible box, not the plugin root');
+  } finally {stop();f.dom.window.close();}
+});
+
 test("the SDK PR fallback uses the same single row without a family title or family icon", async () => {
   const f=fixture(),source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
   source.setAttribute('data-bb-chat-ui-info-pr-title','SDK PR title');

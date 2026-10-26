@@ -918,7 +918,9 @@ export function injectComposerInfo(document: Document): () => void {
       if (item.key === "pullRequest" || item.node.getAttribute(cardSlot.layout) !== "single-row") {
         heading = item.node.querySelector<HTMLElement>(`[${MARK}-panel-heading], [${MARK}-close-heading], :scope > [${cardSlot.head}]`);
         if (!heading || heading.closest("button, a")) {
-          const parent = item.trigger?.parentElement;
+          let parent = item.trigger?.parentElement;
+          // github-pr-status wraps the PR link in display:contents slots; the header is the card's own row.
+          if (item.key === "pullRequest") while (parent && parent !== item.node && parent.parentElement !== item.node) parent = parent.parentElement;
           heading = parent && parent !== item.node && !parent.closest("button, a") && !parent.hasAttribute("data-queued-messages-mode") ? parent : item.trigger;
           if (!item.trigger) heading = item.node.querySelector<HTMLElement>("h3, h4, header");
           if (heading?.hasAttribute("data-queued-messages-mode") || item.key === "queue" || item.key === "goal" || item.key === "parent") heading = null;
@@ -949,7 +951,7 @@ export function injectComposerInfo(document: Document): () => void {
           } else clearPrHeader();
           let actions = heading.querySelector<HTMLElement>('div.inline-flex.overflow-hidden.rounded[class~="border"]');
           if (actions) {
-            while (actions.parentElement && actions.parentElement !== heading) actions = actions.parentElement;
+            while (actions.parentElement && actions.parentElement !== heading && !actions.parentElement.hasAttribute("data-bb-plugin-root")) actions = actions.parentElement;
             markEndAction(actions, item.key);
           }
         }
