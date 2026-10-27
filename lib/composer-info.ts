@@ -6,7 +6,8 @@ import { HEAD_DIFF_MARK, openChangesPanel } from "./workspace-diff-pill.ts";
 import { commitIcon, fileStatusIcon } from "./composer-diff-icons.ts";
 import { childInitial, type ChildState, type ChildSummary } from "./composer-child.ts";
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE } from "./glass-surface.ts";
-import { eventHop, pressPop, stickyDrop } from "./motion.ts";
+import { eventHop, pressPop } from "./motion.ts";
+import { queueLiquid, type QueueLiquidMotion } from "./queue-liquid.ts";
 import { isDesktopChrome, LARGE_HIT_TARGET } from "./device-chrome.ts";
 import { infoStack } from "./composer-info-stack.ts";
 import { bodyFadeBox, readBodyFadeClips } from "./body-fade.ts";
@@ -489,6 +490,7 @@ function nativeTrigger(node: HTMLElement, key: InfoKind): HTMLElement | null {
   return node.querySelector(selector);
 }
 
+// Manage composer information surfaces and cancel their owned work on disposal.
 export function injectComposerInfo(document: Document): () => void {
   const view = document.defaultView;
   if (!view) return () => {};
@@ -652,16 +654,14 @@ export function injectComposerInfo(document: Document): () => void {
     let childTotal = 0;
     let childStates = new Map<string, ChildState>();
     let queueSnapshot:{ count:number; seenIds:Set<string>; pendingRows:number; pendingCount:number } | null = null;
-    const queueAnimations = new Set<Animation>();
-    const queueDrops = new Set<HTMLElement>();
+    const queueMotions = new Set<QueueLiquidMotion>();
     const queueTimers = new Set<number>();
+    // Cancel all surfaces and delayed flights owned by this composer scope.
     const cancelQueueMotion = () => {
       for (const timer of queueTimers) view!.clearTimeout(timer);
       queueTimers.clear();
-      for (const animation of queueAnimations) animation.cancel();
-      queueAnimations.clear();
-      for (const drop of queueDrops) drop.remove();
-      queueDrops.clear();
+      for (const motion of queueMotions) motion.cancel();
+      queueMotions.clear();
     };
     let diffSupplement: HTMLElement | null = null;
     let parentArm: HTMLElement | null = null;
@@ -1229,13 +1229,12 @@ export function injectComposerInfo(document: Document): () => void {
       for (const node of [...ownedMotion.keys()]) forgetMotion(node);
       pressHeld.clear();
     };
+    // Cancel motion when React removes either endpoint before the flight finishes.
     const pruneDisconnected = () => {
       for (const node of [...ownedMotion.keys()]) if (!node.isConnected) forgetMotion(node);
-      for (const animation of [...queueAnimations]) {
-        const target = (animation.effect as KeyframeEffect | null)?.target ?? null;
-        if (target instanceof view!.Element && !target.isConnected) {
-          animation.cancel();
-          queueAnimations.delete(animation);
+      for (const motion of queueMotions) {
+        if (!motion.source.isConnected || !motion.target.isConnected) {
+          motion.cancel();queueMotions.delete(motion);
         }
       }
     };
@@ -1379,56 +1378,22 @@ export function injectComposerInfo(document: Document): () => void {
       }
       return "";
     };
+    // Detach from the input surface; the send button never supplies the origin.
     const queueAddition = (delay:number) => {
-      const timer = view!.setTimeout(() => {
-        queueTimers.delete(timer);
+      // Launch the first drop in this paint; timers only stagger later arrivals.
+      const launch = () => {
         const pill = buttons.get("queue");
         const target = pill && !pill.hidden ? pill : stackIcons.get("queue") ?? (!orb.hidden ? orb : slot());
         if (bar.hidden || reduced() || !target.isConnected || !target.animate) return;
         const shell = stack.closest("[data-promptbox-shell]");
-        const origin = shell?.querySelector<HTMLElement>('[data-promptbox-submit-action][type="submit"]')
-          ?? shell?.querySelector<HTMLElement>("[data-follow-up-composer], textarea");
+        const origin = shell?.querySelector<HTMLElement>("[data-follow-up-composer]")
+          ?? shell?.querySelector<HTMLElement>("textarea");
         if (!origin) return;
-        const beforeOrigin = new Set(origin.getAnimations?.() ?? []);
-        const beforeDrops = new Set(Array.from(document.querySelectorAll(".bbk-drop")));
-        const watchQueue = (animation: Animation) => {
-          queueAnimations.add(animation);
-          const finish = animation.onfinish;
-          const cancel = animation.oncancel;
-          const dropTracked = () => queueAnimations.delete(animation);
-          animation.onfinish = event => { finish?.call(animation, event); dropTracked(); };
-          animation.oncancel = event => { cancel?.call(animation, event); dropTracked(); };
-        };
-        // A fallback supplies the start coordinates, never the input's squash.
-        let departure = origin;
-        if (!origin.matches('[data-promptbox-submit-action][type="submit"]')) {
-          departure = document.createElement("span");
-          departure.getBoundingClientRect = () => origin.getBoundingClientRect();
-          Object.defineProperty(departure, "animate", { value:undefined });
-        }
-        stickyDrop(departure, target);
-        for (const animation of origin.getAnimations?.() ?? []) if (!beforeOrigin.has(animation)) watchQueue(animation);
-        for (const drop of Array.from(document.querySelectorAll<HTMLElement>(".bbk-drop"))) {
-          if (beforeDrops.has(drop)) continue;
-          queueDrops.add(drop);
-          for (const animation of drop.getAnimations?.() ?? []) {
-            queueAnimations.add(animation);
-            const finish = animation.onfinish;
-            const cancel = animation.oncancel;
-            const dropTracked = () => { queueAnimations.delete(animation); queueDrops.delete(drop); };
-            animation.onfinish = (event: AnimationPlaybackEvent) => {
-              const beforeTarget = new Set(target.getAnimations?.() ?? []);
-              finish?.call(animation, event);
-              for (const land of target.getAnimations?.() ?? []) if (!beforeTarget.has(land)) watchQueue(land);
-              dropTracked();
-            };
-            animation.oncancel = (event: AnimationPlaybackEvent) => {
-              cancel?.call(animation, event);
-              dropTracked();
-            };
-          }
-        }
-      }, delay);
+        const motion=queueLiquid(origin,target);queueMotions.add(motion);
+        void motion.finished.then(()=>queueMotions.delete(motion));
+      };
+      if(!delay){launch();return;}
+      const timer = view!.setTimeout(() => {queueTimers.delete(timer);launch();}, delay);
       queueTimers.add(timer);
     };
     const catalog = () => infoKinds.filter(kind => listed.includes(kind.key)).flatMap<InfoItem | { key:InfoKind; label:string }>(kind => {
@@ -1889,6 +1854,7 @@ export function injectComposerInfo(document: Document): () => void {
     stack.addEventListener("pointerdown", pinPreview, true);
     stack.addEventListener("focusin", pinPreview);
     orb.addEventListener("click", () => { open("all", orb); });
+    // Place information surfaces and keep a newly receiving queue destination at rest.
     const fit = (motion = true) => {
       const jumpBefore = pendingJump; pendingJump = null;
       if (jumpBefore) {
@@ -2002,6 +1968,7 @@ export function injectComposerInfo(document: Document): () => void {
         const key = button === slot() ? "all" : button.getAttribute(`${MARK}-trigger`) as InfoKind;
         if (button.hidden || appeared.has(key)) continue;
         appeared.add(key);
+        if (queueSnapshot?.count === 0 && (key === "queue" || key === "all" && stackIcons.has("queue"))) continue;
         if (reduced()) continue;
         if (key === "all") {
           const circles = Array.from(iconStack.children).filter(node => !(node as HTMLElement).hidden) as HTMLElement[];
