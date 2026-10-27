@@ -2689,13 +2689,17 @@ export function injectComposerInfo(document: Document): () => void {
   };
   // The body only tells us when composer shells (or the host jump button) mount or unmount.
   // Inline composers can also mount inside transcript rows; other transcript changes stay ignored.
-  const shellIn = (node: Node) => node instanceof view.Element &&
-    (node.matches("[data-promptbox-shell]") || !!node.querySelector("[data-promptbox-shell]"));
+  // Compare mounted shells once per delivery instead of searching each transcript row.
   const observer = new view.MutationObserver(records => {
+    let timelineDiscovery: boolean | undefined;
     if (records.some(record => {
       if (record.attributeName === "data-bb-chat-ui-device") return true;
       const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
-      if (target?.closest("[data-timeline-items]")) return Array.from(record.addedNodes).some(shellIn) || Array.from(record.removedNodes).some(shellIn);
+      if (target?.closest("[data-timeline-items]")) {
+        timelineDiscovery ??= Array.from(watchedShells).some(shell => !shell.isConnected) ||
+          Array.from(document.querySelectorAll("[data-promptbox-shell]")).some(shell => !watchedShells.has(shell));
+        return timelineDiscovery;
+      }
       return Array.from(record.addedNodes).some(discoversInfo) || Array.from(record.removedNodes).some(discoversInfo);
     })) {
       watchShells(); discover = true; schedule();

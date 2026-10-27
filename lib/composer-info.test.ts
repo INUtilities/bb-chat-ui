@@ -6054,6 +6054,19 @@ test('request markers follow nested wrappers, Secret expansion and queue collaps
   } finally {stop();f.dom.window.close();}
 });
 
+// Keep composer discovery proportional to mutation deliveries rather than message count.
+test('timeline message batches do not search each row for information shells',async()=>{
+ const f=fixture(),stop=injectComposerInfo(f.document);
+ const timeline=f.document.createElement('main');timeline.setAttribute('data-timeline-items','');f.document.body.append(timeline);await f.tick();
+ const prototype=f.dom.window.Element.prototype,query=prototype.querySelector;let scans=0;
+ // Count discovery queries on ordinary transcript rows only.
+ prototype.querySelector=function(selector:string){if(this.hasAttribute('data-perf-row')&&selector==='[data-promptbox-shell]')scans++;return query.call(this,selector);};
+ try{
+  const rows=Array.from({length:80},()=>{const row=f.document.createElement('article');row.setAttribute('data-perf-row','');row.innerHTML='<p>Message</p>';return row;});
+  timeline.append(...rows);await f.tick();assert.equal(scans,0,'a message-only batch does not search every row');
+ }finally{prototype.querySelector=query;stop();f.dom.window.close();}
+});
+
 test('a late inline composer inside the timeline is discovered and cleaned up',async()=>{
  const f=fixture(),stop=injectComposerInfo(f.document);
  try {

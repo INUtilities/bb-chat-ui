@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { injectComposerGlass } from './composer-glass.ts';
 
+// Track composer observers and deferred work without browser timing assumptions.
 function fixture() {
   const dom = new JSDOM('<body><span data-bb-chat-ui-device="desktop" data-bb-chat-ui-hit-target="small"></span></body>', {pretendToBeVisual:true});
   const {document} = dom.window;
@@ -15,10 +16,14 @@ function fixture() {
     observe(target:Node, options?:MutationObserverInit) {this.target=target;this.active=true;super.observe(target,options);}
     disconnect() {this.active=false;super.disconnect();}
   }
-  const sizes: {active:boolean; target:Element|null}[]=[];
+  const sizes: {active:boolean; target:Element|null; fire:()=>void}[]=[];
   class SizeObserver {
     active=false; target:Element|null=null;
-    constructor() {sizes.push(this);}
+    callback:()=>void;
+    // Retain the callback so each footer can be resized independently.
+    constructor(callback:()=>void) {this.callback=callback;sizes.push(this);}
+    // Deliver one resize notification without changing other footers.
+    fire() {this.callback();}
     observe(target:Element) {this.target=target;this.active=true;}
     disconnect() {this.active=false;}
   }
@@ -44,6 +49,58 @@ function fixture() {
     dom.window.close();
   }};
 }
+
+// Scope both mutation and resize geometry to their owning footer.
+test('independent footers only measure dirty geometry and observe each resize',async()=>{
+ const f=fixture(),first=f.add(),second=f.add(),reads=[0,0];
+ for(const [index,item] of [first,second].entries()){
+  const rect=item.composer.getBoundingClientRect.bind(item.composer);
+  // Count the geometry work of each independent composer.
+  item.composer.getBoundingClientRect=()=>{reads[index]++;return rect();};
+ }
+ const stop=injectComposerGlass(f.document);
+ try{
+  await f.tick();await f.paint();reads.fill(0);
+  for(let i=0;i<4;i++){second.footer.querySelector('.grid')!.append(f.document.createElement('span'));await f.tick();}
+  assert.deepEqual(reads,[0,0],'mutation delivery never measures layout');
+  await f.paint();assert.equal(reads[0],0,'independent footer is not measured');assert.ok(reads[1]>0);
+  const secondary=f.sizes.find(s=>s.active&&s.target===second.footer);
+  assert.ok(secondary,'secondary footer has its own resize subscription');
+  reads.fill(0);secondary.fire();await f.paint();assert.equal(reads[0],0);assert.ok(reads[1]>0);
+  reads.fill(0);first.footer.querySelector('.grid')!.append(f.document.createElement('span'));second.footer.querySelector('.grid')!.append(f.document.createElement('span'));
+  await f.tick();assert.equal(f.frames.size,1,'a multi-footer burst still shares one frame');await f.paint();assert.ok(reads.every(n=>n>0));
+  second.scroller.remove();await f.tick();assert.equal(secondary.active,false,'detached footer releases resize subscription');
+  f.document.body.append(second.scroller);await f.tick();await f.paint();assert.ok(f.sizes.some(s=>s.active&&s.target===second.footer),'reattachment creates a live resize subscription');
+ }finally{stop();assert.equal(f.sizes.some(s=>s.active),false);f.cleanup();}
+});
+
+// Discover nested composers once per delivery instead of scanning every new message row.
+test('timeline batches avoid per-row composer subtree scans and still bind inline composers',async()=>{
+ const f=fixture();f.add();const stop=injectComposerGlass(f.document);
+ const timeline=f.document.createElement('div');timeline.setAttribute('data-timeline-items','');f.document.body.append(timeline);await f.tick();
+ const prototype=f.dom.window.Element.prototype,query=prototype.querySelectorAll;let rowScans=0;
+ // Count only discovery work inside transcript rows.
+ prototype.querySelectorAll=function(selector:string){if(this.hasAttribute('data-perf-row')&&selector.includes('data-scroll-footer'))rowScans++;return query.call(this,selector);};
+ try{
+  const rows=Array.from({length:80},()=>{const row=f.document.createElement('div');row.setAttribute('data-perf-row','');row.innerHTML='<span>Message</span>';return row;});
+  timeline.append(...rows);await f.tick();assert.equal(rowScans,0,'ordinary rows are not individually searched for composers');
+  const inline=f.add();rows[0].append(inline.scroller);await f.tick();
+  inline.composer.setAttribute('data-promptbox-compact','');await f.tick();assert.equal(inline.composer.style.borderRadius,'25px','inline composers still bind before RAF');
+ }finally{prototype.querySelectorAll=query;stop();f.cleanup();}
+});
+
+// Rebind footer observation when React replaces its stack without replacing the composer.
+test('a replaced grid is observed again and classifies its new controls',async()=>{
+ const f=fixture(),first=f.add(),stop=injectComposerGlass(f.document);
+ try{
+  await f.tick();await f.paint();
+  const old=first.footer.querySelector('.grid')!,stack=f.document.createElement('div');stack.className='grid';
+  old.replaceWith(stack);await f.tick();await f.paint();
+  assert.equal(f.watchers(first.footer),1,'stack replacement restores the footer observer');
+  stack.innerHTML='<section><button id="thread-prompt-banner-git-toggle">Diff</button></section>';await f.tick();await f.paint();
+  assert.ok(stack.querySelector('section')!.hasAttribute('data-bb-chat-ui-diff-section'));
+ }finally{stop();f.cleanup();}
+});
 
 test('removing the last footer disconnects composer, stack, and resize observers before plugin unload', async () => {
   const f=fixture();const first=f.add();const stop=injectComposerGlass(f.document);
