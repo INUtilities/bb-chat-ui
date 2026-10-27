@@ -1,4 +1,5 @@
 import { composerInfoReflow } from "./composer-info-reflow.ts";
+import { installDetailMedia, type ComposerInfoCssFragment } from "./composer-info-media.ts";
 import { pillSlot, pillStyle } from "./pill.ts";
 import { composerDataChanged, readInfoData, readDiffData } from "./composer-data.ts";
 import { exposedInfo, infoKinds, listedInfo, type InfoKind } from "./composer-info-settings.ts";
@@ -81,7 +82,8 @@ export function scrollOverflowEdges(metrics: { scrollTop: number; clientHeight: 
 const CARD_ROOT = `[${MARK}-menu], ${DETAIL}`;
 const PILL = `:is([${pillSlot.navigation}], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump])`;
 
-export const composerInfoCss = `
+export const composerInfoCssFragments: readonly ComposerInfoCssFragment[] = [
+  { css:`
 ${infoCardCss(CARD_ROOT, "[data-promptbox-shell]")}
 [${MARK}-stack] { --bb-chat-ui-info-max-height:min(50dvh,26rem); --bb-chat-ui-info-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); position:relative; display:block !important; overflow:visible !important; }
 .dark [${MARK}-stack] { --bb-chat-ui-info-face:${DARK_GLASS_FACE}; --bb-chat-ui-info-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-info-shadow:color-mix(in oklab,black 60%,transparent); }
@@ -108,7 +110,8 @@ ${PILL}, [${MARK}-jump] { font:inherit; cursor:pointer; color:var(--foreground);
 ${PILL}:not(:where([${MARK}-trigger="children"]:not([${MARK}-unavailable]))) { ${pillStyle.navigationFace} }
 [${MARK}-panel-source] { display:none !important; }
 [${MARK}-title-source] { display:none !important; }
-[${MARK}-stack] [${MARK}-collapse] { display:none !important; }
+[${MARK}-stack] [${MARK}-collapse] { display:none !important; }` },
+  { detail:"native-context-and-headers", css:`
 /* Native cards already have a gutter on layout wrappers; the popover supplies it once. */
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] :is(#thread-prompt-banner-git-toggle, #thread-prompt-banner-git-body, #thread-prompt-banner-parent-thread-toggle, [aria-label^="Pull request "]),
 ${DETAIL}[aria-label="Thread context before sending"][${OPEN}="parent"][${MARK}-with-parent-row] > [${MARK}-parent-toggle-wrap],
@@ -186,13 +189,15 @@ ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~=
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button:first-child { pointer-events:none; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"]:focus-within { outline:1px solid var(--ring); outline-offset:2px; }
 ${DETAIL}[${OPEN}="pullRequest"] div.inline-flex.overflow-hidden.rounded[class~="border"] > button[aria-label="Choose pull request merge method"] { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:flex-end; width:100%; min-width:0; height:100%; min-height:0; margin:0; padding:0 !important; color:var(--foreground); cursor:pointer; }
-${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge method"] svg { display:block; width:14px; height:14px; opacity:1; }
+${DETAIL}[${OPEN}="pullRequest"] button[aria-label="Choose pull request merge method"] svg { display:block; width:14px; height:14px; opacity:1; }` },
+  { css:`
 [data-bb-chat-ui-pr-menu-layer] { z-index:56 !important; }
 [data-bb-chat-ui-pr-menu-backdrop] { z-index:55 !important; }
 ${cardFaceCss("[data-bb-chat-ui-pr-menu]")}
 ${nativeActionMenuCss('[data-bb-chat-ui-pr-menu][role="menu"], [data-bb-chat-ui-pr-menu][data-persistent-drawer-content] > div[class~="overflow-y-auto"]', '[data-bb-chat-ui-pr-menu][role="menu"] > div[role="menuitem"], [data-bb-chat-ui-pr-menu][data-persistent-drawer-content] > div[class~="overflow-y-auto"] > button[role="menuitem"]')}
 /* Match the native drawer's 1px border inset without adding another border to the frost face. */
-[data-bb-chat-ui-pr-menu][data-persistent-drawer-content] { padding:1px !important; padding-bottom:calc(1px + var(--bb-safe-area-bottom,env(safe-area-inset-bottom,0px))) !important; }
+[data-bb-chat-ui-pr-menu][data-persistent-drawer-content] { padding:1px !important; padding-bottom:calc(1px + var(--bb-safe-area-bottom,env(safe-area-inset-bottom,0px))) !important; }` },
+  { detail:"native-card-bodies-and-workflow", css:`
 ${DETAIL} [class~="bg-surface-raised-solid"]${PROTECTED_EXCLUDE}:not(button[aria-label^="Queued message"][aria-label$=" actions"]) { background-color:transparent !important; box-shadow:none !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] [class~="bg-popover"]${PROTECTED_EXCLUDE} { background-color:transparent !important; box-shadow:none !important; border-width:0 !important; border-color:transparent !important; }
 ${DETAIL}[${OPEN}="other"] :is(div[class~="px-3"],p[class~="px-3"],ul[class~="px-3"],ul[class~="px-2.5"])${PROTECTED_EXCLUDE} { padding-left:0 !important; padding-right:0 !important; }
@@ -248,7 +253,8 @@ ${WORKFLOW_AGENT_ROW} > svg[data-icon-root] { grid-column:1; grid-row:1; align-s
 ${WORKFLOW_AGENT_ROW} > span[class~="truncate"] { grid-column:2; grid-row:1; font-weight:400; }
 ${WORKFLOW_AGENT_ROW} > span[class~="ml-auto"] { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
-${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); margin:0 calc(-1 * var(--bb-chat-ui-card-row-pad)); }
+${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); margin:0 calc(-1 * var(--bb-chat-ui-card-row-pad)); }` },
+  { css:`
 [${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); ${cardStyle.prose} }
 [${MARK}-trigger]:hover, [${MARK}-stack-kind]:hover, [${MARK}-all]:hover { transform:translateY(-1px); }
 [${MARK}-trigger]:active, [${MARK}-stack-kind]:active, [${MARK}-all]:active { transform:scale(.95); }
@@ -319,11 +325,13 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-avatar][data-state="done"][data-unread="true"] [${MARK}-avatar-dot] { background:var(--timeline-accent); }
 [${MARK}-avatar] [${MARK}-provider-icon], [${MARK}-avatar] [${MARK}-provider-icon] > :is(svg, span, img) { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; }
 [${MARK}-avatar][data-new] { animation:bb-info-droplet 460ms cubic-bezier(.36,0,.18,1) backwards; }
-[${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; order:0 !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
+[${MARK}-menu], ${DETAIL} { position:absolute !important; display:block !important; left:0 !important; right:0 !important; top:auto !important; bottom:40px !important; transform:none !important; box-sizing:border-box; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:auto !important; margin:0 !important; order:0 !important; z-index:52; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }` },
+  { detail:"native-goal-layout", css:`
 /* Keep native actions on their original parents while sharing one title row. */
 ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) { display:grid !important; grid-template-columns:minmax(0,1fr) auto var(--bb-chat-ui-card-icon); grid-template-areas:"heading actions close" "body body body"; grid-template-rows:var(--bb-chat-ui-card-head) auto; align-items:center; gap:var(--bb-chat-ui-card-gap); outline:0 !important; }
 ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > * { min-width:0; flex-shrink:0; }
-${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }
+${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { grid-area:heading; margin:0; padding-right:0 !important; }` },
+  { css:`
 [${MARK}-menu], ${DETAIL} { overscroll-behavior:contain !important; }
 [${MARK}-menu] > p { margin:0 0 var(--bb-chat-ui-card-gap); }
 /* The catalog is a list of rows laid out in columns: the grid owns the hover gutter. */
@@ -362,14 +370,16 @@ ${DETAIL}[aria-label="Goal"]:not([${MARK}-kind]) > h3[${MARK}-close-heading] { g
 [${MARK}-diff-content] h4 { ${cardStyle.meta} margin:12px 0 4px; }
 [${MARK}-diff-content] > hr { margin:10px 0; border:0; border-top:1px solid color-mix(in oklab,var(--border-seam,var(--border)) 55%,transparent); }
 [${MARK}-diff-meta] { display:flex; flex-wrap:wrap; align-items:center; gap:4px; font-size:var(--bb-chat-ui-card-secondary-size) !important; line-height:var(--bb-chat-ui-card-meta-line); color:var(--subtle-foreground); }
-[${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }
+[${MARK}-diff-meta] code { font:inherit; overflow-wrap:anywhere; }` },
+  { detail:"native-queue-layout", css:`
 ${DETAIL}[aria-label="Queued messages"] { display:flex !important; flex-direction:column; max-height:var(--bb-chat-ui-info-max-height) !important; overflow:hidden !important; gap:0 !important; }
 ${DETAIL}[aria-label="Queued messages"] > :not([${cardSlot.head}]) { min-height:0; }
 ${DETAIL}[aria-label="Queued messages"] > [${MARK}-close-heading] { flex:none; margin-bottom:var(--bb-chat-ui-card-gap); }
 ${DETAIL} [data-queued-messages-scroll-frame] { position:static !important; display:grid !important; grid-template-rows:minmax(0,1fr); flex:0 1 auto !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; overflow:hidden !important; }
 ${DETAIL} [data-queued-messages-scroll] { height:auto !important; min-height:0 !important; max-height:none !important; padding:4px 0; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
 ${DETAIL} header[data-queued-messages-mode] { display:none !important; }
-${DETAIL}[aria-label="Queued messages"] > [${MARK}-queue-collapse-wrap] { display:none !important; }
+${DETAIL}[aria-label="Queued messages"] > [${MARK}-queue-collapse-wrap] { display:none !important; }` },
+  { css:`
 ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] { display:none !important; }
 [${MARK}-stack] :is(${QUESTION}) { border-radius:18px !important; overflow:hidden; transform-origin:center bottom; animation:bb-info-enter 260ms cubic-bezier(.22,1,.36,1); }
 [${MARK}-stack] :is([data-testid="plan-review-banner"], [data-testid="approval-banner"]) { border-radius:18px !important; overflow:hidden; }
@@ -406,7 +416,8 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-child-title] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${cardStyle.text} }
 [${MARK}-child-meta], [${MARK}-child-status] { ${cardStyle.meta} }
 [${MARK}-child-meta] { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-[${MARK}-child-status] { flex:none; white-space:nowrap; }
+[${MARK}-child-status] { flex:none; white-space:nowrap; }` },
+  { detail:"native-children-and-feedback-heading", css:`
 ${DETAIL}[aria-label="Child threads"] ul > li > a { display:flex; align-items:center; gap:var(--bb-chat-ui-card-gap); min-width:0; color:inherit; cursor:pointer; text-decoration:none; ${cardStyle.rowBox} ${cardStyle.rowGutter} }
 ${DETAIL}[aria-label="Child threads"] ul > li > a:is(:hover, :focus-visible) { ${cardStyle.rowHover} }
 /* Agentation: native header pieces join the card's head line; the close is the shared slot. */
@@ -423,8 +434,10 @@ ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:l
 ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { ${cardStyle.button} }
 ${LARGE_HIT_TARGET} ${DETAIL}.agentation-staging-shell > div:first-child > div:last-child > button:not([${MARK}-bulk-action]) { height:var(--bb-chat-ui-card-button-large); min-height:var(--bb-chat-ui-card-button-large); }
 ${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] { gap:0; font-size:0 !important; }
-${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] > :not([${MARK}-bulk-icon]) { display:none !important; }
-[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); pointer-events:none; }
+${DETAIL}.agentation-staging-shell button[${MARK}-bulk-action] > :not([${MARK}-bulk-icon]) { display:none !important; }` },
+  { css:`
+[${MARK}-bulk-icon], [${MARK}-bulk-icon] svg { display:inline-flex; width:var(--bb-chat-ui-card-glyph); height:var(--bb-chat-ui-card-glyph); pointer-events:none; }` },
+  { detail:"native-feedback-body", css:`
 ${DETAIL}.agentation-staging-shell > .grid { grid-area:body; width:100%; }
 ${DETAIL}.agentation-staging-shell > .grid,
 ${DETAIL}.agentation-staging-shell > .grid > div { overflow:visible !important; }
@@ -442,7 +455,8 @@ ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-chil
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(2) { grid-area:target; ${cardStyle.meta} }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(3) { display:none; }
 ${DETAIL}.agentation-staging-shell li > span[aria-hidden="true"] > span:nth-child(4) { grid-area:comment; ${cardStyle.prose} font-weight:400; white-space:normal; overflow-wrap:anywhere; }
-${DETAIL}.agentation-staging-shell li::before { content:""; flex-shrink:0; width:14px; height:14px; background:var(--subtle-foreground); mask:var(--bb-chat-ui-feedback-icon) center/contain no-repeat; }
+${DETAIL}.agentation-staging-shell li::before { content:""; flex-shrink:0; width:14px; height:14px; background:var(--subtle-foreground); mask:var(--bb-chat-ui-feedback-icon) center/contain no-repeat; }` },
+  { css:`
 @keyframes bb-info-enter { from { opacity:0; translate:0 8px; scale:.98; } to { opacity:1; translate:0 0; scale:1; } }
 @keyframes bb-info-droplet { 0% { transform:translateY(8px) scale(.82,.72); } 35% { transform:translateY(-4px) scale(.94,1.16); } 65% { transform:translateY(0) scale(1.1,.94); } 82% { transform:translateY(-1px) scale(.985,1.015); } 100% { transform:none; } }
 @keyframes bb-info-breathe { 50% { opacity:.4; } }
@@ -453,7 +467,9 @@ ${STACK}[${MARK}-stack]:not(:has([${SOURCE}])) [${UNIT}][${OPEN}]:not([hidden]) 
 @media (prefers-reduced-motion:reduce) { [${MARK}-bar] *, [${MARK}-stack] [${UNIT}][${OPEN}] { animation:none !important; transition:none !important; } }
 @media (prefers-reduced-motion:reduce) { [${MARK}-stack] :is(${QUESTION}) { animation:none !important; transition:none !important; } }
 @media (prefers-reduced-motion:reduce) { [${MARK}-diff-previous] { display:none; } }
-`;
+` },
+];
+export const composerInfoCss = composerInfoCssFragments.map(fragment => fragment.css).join("");
 
 interface InfoItem { key: InfoKind; node: HTMLElement; trigger: HTMLElement | null; label: string; }
 function kindsOf(node: HTMLElement): InfoKind[] {
@@ -489,13 +505,13 @@ function nativeTrigger(node: HTMLElement, key: InfoKind): HTMLElement | null {
   return node.querySelector(selector);
 }
 
+// Mount composer information controls and own their document-wide style lifecycle.
 export function injectComposerInfo(document: Document): () => void {
   const view = document.defaultView;
   if (!view) return () => {};
   const style = document.createElement("style");
   style.id = "bb-chat-ui-composer-info";
-  style.textContent = composerInfoCss;
-  document.head.append(style);
+  const setDetailStyles = installDetailMedia(style, composerInfoCssFragments, composerInfoCss);
   const states = new Map<HTMLElement, ReturnType<typeof mount>>();
   let disposed = false;
   let frame = 0;
@@ -504,9 +520,19 @@ export function injectComposerInfo(document: Document): () => void {
   const widthDirty = new Set<HTMLElement>();
   const cardDirty = new Set<HTMLElement>();
   let discover = true;
+  let detailSyncDepth = 0;
+  let detailStylesFailed = false;
+
+  // Keep failed classification active for this injection and otherwise defer off until all states are classified.
+  function syncDetailStyles() {
+    if (disposed) return;
+    const enabled = detailStylesFailed || Array.from(states.values()).some(state => state.hasOpenDetail());
+    if (enabled || detailSyncDepth === 0) setDetailStyles(enabled);
+  }
 
   // Own one composer's native cards, information pills, and layout lifecycle.
   function mount(stack: HTMLElement) {
+    if (stack.querySelector(`[${UNIT}][${OPEN}]`)) setDetailStyles(true);
     stack.setAttribute(`${MARK}-stack`, "");
     const prMerge = interceptPrMerge(stack);
     const queueControls = attachQueueControls(stack);
@@ -1292,7 +1318,9 @@ export function injectComposerInfo(document: Document): () => void {
       if (node) pressUp(node);
     });
     bar.addEventListener("focusout", event => { const node = pressTarget(event.target); if (node) pressCancel(node); });
+    // Enable existing private open cards before adopting their unit marker and measuring them.
     const mark = (node: HTMLElement, attr: string, collection: Set<HTMLElement>) => {
+      if (attr === UNIT && node.hasAttribute(OPEN)) setDetailStyles(true);
       collection.add(node);
       if (!node.hasAttribute(attr)) node.setAttribute(attr, "");
     };
@@ -1691,7 +1719,8 @@ export function injectComposerInfo(document: Document): () => void {
         number.replaceChildren(current, previous);
       }
     };
-    const close = (restoreFocus = false, force = false) => {
+    // Release this native card only after a successful close and preserve styles during replacement.
+    const close = (restoreFocus = false, force = false, replacing = false) => {
       queueControls.close();
       cancelHover();
       if (!force && editing()) return false;
@@ -1711,6 +1740,7 @@ export function injectComposerInfo(document: Document): () => void {
       orb.setAttribute("aria-expanded", "false");
       for (const button of [...buttons.values(), ...stackIcons.values()]) button.setAttribute("aria-expanded", "false");
       if (restoreFocus) (lastTrigger?.isConnected && !lastTrigger.hidden ? lastTrigger : !orb.hidden ? orb : iconStack.querySelector<HTMLElement>("button") ?? [...buttons.values()].find(button=>!button.hidden))?.focus();
+      if (!replacing) syncDetailStyles();
       return true;
     };
     const archiveAction = (item?:InfoItem) => {
@@ -1743,18 +1773,20 @@ export function injectComposerInfo(document: Document): () => void {
         if (alert.textContent !== error) alert.textContent = error;
       } else alert?.remove();
     };
+    // Settle one open transaction after its internal close and native or menu rendering completes.
     const open = (key: InfoKind | "all", trigger: HTMLElement, selected?: InfoItem, preview = false) => {
-      openDetail(key, trigger, selected, preview);
-      syncJump();
+      try { openDetail(key, trigger, selected, preview); syncJump(); }
+      finally { syncDetailStyles(); }
     };
+    // Enable detail CSS synchronously before exposing a native card or invoking its disclosure.
     const openDetail = (key: InfoKind | "all", trigger: HTMLElement, selected?: InfoItem, preview = false) => {
-      if (editing() || stack.hasAttribute(`${MARK}-request`)) return;
+      if (disposed || editing() || stack.hasAttribute(`${MARK}-request`)) return;
       if (key !== "all" && !listed.includes(key)) return;
       cancelHover();
       if (active === key && hoverPreview && !preview && (!selected || selected.node === activeNode)) { hoverPreview = false; return; }
       if (preview && active !== null && (!hoverPreview || active === key)) return;
       if (active === key && (!selected || selected.node === activeNode)) { close(true); return; }
-      close(false, false);
+      close(false, false, true);
       hoverPreview = preview;
       lastTrigger = trigger;
       for (const [kind, button] of stackIcons) button.setAttribute("aria-expanded", String(kind === key));
@@ -1848,6 +1880,7 @@ export function injectComposerInfo(document: Document): () => void {
       }
       active = key;
       activeNode = item.node;
+      setDetailStyles(true);
       // The value names the family, so a shared host card shows only that family.
       item.node.setAttribute(OPEN, key);
       if (key === "parent") parentArm = item.trigger;
@@ -2509,7 +2542,16 @@ export function injectComposerInfo(document: Document): () => void {
       prMerge.sync();
       queueControls.sync();
     };
-    return { sync, fit, invalidateFit() { fitSignature = ""; measuredWidths = new WeakMap(); }, refreshCard:updateScrollHints, bar, close, editing, resize, cleanup() {
+    return { sync, fit,
+    // Drop cached measurements when this composer's geometry changes.
+    invalidateFit() { fitSignature = ""; measuredWidths = new WeakMap(); },
+    refreshCard:updateScrollHints, bar, close, editing, resize,
+    // Count private open markers only among this mounted composer's existing owned nodes.
+    hasOpenDetail() {
+      return stack.isConnected && Array.from(owned).some(node => node.isConnected && node.hasAttribute(UNIT) && node.hasAttribute(OPEN));
+    },
+    // Release this composer's resources and settle detail ownership after all private markers are removed.
+    cleanup() {
       prMerge.cleanup();
       queueControls.cleanup();
       document.removeEventListener("pointerup", releasePress);
@@ -2569,29 +2611,40 @@ export function injectComposerInfo(document: Document): () => void {
       backgroundAccordions.stop();
       for (const node of owned) { node.removeAttribute(UNIT); node.removeAttribute(OPEN); }
       for (const node of wrappers) node.removeAttribute(WRAP);
+      syncDetailStyles();
     } };
   }
+  // Reconcile mounted states and retain active detail media for this injection if classification fails.
   function sync() {
     frame = 0;
     if (disposed) return;
-    for (const [stack, state] of states) if (!stack.isConnected) { state.cleanup(); states.delete(stack); }
-    if (discover) {
-      discover = false;
-      for (const stack of Array.from(document.querySelectorAll<HTMLElement>(STACK))) {
-        if (states.has(stack) || !stack.querySelector(`[${SOURCE}]`)) continue;
-        states.set(stack, mount(stack));
-        dataDirty.add(stack);
+    detailSyncDepth++;
+    let completed = false;
+    try {
+      for (const [stack, state] of states) if (!stack.isConnected) { state.cleanup(); states.delete(stack); }
+      if (discover) {
+        discover = false;
+        for (const stack of Array.from(document.querySelectorAll<HTMLElement>(STACK))) {
+          if (states.has(stack) || !stack.querySelector(`[${SOURCE}]`)) continue;
+          states.set(stack, mount(stack));
+          dataDirty.add(stack);
+        }
       }
-    }
-    const data = new Set(dataDirty), widths = new Set(widthDirty), cards = new Set(cardDirty);
-    dataDirty.clear(); widthDirty.clear(); cardDirty.clear();
-    for (const [stack, state] of states) {
-      if (widths.has(stack)) state.invalidateFit();
-      if (data.has(stack)) state.sync();
-      else {
-        if (widths.has(stack)) state.fit();
-        if (cards.has(stack)) state.refreshCard();
+      const data = new Set(dataDirty), widths = new Set(widthDirty), cards = new Set(cardDirty);
+      dataDirty.clear(); widthDirty.clear(); cardDirty.clear();
+      for (const [stack, state] of states) {
+        if (widths.has(stack)) state.invalidateFit();
+        if (data.has(stack)) state.sync();
+        else {
+          if (widths.has(stack)) state.fit();
+          if (cards.has(stack)) state.refreshCard();
+        }
       }
+      completed = true;
+    } finally {
+      detailSyncDepth--;
+      if (completed) syncDetailStyles();
+      else if (!disposed) { detailStylesFailed = true; setDetailStyles(true); }
     }
   }
   const schedule = (target?: Element, geometry = false, card = false) => {

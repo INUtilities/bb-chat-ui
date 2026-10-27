@@ -2,6 +2,7 @@ import test, { beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { resolvedStyle } from "./test-style.ts";
+import { activeStyleRules } from "./test-active-style.ts";
 import { injectComposerInfo, fitComposerInfo, composerInfoCss, scrollOverflowEdges } from "./composer-info.ts";
 import { infoKinds } from "./composer-info-settings.ts";
 import { queuedMessagesCss } from "./queued-messages.ts";
@@ -351,6 +352,7 @@ test("PR navigation follows native link replacement and restores attributes owne
   }finally{stop();f.dom.window.close();}
 });
 
+// Inspect the native PR icon through active rules while preserving its title and navigation assertions.
 test("PR header shows the SDK title on one line and keeps a separate GitHub link", async () => {
   const f=fixture();
   const source=f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
@@ -369,7 +371,8 @@ test("PR header shows the SDK title on one line and keeps a separate GitHub link
     assert.equal(link.href,'https://github.com/example/repo/pull/42');
     assert.equal(link.getAttribute('title'),'GitHub에서 PR 열기');
     assert.equal(link.nextElementSibling,title,'the GitHub link is before the PR title');
-    const iconRule=[...f.document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).find(rule=>'selectorText' in rule && rule.selectorText.endsWith('a[aria-label^="Pull request "]::after')) as CSSStyleRule;
+    // Find the actual active icon leaf inside the product's conditional media.
+    const iconRule=activeStyleRules(f.document).rules.find(rule=>'selectorText' in rule && rule.selectorText.endsWith('a[aria-label^="Pull request "]::after')) as CSSStyleRule;
     assert.equal(iconRule.style.content,'""');
     assert.equal(iconRule.style.width,"12px");
     assert.match(iconRule.style.getPropertyValue('mask'),/data:image\/svg\+xml/);
@@ -1099,6 +1102,7 @@ test("native card layout padding does not add another indent inside managed popo
   } finally { stop(); f.dom.window.close(); }
 });
 
+// Inspect active background paint without changing native heading or row expectations.
 test("popover headings stay flat on focus while background rows gain an inset without changing their cursor", () => {
   const f = fixture();
   const stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
@@ -1115,7 +1119,8 @@ test("popover headings stay flat on focus while background rows gain an inset wi
   const stop = injectComposerInfo(f.document);
   try {
     f.click('[data-bb-chat-ui-info-trigger="background"]');
-    const paintRule=Array.from(f.document.styleSheets).flatMap(sheet=>Array.from(sheet.cssRules)).find(rule=>'selectorText' in rule && String(rule.selectorText).includes('#thread-background-commands-card-body') && rule.cssText.includes(':hover')) as CSSStyleRule;
+    // Find the actual active hover leaf inside the product's conditional media.
+    const paintRule=activeStyleRules(f.document).rules.find(rule=>'selectorText' in rule && String(rule.selectorText).includes('#thread-background-commands-card-body') && rule.cssText.includes(':hover')) as CSSStyleRule;
     assert.ok(paintRule);
     // jsdom drops color-mix declarations; validate the face in the source too.
     assert.ok(composerInfoCss.includes(`${paintRule.selectorText} { background-color:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }`));
