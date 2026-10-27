@@ -439,3 +439,10 @@ phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송
 - 독립 접힘·펼침 시트는 `attachSheet`, `phoneSheetCss`와 회귀 테스트를 디자인 레퍼런스로 보존한다.
   제품의 정보 팝오버에는 연결하지 않는다. 재사용 규격과 적용 범위는
   [떠 있는 옵션 시트 레퍼런스](design-references/floating-option-sheet.md)에 기록한다.
+
+### phone 모델 시트의 입력 포커스
+
+모델 옵션 시트가 열려 있는 동안 그 시트를 연 컴포저에만 `inert`를 적용한다.
+native editor의 프로그램 포커스 복원이 Effort·Fast mode·모델 조작 뒤에
+컴포저 키보드를 열지 않게 한다. 포털의 검색창은 계속 입력할 수 있다.
+시트 닫기·제거·플러그인 해제 시 원래 `inert` 값을 복구한다. desktop에는 적용하지 않는다.

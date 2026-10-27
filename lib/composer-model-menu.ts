@@ -110,9 +110,20 @@ export function injectComposerModelMenus(document: Document): () => void {
         if (cards.has(card) || document.getElementById(card.getAttribute("aria-labelledby") ?? "")?.textContent?.trim() !== "Model") continue;
         const previous = card.getAttribute(MODEL_MENU_MARK);
         card.setAttribute(MODEL_MENU_MARK, "");
+        // Native editor focus restoration also runs while its phone drawer is open.
+        // The portaled controls remain interactive; only their underlying composer is inert.
+        const composer = phoneTrigger.closest<HTMLElement>('[data-promptbox]');
+        const previousInert = composer?.getAttribute('inert') ?? null;
+        if (composer && !composer.contains(card)) composer.setAttribute('inert', '');
         const stopEffort = injectComposerEffort(card);
         const stopScroll = trackModelScroll(card);
-        cards.set(card, { previous, trigger: phoneTrigger, stop: () => { stopScroll(); stopEffort(); }, phone: true });
+        cards.set(card, { previous, trigger: phoneTrigger, stop: () => {
+          stopScroll(); stopEffort();
+          if (composer && !composer.contains(card)) {
+            if (previousInert === null) composer.removeAttribute('inert');
+            else composer.setAttribute('inert', previousInert);
+          }
+        }, phone: true });
       }
     }
     discoverSubmenus();
