@@ -930,7 +930,7 @@ export function injectComposerGlass(document: Document): () => void {
     const compact = new Set<Element>(), images = new Set<Element>(), sections = new Set<Element>();
     for (const footer of footers) {
       if (footer.querySelector("[data-promptbox-compact]")) compact.add(footer);
-      for (const button of Array.from(footer.querySelectorAll('[data-promptbox] button, [data-promptbox] [role="button"]'))) if (button.querySelector("img")) images.add(button);
+      for (const button of Array.from(footer.querySelectorAll('[data-promptbox] button, [data-promptbox] [role="button"]'))) if (button.querySelector("img, video")) images.add(button);
       const section = footer.querySelector(STACK)?.querySelector(PILL)?.closest("section");
       if (section) sections.add(section);
     }

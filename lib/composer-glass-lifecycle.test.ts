@@ -297,3 +297,18 @@ test('composer resize reads geometry before changing the inherited fade height',
  try{assert.equal(plate.style.getPropertyValue('--bb-chat-ui-fade-height'),'','the fade variable must not invalidate the entire composer subtree');assert.ok(events.includes('fade'));assert.ok(events.lastIndexOf('read')<events.indexOf('fade'),'fade writes must not force the following control/composer reads to recalculate style');}
  finally{stop();f.cleanup();}
 });
+
+
+test('video previews keep the same native attachment corners as images across replacement and cleanup',async()=>{
+ const f=fixture(),first=f.add();first.composer.innerHTML='<button data-media><video></video></button><button data-remove aria-label="Remove video"></button><button data-file>note.txt</button>';
+ const stop=injectComposerGlass(f.document);try{
+  await f.tick();await f.paint();const media=first.composer.querySelector('[data-media]')!;
+  assert.ok(media.hasAttribute('data-bb-chat-ui-has-image'),'video preview escapes the circular action button rule');
+  assert.equal(first.composer.querySelector('[data-remove]')!.hasAttribute('data-bb-chat-ui-has-image'),false);
+  assert.equal(first.composer.querySelector('[data-file]')!.hasAttribute('data-bb-chat-ui-has-image'),false,'ordinary file style is preserved');
+  media.innerHTML='<img alt="preview">';await f.tick();await f.paint();assert.ok(media.hasAttribute('data-bb-chat-ui-has-image'));
+  media.replaceChildren();await f.tick();await f.paint();assert.equal(media.hasAttribute('data-bb-chat-ui-has-image'),false);
+  media.innerHTML='<video></video>';await f.tick();await f.paint();assert.ok(media.hasAttribute('data-bb-chat-ui-has-image'));
+  stop();assert.equal(media.hasAttribute('data-bb-chat-ui-has-image'),false);
+ }finally{stop();f.cleanup()}
+});
