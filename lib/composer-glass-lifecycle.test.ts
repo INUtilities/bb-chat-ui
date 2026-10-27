@@ -277,3 +277,23 @@ test('a quick reversal samples the shared curve before native transition:none co
     assert.ok(starts.some(radius=>radius>24&&radius<25),'use the intermediate corner, not the old 25px destination');
   } finally {stop();f.cleanup();}
 });
+
+test('composer resize reads geometry before changing the inherited fade height',()=>{
+ const f=fixture(),item=f.add();
+ const events:string[]=[];
+ const plate=item.footer.querySelector<HTMLElement>(':scope > .relative')!;
+ const fade=f.document.createElement('div');fade.setAttribute('data-overflow-fade','above');plate.append(fade);
+ const stack=item.footer.querySelector<HTMLElement>('.grid')!;
+ stack.setAttribute('data-bb-chat-ui-info-stack','');
+ for(const node of [plate,stack,item.composer,item.footer.querySelector<HTMLElement>('.chat-prompt-box')!]){
+  const read=node.getBoundingClientRect.bind(node);
+  node.getBoundingClientRect=()=>{events.push('read');return read();};
+ }
+ const set=fade.style.setProperty.bind(fade.style);
+ fade.style.setProperty=(key,value,priority)=>{if(key==='--bb-chat-ui-fade-height')events.push('fade');set(key,value,priority);};
+ // Keep a valid fade target, independent of jsdom's absent layout.
+ plate.getBoundingClientRect=()=>{events.push('read');return {bottom:100} as DOMRect;};
+ const stop=injectComposerGlass(f.document);
+ try{assert.equal(plate.style.getPropertyValue('--bb-chat-ui-fade-height'),'','the fade variable must not invalidate the entire composer subtree');assert.ok(events.includes('fade'));assert.ok(events.lastIndexOf('read')<events.indexOf('fade'),'fade writes must not force the following control/composer reads to recalculate style');}
+ finally{stop();f.cleanup();}
+});

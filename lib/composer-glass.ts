@@ -945,8 +945,8 @@ export function injectComposerGlass(document: Document): () => void {
       if (!(footerNode instanceof HTMLElement)) continue;
       currentFooters.add(footerNode);
       if (!footerNode.hasAttribute(GLASS_MARK)) footerNode.setAttribute(GLASS_MARK, "");
-      alignFade(footerNode);
-      alignComposerControls(footerNode);
+      // Read before writes; the fade belongs to its leaf, not the whole composer subtree.
+      const fade = readFade(footerNode);
       const composers = footerNode.querySelectorAll(COMPOSER);
       for (let composerIndex = 0; composerIndex < composers.length; composerIndex += 1) {
         const composer = composers.item(composerIndex);
@@ -957,6 +957,8 @@ export function injectComposerGlass(document: Document): () => void {
           if (height > 0) idleHeights.set(composer, height);
         }
       }
+      alignComposerControls(footerNode);
+      if (fade) applyFadeHeight(fade.target, fade.height);
     }
     for (const node of glassFooters) if (!currentFooters.has(node)) node.removeAttribute(GLASS_MARK);
     glassFooters.clear();
@@ -1046,7 +1048,7 @@ export function injectComposerGlass(document: Document): () => void {
       const frame = frames.item(index);
       if (frame instanceof HTMLElement) frame.style.removeProperty(PLATE_HEIGHT);
     }
-    const plates = document.querySelectorAll(`${FOOTER} > .relative`);
+    const plates = document.querySelectorAll(`${FOOTER} [data-overflow-fade="above"]`);
     for (let index = 0; index < plates.length; index += 1) {
       const plate = plates.item(index);
       if (plate instanceof HTMLElement) plate.style.removeProperty(FADE_HEIGHT);
@@ -1071,24 +1073,21 @@ function toggleMark(node: Element, name: string, on: boolean): void {
   if (node.hasAttribute(name) !== on) node.toggleAttribute(name, on);
 }
 
-function alignFade(footer: HTMLElement): void {
+function readFade(footer: HTMLElement): { target: HTMLElement; height: number } | null {
   const plate = footer.querySelector(PLATE);
-  if (!(plate instanceof HTMLElement)) return;
+  const target = footer.querySelector('[data-overflow-fade="above"]');
+  if (!(plate instanceof HTMLElement) || !(target instanceof HTMLElement)) return null;
   const composer = footer.querySelector(COMPOSER);
   if (!(composer instanceof HTMLElement)) {
-    plate.style.removeProperty(FADE_HEIGHT);
-    return;
+    return { target, height: 0 };
   }
   const plateRect = plate.getBoundingClientRect();
   const composerRect = composer.getBoundingClientRect();
-  applyFadeHeight(
-    plate,
-    fadeHeight({
-      plateBottom: plateRect.bottom,
-      composerTop: composerRect.top,
-      composerHeight: composerRect.height,
-    }),
-  );
+  return { target, height: fadeHeight({
+    plateBottom: plateRect.bottom,
+    composerTop: composerRect.top,
+    composerHeight: composerRect.height,
+  }) };
 }
 
 function alignComposerControls(footer: HTMLElement): void {

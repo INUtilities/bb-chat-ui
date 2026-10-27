@@ -446,3 +446,7 @@ phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송
 native editor의 프로그램 포커스 복원이 Effort·Fast mode·모델 조작 뒤에
 컴포저 키보드를 열지 않게 한다. 포털의 검색창은 계속 입력할 수 있다.
 시트 닫기·제거·플러그인 해제 시 원래 `inert` 값을 복구한다. desktop에는 적용하지 않는다.
+
+컴포저 크기 변화의 배치 갱신은 fade·컴포저 좌표를 먼저 읽고 CSS 값을 나중에 쓴다.
+fade 높이 변수는 비어 있는 `[data-overflow-fade="above"]`에 직접 둔다.
+컴포저 전체에 변수를 상속하거나 fade를 쓴 직후 컴포저 높이를 다시 읽지 않는다.
