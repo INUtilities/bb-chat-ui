@@ -219,7 +219,7 @@ test("destroy restores the native node", () => {
 
 const flush = async (w: Window) => { await new Promise(r => setTimeout(r, 0)); await new Promise(r => w.requestAnimationFrame(() => r(null))); };
 
-test("the content script styles and attaches only on phone and follows the device attribute", async () => {
+test("the content script styles only phone option drawers and follows the device attribute", async () => {
   const f = fixture("desktop"); stubLayout(f.card, 300);
   const stop = injectPhoneSheet(f.d);
   try {
@@ -229,13 +229,13 @@ test("the content script styles and attaches only on phone and follows the devic
     f.d.documentElement.setAttribute("data-bb-chat-ui-root-device", "phone");
     await flush(f.w);
     assert.ok(f.d.getElementById(PHONE_SHEET_STYLE_ID));
-    assert.equal(f.card.getAttribute(SHEET), "collapsed");
+    assert.equal(f.card.hasAttribute(SHEET), false);
     f.card.removeAttribute("data-bb-chat-ui-info-open");
     await flush(f.w);
     assert.equal(f.card.hasAttribute(SHEET), false);
     f.card.setAttribute("data-bb-chat-ui-info-open", "goal");
     await flush(f.w);
-    assert.equal(f.card.getAttribute(SHEET), "collapsed");
+    assert.equal(f.card.hasAttribute(SHEET), false);
     f.d.documentElement.setAttribute("data-bb-chat-ui-root-device", "desktop");
     await flush(f.w);
     assert.equal(f.d.getElementById(PHONE_SHEET_STYLE_ID), null);
@@ -243,15 +243,15 @@ test("the content script styles and attaches only on phone and follows the devic
   } finally { stop(); f.dom.window.close(); }
 });
 
-test("a drag-close closes through the card's own dismiss action", async () => {
+test("an explicitly attached reference sheet closes through its supplied native dismiss action", async () => {
   const f = fixture(); stubLayout(f.card, 300);
   let dismissed = 0;
   f.d.getElementById("close")!.addEventListener("click", () => dismissed++);
   Object.defineProperty(f.w, "matchMedia", { configurable: true, value: () => ({ matches: true }) });
-  const stop = injectPhoneSheet(f.d);
+  const sheet = attachSheet(f.card, { ...sheetOptions().options, onClose: () => f.d.getElementById("close")!.click() });
   try {
     await flush(f.w);
     pointer(f.w, f.card, "pointerdown", 546); pointer(f.w, f.w, "pointermove", 556); pointer(f.w, f.w, "pointermove", 720); pointer(f.w, f.w, "pointerup", 720);
     assert.equal(dismissed, 1);
-  } finally { stop(); f.dom.window.close(); }
+  } finally { sheet.destroy(); f.dom.window.close(); }
 });

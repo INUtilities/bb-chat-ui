@@ -36,7 +36,7 @@ function ComposerBridges() {
 export default definePluginApp((app) => {
   app.contentScripts.register({ id:"pill-styles", mount:() => injectPillStyles(document) });
   app.contentScripts.register({ id:"quote-preview", mount:() => injectQuotePreview(document) });
-  // phone에서만 stylesheet를 두고 정보 카드·인용 원문을 떠 있는 하단 시트로 띄운다.
+  // phone의 +·모델·전송·PR 머지 옵션 drawer만 떠 있는 모양으로 꾸민다.
   app.contentScripts.register({ id:"phone-sheet", mount:() => injectPhoneSheet(document) });
   // Lucide 0.300.0 icons/activity.svg (ISC), inherited Feather geometry; see THIRD_PARTY_NOTICES.md.
   app.experimental_icons.register({

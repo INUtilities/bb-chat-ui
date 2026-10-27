@@ -60,6 +60,6 @@
 - UI 구현 때마다 같은 제품 코드를 직접 쓰고 검수 데이터를 주입하는 데모를 함께 갱신해 사용자에게 띄운다. 데모는 `thread-storage`에 두고 검증한 커밋을 표시하며, 외부 변경 액션만 검수용 콜백으로 대체한다.
 - 정보 팝오버 제목은 읽기 전용이며, 제목·액션·닫기는 세로 중앙선을 맞추되 phone 일반 카드의 닫기는 사용자 시각 보정으로 0.5px 위에 둔다. 닫기 기하 아이콘은 desktop 8px·phone 9px, SVG stroke 1.5이며 버튼·터치 영역은 유지한다. PR·Parent 단일 행은 기존 닫기 top 8px를 유지한다. 실제 액션과 내부 목록 펼치기는 유지한다. 목록 hover는 상태별로 달라지지 않게 padding·radius·전환을 통일하며, 장식용 행에 pointer를 추가하지 않는다.
 - 정보 pill 팝오버와 전체 정보 목록은 Code Diff의 공통 최대 높이 변수를 공유한다. 내용이 짧으면 내용만큼만 높아지고, 긴 내용은 해당 상한에서 스크롤한다.
-- phone에서는 정보 카드·전체 정보 목록·인용 원문을 떠 있는 하단 시트로 띄운다. 접힘은 좌우·아래 8px·모서리 30px·위 상한 `min(화면 50%, 416px)`, 펼침은 양옆에 붙고 스레드 창 위 8px까지다. 손잡이 줄로 끌고, 접힘에서는 본문 끌기도 시트를 움직인다. BB drawer(+·모델·PR 머지)는 떠 있는 모양과 frost만 바꾼다. 시트 stylesheet는 phone일 때만 설치하고 desktop CSS는 바꾸지 않는다. 자세한 규칙은 `docs/composer-popovers.md`의 phone 하단 시트 절이다.
+- phone 하단 시트는 `+`·모델 선택·전송 옵션·PR 머지 방식 같은 컴포저 옵션 메뉴에만 적용한다. 좌우·아래 8px·모서리 30px·손잡이 40×4px·frost 한 겹을 쓰며 BB drawer의 높이·선택·끌기·닫기는 유지한다. 정보 pill 상세·전체 정보 목록·인용 원문은 기존 팝오버를 유지한다. stylesheet는 phone일 때만 설치하고 desktop CSS는 바꾸지 않는다. 독립 접힘·펼침 controller는 디자인 레퍼런스 데모에만 명시적으로 연결한다. 자세한 규칙은 `docs/composer-popovers.md`의 phone 옵션 메뉴 하단 시트 절이다.
 
 - 문장 안 reference pill(인용·멘션·예전 인용)은 desktop 22px·phone 24px이며 글자는 13/16·14/18이다. 세로 padding은 0, 세로 margin은 두 기기 모두 −2px이며 가로 margin은 3px·4px다. −2px는 desktop 입력 22px·보낸 줄 24px, phone 입력 27px·보낸 줄 24px의 증가를 막는 보정이다. × 도형은 desktop 8px·phone 9px이며 보이는 원은 16px·18px이고 phone의 투명한 가상 터치 영역은 24px 이상이다. 라벨만 잘라 말줄임하며 일반 글줄의 높이를 늘리지 않는다. 상단 navigation pill 32px와 첨부 칩은 이 규칙의 대상이 아니다.

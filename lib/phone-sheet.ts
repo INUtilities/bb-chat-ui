@@ -3,7 +3,9 @@ import { EASE } from "./motion.ts";
 import { postHaptic, readHapticBridge } from "./send-haptic.ts";
 
 /**
- * phone에서 Chat UI가 띄우거나 꾸미는 팝오버를 떠 있는 하단 시트로 바꾼다.
+ * phone의 컴포저 옵션 drawer를 떠 있는 하단 시트로 꾸민다.
+ * 독립 시트 controller는 확정된 디자인 레퍼런스·데모에서 재사용한다.
+ * 실제 앱의 정보 pill·전체 정보·인용 원문에는 controller를 연결하지 않는다.
  * DOM을 옮기거나 새 노드를 끼우지 않는다. 대상 요소에 표식과 inline CSS 변수만 쓰고,
  * 손잡이는 배경 그림이라 grid·flex 카드의 배치를 바꾸지 않는다.
  * 컴포저 조상에는 container-type(layout containment)이 있어 position:fixed의 기준이 화면이 아니다.
@@ -20,15 +22,9 @@ const OPEN_MS = 320;
 const CLOSE_MS = 260;
 const GRAB = "color-mix(in oklab,var(--muted-foreground) 45%,transparent)";
 
-/** 시트로 띄우는 Chat UI 카드: 정보 pill 상세, 전체 정보 목록, 인용 원문. */
-export const SHEET_TARGETS = [
-  "[data-bb-chat-ui-info-stack] [data-bb-chat-ui-info-unit][data-bb-chat-ui-info-open]:not([hidden])",
-  "[data-bb-chat-ui-info-menu]",
-  "[data-bb-chat-ui-quote-preview-card]",
-].join(", ");
-
 /** 떠 있는 모양만 바꾸는 BB drawer. 위치·끌기·닫기는 BB가 소유해 펼친 단계는 없다. */
 export const PHONE_DRAWERS = [
+  '[data-persistent-drawer-content][data-bb-plugin="bb--composer"]',
   '[data-persistent-drawer-content]:has(> div[aria-label="Prompt actions"])',
   "[data-persistent-drawer-content][data-bb-chat-ui-pr-menu]",
   "[data-persistent-drawer-content][data-bb-chat-ui-model-menu]",
@@ -36,6 +32,7 @@ export const PHONE_DRAWERS = [
 
 // :has() cannot nest, so each backdrop names its drawer by the drawer's own child or mark.
 const BACKDROPS = [
+  ':has(+ [data-persistent-drawer-content][data-bb-plugin="bb--composer"])',
   ':has(+ [data-persistent-drawer-content] > div[aria-label="Prompt actions"])',
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-pr-menu])",
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-model-menu])",
@@ -52,12 +49,18 @@ export const SHEET_GEOMETRY: SheetGeometry = { inset: 8, bottom: 8, padTop: 24, 
 // :not(#…)는 id 하나만큼 우선순위를 올린다. 원래 카드 규칙을 이기되 그 문자열은 건드리지 않는다.
 const S = `${PHONE} [${SHEET}]:not(#bb-chat-ui-sheet)`;
 
-export function phoneSheetCss(): string {
+function phoneSheetTokensCss(): string {
   return `
 ${PHONE} {
   --bb-chat-ui-sheet-inset:${SHEET_GEOMETRY.inset}px; --bb-chat-ui-sheet-radius:30px; --bb-chat-ui-sheet-radius-expanded:30px;
   --bb-chat-ui-sheet-pad-top:${SHEET_GEOMETRY.padTop}px; --bb-chat-ui-sheet-grab-w:40px; --bb-chat-ui-sheet-grab-h:4px; --bb-chat-ui-sheet-grab-top:8px;
 }
+`;
+}
+
+/** 독립 시트 데모용 CSS. 실제 앱에는 아래의 옵션 drawer CSS만 설치한다. */
+export function phoneSheetCss(): string {
+  return `${phoneSheetTokensCss()}
 ${S} {
   --bb-chat-ui-sheet-p:0;
   --bb-chat-ui-card-close-top:calc(var(--bb-chat-ui-sheet-pad-top) + (var(--bb-chat-ui-card-head) - var(--bb-chat-ui-card-icon)) / 2 - .5px);
@@ -437,71 +440,40 @@ export function threadWindowBounds(el: HTMLElement): SheetBounds {
   return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, keyboard, safeBottom: keyboard ? 0 : readSafeBottom(document) };
 }
 
-/** phone일 때만 시트 stylesheet를 두고, 열린 대상 카드마다 시트를 붙인다. desktop은 아무것도 하지 않는다. */
+/** phone 옵션 drawer에만 stylesheet를 둔다. 정보 카드·인용과 BB의 native 제스처는 그대로 둔다. */
 export function injectPhoneSheet(document: Document): () => void {
   const view = document.defaultView;
   if (!view) return () => {};
   const root = document.documentElement;
-  const sheets = new Map<HTMLElement, SheetController>();
   let style: HTMLStyleElement | null = null;
   let frame = 0;
   let disposed = false;
 
   const phone = () => root.getAttribute("data-bb-chat-ui-root-device") === "phone";
-  const dismiss = (el: HTMLElement) => {
-    const button = el.querySelector<HTMLElement>("[data-bb-chat-ui-info-dismiss], [data-bb-chat-ui-card-close]");
-    if (button) { button.click(); return; }
-    document.dispatchEvent(new view.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  };
-
   function sync() {
     frame = 0;
     if (disposed) return;
     if (!phone()) {
-      for (const sheet of sheets.values()) sheet.destroy();
-      sheets.clear();
       style?.remove(); style = null;
-      bodyObserver.disconnect();
       return;
     }
     if (!style) {
       style = document.createElement("style");
       style.id = PHONE_SHEET_STYLE_ID;
-      style.textContent = phoneSheetCss() + phoneDrawerCss();
+      style.textContent = phoneSheetTokensCss() + phoneDrawerCss();
       document.head.append(style);
-      bodyObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-bb-chat-ui-info-open", "hidden"] });
-    }
-    const open = new Set(Array.from(document.querySelectorAll<HTMLElement>(SHEET_TARGETS)));
-    for (const [el, sheet] of sheets) if (!open.has(el) || !el.isConnected) { sheet.destroy(); sheets.delete(el); }
-    for (const el of open) {
-      if (sheets.has(el)) continue;
-      sheets.set(el, attachSheet(el, { bounds: () => threadWindowBounds(el), onClose: () => dismiss(el) }));
     }
   }
   const schedule = () => { if (!frame && !disposed) frame = view.requestAnimationFrame(sync); };
-  const relevant = (node: Node) => node instanceof view.Element && (node.matches(SHEET_TARGETS) || !!node.querySelector(SHEET_TARGETS) || sheets.has(node as HTMLElement));
-  const bodyObserver = new view.MutationObserver(records => {
-    for (const record of records) {
-      if (record.type === "attributes") {
-        const target = record.target as Element;
-        if (sheets.has(target as HTMLElement) || target.matches(SHEET_TARGETS) || target.closest("[data-bb-chat-ui-info-stack]")) { schedule(); return; }
-        continue;
-      }
-      if ([...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some(relevant)) { schedule(); return; }
-      if (sheets.size && Array.from(record.removedNodes).length && [...sheets.keys()].some(el => !el.isConnected)) { schedule(); return; }
-    }
-  });
   const rootObserver = new view.MutationObserver(schedule);
   rootObserver.observe(root, { attributes: true, attributeFilter: ["data-bb-chat-ui-root-device"] });
   schedule();
 
   return () => {
+    if (disposed) return;
     disposed = true;
     if (frame) view.cancelAnimationFrame(frame);
     rootObserver.disconnect();
-    bodyObserver.disconnect();
-    for (const sheet of sheets.values()) sheet.destroy();
-    sheets.clear();
     style?.remove();
   };
 }
