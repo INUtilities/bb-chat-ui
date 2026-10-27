@@ -66,7 +66,8 @@ ${MODELS} { width:20rem !important; max-width:min(20rem,calc(100dvw - .5rem)) !i
 [data-bb-chat-ui-effort] [data-effort-tick][data-major] { width:1.5px; margin-left:-.75px; }
 [data-bb-chat-ui-effort] [data-effort-label] { position:absolute; top:32px; max-width:min(48px,calc(100% / var(--bb-effort-intervals))); padding:0 2px; overflow:hidden; text-overflow:ellipsis; text-align:center; transform:translateX(-50%); color:var(--muted-foreground); font-size:10px; line-height:15px; font-weight:550; white-space:nowrap; }
 [data-bb-chat-ui-effort] [data-effort-label][data-current] { color:var(--foreground); }
-[data-bb-chat-ui-effort] [data-effort-head] { position:absolute; left:-.75px; top:6px; height:3px; width:1.5px; border-radius:999px; background:var(--foreground); }
+[data-bb-chat-ui-effort] [data-effort-pin] { z-index:2; }
+[data-bb-chat-ui-effort] [data-effort-head] { position:absolute; left:-.75px; top:6px; height:22px; width:1.5px; border-radius:999px; background:var(--foreground); box-shadow:0 0 0 1px color-mix(in oklab,var(--popover) 80%,transparent); }
 [data-bb-chat-ui-effort] [data-effort-head]::before { content:""; position:absolute; top:-1px; left:-.5px; width:2.5px; height:2.5px; border-radius:999px; background:var(--foreground); }
 [data-bb-chat-ui-effort] input { position:absolute; top:50%; left:50%; width:1px; height:1px; margin:0; padding:0; opacity:0; pointer-events:none; }
 [data-bb-chat-ui-effort]:has(input:focus-visible) [data-effort-track] { outline:2px solid var(--ring); outline-offset:2px; border-radius:10px; }

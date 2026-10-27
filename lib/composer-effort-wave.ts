@@ -40,9 +40,9 @@ export function mountEffortWave(track: HTMLElement) {
     for (const bar of bars) {
       const distance = bar.coordinate / 24 - position;
       const focus = Math.exp(-distance * distance / (2 * width * width));
-      const texture = .44 + .56 * bar.noise;
+      const texture = .25 + .75 * bar.noise;
       const height = 3 + 12 * focus * (bar.major ? 1 : texture)
-        + (bar.major ? 3 : bar.mid ? 1 : 0) + (bar.major ? 0 : bar.noise * 1.2);
+        + (bar.major ? 3 : bar.mid ? 1 : 0) + (bar.major ? 0 : bar.noise * 1.8);
       const pulse = media?.matches ? 0 : ripple(bar.coordinate / 24, now);
       bar.node.style.height = `${Math.max(3, height + pulse)}px`;
       bar.node.style.opacity = String(.15 + .5 * focus + (bar.major ? .15 : bar.noise * .07));
@@ -77,20 +77,20 @@ export function mountEffortWave(track: HTMLElement) {
     else { frame = 0; lastTime = 0; }
   }
 
-  // Rebuild fixed ticks only when a provider changes its number of supported options.
+  // Rebuild spaced ticks only when a provider changes its number of supported options.
   function rebuild(count: number): void {
     scale.replaceChildren();
     scale.style.setProperty("--bb-effort-intervals", String(last));
     bars = [];
     labels = [];
-    for (let coordinate = -12; coordinate <= last * 24 + 12; coordinate++) {
+    for (let coordinate = -12; coordinate <= last * 24 + 12; coordinate += 2) {
       const node = document.createElement("i");
       node.setAttribute("data-effort-tick", "");
       const major = coordinate % 24 === 0, mid = !major && coordinate % 12 === 0;
       node.toggleAttribute("data-major", major);
       node.style.left = `${coordinate / (last * 24) * 100}%`;
       scale.append(node);
-      const noise = grain(coordinate) * .85 + (grain(coordinate - 1) + grain(coordinate + 1)) * .075;
+      const noise = grain(coordinate);
       bars.push({ node, coordinate, major, mid, noise });
     }
     for (let step = 0; step < count; step++) {

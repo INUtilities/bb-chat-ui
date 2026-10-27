@@ -112,7 +112,9 @@ test("the compact waveform keeps tick positions fixed and settles interrupted pi
     const slider = f.range();
     const ticks = Array.from(f.card.querySelectorAll<HTMLElement>('[data-effort-tick]'));
     const pin = f.card.querySelector<HTMLElement>('[data-effort-pin]')!;
-    assert.ok(ticks.length > 70, "dense waveform ticks replace the old filled track");
+    assert.equal(ticks.length, 49, "the four-option waveform uses wider bar spacing");
+    assert.equal(ticks.filter(tick => tick.hasAttribute('data-major')).length, LABELS.length,
+      "every supported option retains its longer tick");
     const lefts = ticks.map(tick => tick.style.left);
     const resting = pin.style.transform;
     slider.dispatchEvent(new f.dom.window.KeyboardEvent("keydown", { key: "End", bubbles: true }));
