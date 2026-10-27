@@ -505,6 +505,7 @@ export function injectComposerInfo(document: Document): () => void {
   const cardDirty = new Set<HTMLElement>();
   let discover = true;
 
+  // Own one composer's native cards, information pills, and layout lifecycle.
   function mount(stack: HTMLElement) {
     stack.setAttribute(`${MARK}-stack`, "");
     const prMerge = interceptPrMerge(stack);
@@ -2055,8 +2056,10 @@ export function injectComposerInfo(document: Document): () => void {
       }
     };
     let resizeWidth: number | undefined;
+    // Refit width changes while keeping open-card scroll edges aligned on height changes.
     const resize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(entries => {
       const width = entries?.find(entry => entry.target === stack)?.contentRect.width;
+      if (width !== undefined && width === resizeWidth) { updateScrollHints(); return; }
       if (width === undefined || width !== resizeWidth) measuredWidths = new WeakMap();
       resizeWidth = width;
       fit();
@@ -2217,7 +2220,15 @@ export function injectComposerInfo(document: Document): () => void {
     secretObserver.observe(stack, { childList:true, subtree:true, attributes:true, attributeFilter:["data-expanded", "hidden"] });
     let suspended = false;
     let fitSignature = "";
-    const currentFitSignature = () => JSON.stringify([signature, threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(),
+    // Fit only changed pill content, membership, artwork, or layout inputs, not detail revisions.
+    const currentFitSignature = () => JSON.stringify([threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(),
+      listed, showInactive, items.filter(item => item.key !== "diff" || readDiff()?.presentation?.visible !== false).map(item => item.key),
+      [...buttons].map(([key, button]) => [key, buttonContent.get(button)]),
+      // Match the artwork fallback used when rendering catalog-only folded icons.
+      listed.map(key => {
+        const item = items.find(item => item.key === key);
+        return (emptyIcon(key) ?? item?.trigger?.querySelector("svg,[data-icon-root]") ?? item?.node.querySelector("svg,[data-icon-root]"))?.outerHTML;
+      }),
       ...["device", "viewport", "hit-target"].map(key => document.documentElement.getAttribute(`data-bb-chat-ui-root-${key}`))]);
     const sync = () => {
       pruneDisconnected();
