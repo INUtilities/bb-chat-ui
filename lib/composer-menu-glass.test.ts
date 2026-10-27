@@ -225,7 +225,10 @@ test("the effort waveform uses a compact track, rounded bars, and an integrated 
     assert.equal(declaration(f.document, track, "height"), "48px");
     assert.equal(declaration(f.document, bar, "border-radius"), "999px");
     assert.equal(declaration(f.document, bar, "transform"), "translateY(-50%)");
-    assert.ok(track.querySelector('[data-effort-head]'));
+    const head = track.querySelector('[data-effort-head]')!;
+    const pin = track.querySelector('[data-effort-pin]')!;
+    assert.equal(declaration(f.document, head, "height"), "22px");
+    assert.equal(declaration(f.document, pin, "z-index"), "2");
     assert.equal(track.querySelector('[data-effort-fill]'), null);
   } finally { stop(); f.restore(); }
 });
