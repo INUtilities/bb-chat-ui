@@ -450,3 +450,8 @@ native editor의 프로그램 포커스 복원이 Effort·Fast mode·모델 조�
 컴포저 크기 변화의 배치 갱신은 fade·컴포저 좌표를 먼저 읽고 CSS 값을 나중에 쓴다.
 fade 높이 변수는 비어 있는 `[data-overflow-fade="above"]`에 직접 둔다.
 컴포저 전체에 변수를 상속하거나 fade를 쓴 직후 컴포저 높이를 다시 읽지 않는다.
+
+phone 모델 옵션의 Fast mode·provider 전환·Effort 단계 변경은 `impact-light`를 낸다.
+같은 provider·같은 Effort 단계는 반복하지 않으며 공통 400ms 간격을 따른다.
+Effort 파형의 drag·키보드 선택도 native radio commit에서 한 번만 처리한다.
+desktop·비활성 버튼·닫힌 시트에는 적용하지 않는다.

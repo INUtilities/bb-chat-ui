@@ -1,5 +1,6 @@
 import { injectComposerEffort } from "./composer-effort.ts";
 import { injectComposerModelSize } from "./composer-model-size.ts";
+import { acceptJumpPulse, postHaptic, readHapticBridge } from "./send-haptic.ts";
 
 export const MODEL_MENU_MARK = "data-bb-chat-ui-model-menu";
 export const MODEL_SUBMENU_MARK = "data-bb-chat-ui-model-submenu";
@@ -47,6 +48,29 @@ export function injectComposerModelMenus(document: Document): () => void {
   const seen = new WeakSet<Element>();
   const owners = new WeakMap<HTMLElement, Element>();
   let disposed = false;
+  let lastActionAt: number | null = null;
+
+  // Native radio clicks also carry Effort drag/keyboard commits from the shared gauge.
+  function bindActionHaptics(card: HTMLElement): () => void {
+    // Read this native utility without emitting another plugin CSS declaration.
+    const selectedProviderClass = ["border", "foreground"].join("-");
+    const click = (event: Event) => {
+      if (document.documentElement.getAttribute('data-bb-chat-ui-root-device') !== 'phone' || !(event.target instanceof view!.Element)) return;
+      const button = event.target.closest<HTMLButtonElement>('button');
+      if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
+      const fast = button.matches('[role="switch"][aria-label="Fast mode"]');
+      const effort = button.matches('[role="radio"]:not([aria-checked="true"])') && button.closest('[role="radiogroup"][aria-label="Reasoning"]');
+      const provider = button.hasAttribute('title') && button.parentElement?.matches('div[class~="bg-background"]') &&
+        !button.classList.contains(selectedProviderClass) && button.getAttribute('aria-selected') !== 'true';
+      if (!fast && !effort && !provider) return;
+      const next = acceptJumpPulse(lastActionAt, view!.performance.now());
+      if (next === null) return;
+      lastActionAt = next;
+      postHaptic(readHapticBridge(view), 'impact-light');
+    };
+    card.addEventListener('click', click, true);
+    return () => card.removeEventListener('click', click, true);
+  }
 
   // Restore the marker that existed before this content-script generation.
   function release(card: HTMLElement, record: { previous: string | null; stop: () => void }): void {
@@ -117,8 +141,9 @@ export function injectComposerModelMenus(document: Document): () => void {
         if (composer && !composer.contains(card)) composer.setAttribute('inert', '');
         const stopEffort = injectComposerEffort(card);
         const stopScroll = trackModelScroll(card);
+        const stopHaptics = bindActionHaptics(card);
         cards.set(card, { previous, trigger: phoneTrigger, stop: () => {
-          stopScroll(); stopEffort();
+          stopHaptics(); stopScroll(); stopEffort();
           if (composer && !composer.contains(card)) {
             if (previousInert === null) composer.removeAttribute('inert');
             else composer.setAttribute('inert', previousInert);
