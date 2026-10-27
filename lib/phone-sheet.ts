@@ -17,6 +17,8 @@ const ANIM = `${SHEET}-anim`;
 const DRAG = `${SHEET}-dragging`;
 const MEASURE = `${SHEET}-measure`;
 const PHONE = 'html[data-bb-chat-ui-root-device="phone"]';
+// Native class names are composed so the plugin CSS scanner does not emit host utilities.
+const CONTEXT_CONTAINER = "@container/" + "context-window";
 const PHONE_DARK = 'html.dark[data-bb-chat-ui-root-device="phone"]';
 const OPEN_MS = 320;
 const CLOSE_MS = 260;
@@ -130,6 +132,7 @@ export function phoneDrawerCss(drawers: string = PHONE_DRAWERS): string {
 ${D} { ${cardStyle.face} }
 ${PHONE_DARK} :is(${drawers}):not(#bb-chat-ui-sheet) { ${cardStyle.faceDark} }
 ${D} > div[aria-label="Prompt actions"] { ${cardStyle.flat} }
+${D} [class~="${CONTEXT_CONTAINER}"] { ${cardStyle.flat} border:0 !important; }
 ${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div[class~="bg-background"],
 ${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div > div[class~="bg-background"] { background:transparent !important; }
 ${D} {
@@ -482,9 +485,11 @@ export function injectPhoneSheet(document: Document): () => void {
       const owner = node.getAttribute('data-bb-plugin');
       if (owner && owner !== 'bb--composer') continue;
       const title = node.querySelector(':scope > h2')?.textContent?.trim();
+      const contextTitle = title === 'Context window' || title === 'Estimated context';
       const trigger = title === 'Permission mode' ? 'button[aria-label="Permission mode"]'
-        : title === 'Context window' ? 'button[aria-label^="Context window "]' : null;
-      if (trigger && document.querySelector(`[data-scroll-footer] ${trigger}`) && !node.hasAttribute(optionMark)) {
+        : contextTitle ? 'button[aria-label^="Context window "]' : null;
+      const nativeContext = contextTitle && !!node.querySelector(`[class~="${CONTEXT_CONTAINER}"]`);
+      if (trigger && (nativeContext || document.querySelector(`[data-scroll-footer] ${trigger}`)) && !node.hasAttribute(optionMark)) {
         node.setAttribute(optionMark, ''); marked.add(node);
       }
     }

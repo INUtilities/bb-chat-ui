@@ -416,7 +416,10 @@ phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송
 `lib/phone-sheet.ts`의 `injectPhoneSheet`는 phone일 때만 옵션 drawer stylesheet를 설치한다.
 `bb--composer`가 소유한 `data-persistent-drawer-content`와 명시적인 PR·모델 메뉴 표식을 대상으로 한다.
 소유 표식이 없는 권한 모드·context drawer는 컴포저 footer trigger와 직접 자식 제목
-`Permission mode`·`Context window`를 함께 확인해 `data-bb-chat-ui-option-menu`를 붙인다.
+`Permission mode`·`Context window`·`Estimated context`를 함께 확인해 `data-bb-chat-ui-option-menu`를 붙인다.
+Claude의 `Estimated context`도 같은 옵션 시트다. context는 키보드 접힘으로 footer trigger가 없어져도 native `context-window` container 본문과 제목으로 식별한다.
+그 안쪽 native 카드의 배경·shadow·blur·border는 phone drawer 안에서만 없애 외부 frost 한 겹을 유지한다.
+너비 조건에 따라 솔리드 카드가 돌아오지 않으며 게이지·텍스트·스크롤은 유지한다.
 React 교체 때 다시 찾고 desktop 전환·해제 시 추가한 표식을 제거한다.
 다른 플러그인 drawer와 desktop에는 적용하지 않는다. 정보 카드 DOM을 관찰하거나 시트 controller를
 자동으로 연결하지 않는다. 기기 변경·플러그인 해제 때 stylesheet를 제거한다.

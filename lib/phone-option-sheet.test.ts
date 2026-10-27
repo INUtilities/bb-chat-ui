@@ -19,6 +19,8 @@ function fixture() {
   return { dom, d, w:dom.window };
 }
 
+const contextClass='@container/'+'context-window',shadowClass='shadow'+'-md',trackClass='bg'+'-border',fillClass='bg'+'-current';
+
 const flush = async (w:Window) => new Promise(resolve => w.requestAnimationFrame(resolve));
 
 test("phone option sheets leave information pills, the catalog and quote previews in their native popovers", async () => {
@@ -163,4 +165,14 @@ test("permissions and context native drawers share phone geometry and handle hap
   const replacement=nodes[1].cloneNode(true)as HTMLElement;replacement.removeAttribute('data-bb-chat-ui-option-menu');nodes[1].replaceWith(replacement);await flush(f.w);await flush(f.w);
   assert.ok(replacement.matches(PHONE_DRAWERS),'React replacement is recognized');stop();assert.ok(!replacement.matches(PHONE_DRAWERS));
  }finally{stop();f.dom.window.close()}
+});
+
+test('phone context is recognized from its native content when keyboard collapse has removed the footer trigger',async()=>{
+ const f=fixture();const drawer=f.d.createElement('section');drawer.setAttribute('data-persistent-drawer-content','');drawer.innerHTML=`<div data-persistent-drawer-handle><div></div></div><h2>Context window</h2><div><div class="${contextClass} bg-popover ${shadowClass}"><div>Context window</div><div class="${trackClass}"><div class="${fillClass}"></div></div></div></div>`;f.d.body.append(drawer);
+ const foreign=drawer.cloneNode(true)as HTMLElement;foreign.setAttribute('data-bb-plugin','other-plugin');f.d.body.append(foreign);
+ const stop=injectPhoneSheet(f.d);try{await flush(f.w);assert.ok(drawer.matches(PHONE_DRAWERS),'native context body must suffice without a live trigger');assert.ok(!foreign.matches(PHONE_DRAWERS));const card=drawer.querySelector(`[class~="${contextClass}"]`)!;const rules=Array.from((f.d.getElementById(PHONE_SHEET_STYLE_ID)as HTMLStyleElement).sheet!.cssRules)as CSSStyleRule[];assert.ok(rules.some(r=>r.selectorText&&card.matches(r.selectorText)&&r.style.background==='transparent'&&r.style.getPropertyPriority('background')==='important'),'context card cannot obscure the outer frost at wider phone viewports');assert.ok(rules.some(r=>r.selectorText&&card.matches(r.selectorText)&&r.style.getPropertyValue('backdrop-filter')==='none'),'only the outer drawer owns frost');assert.ok(!rules.some(r=>r.selectorText&&drawer.querySelector(`.${trackClass}`)!.matches(r.selectorText)&&r.style.background==='transparent'),'the gauge keeps its track');}finally{stop();f.dom.window.close()}
+});
+
+test('Claude Estimated context is enhanced during keyboard dismissal just like the Context window drawer',async()=>{
+ const f=fixture(),vv=new f.w.EventTarget();Object.defineProperty(f.w,'visualViewport',{value:vv});const stop=injectPhoneSheet(f.d);try{await flush(f.w);const drawer=f.d.createElement('section');drawer.setAttribute('data-persistent-drawer-content','');drawer.setAttribute('data-state','open');drawer.innerHTML=`<div data-persistent-drawer-handle><div></div></div><h2>Estimated context</h2><div><div class="${contextClass} bg-popover"><span>48% used</span><button>Show details</button></div></div>`;f.d.body.append(drawer);vv.dispatchEvent(new f.w.Event('resize'));await flush(f.w);await flush(f.w);assert.ok(drawer.matches(PHONE_DRAWERS),'Estimated context title is a native context variant, even without the footer trigger');const style=f.d.getElementById(PHONE_SHEET_STYLE_ID)as HTMLStyleElement;const rules=Array.from(style.sheet!.cssRules)as CSSStyleRule[];assert.ok(rules.some(r=>r.selectorText&&drawer.matches(r.selectorText)&&r.style.getPropertyValue('border-radius')==='var(--bb-chat-ui-sheet-radius)'));let clicked=0;drawer.querySelector('button')!.addEventListener('click',()=>clicked++);drawer.querySelector('button')!.click();assert.equal(clicked,1,'native detail disclosure survives')}finally{stop();f.dom.window.close()}
 });
