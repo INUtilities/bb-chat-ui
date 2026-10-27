@@ -15,12 +15,12 @@ import {
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
-// d4d9eb6 values; the menu hash includes PR #12's intentional Effort pin and spacing update.
+// d4d9eb6 values; the menu hash includes PR #12 and the shared model-content typography.
 // The phone sheet remains separate, so the desktop card, quote, queue and type CSS stay byte-identical.
 test("desktop card, menu and quote CSS stay byte-identical", () => {
   assert.equal(sha(composerInfoCss), "e937a5b1a6fb7100ae5ff0b6d92a114dd9e654a0ca022714e8158810f8714419");
   assert.equal(sha(quotePreviewCss), "71f4f433df57b51d308983e6fa392465a60e4edcc03633d68f33483652252af6");
-  assert.equal(sha(composerMenuGlassCss), "7868a250ae8184b3dce4808738c7336426dd607df8fb28889d7cb83dea7c316b");
+  assert.equal(sha(composerMenuGlassCss), "98f0aaca366e86393afce3a675452f609fc58406926576903f2ab7975de7fca5");
   assert.equal(sha(queuedMessagesCss), "7eae067033078e814331a8658a53c04fa86364c464e8dd9c081edcb708754b8c");
   assert.equal(sha(infoCardCss()), "8c9e1d7134c5cff3b1c27635e919b338f58c5960f224a8ef13c443cb8228d3cc");
 });

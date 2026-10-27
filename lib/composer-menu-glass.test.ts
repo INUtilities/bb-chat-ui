@@ -397,3 +397,21 @@ test("the phone model drawer is found by its label and tracked for scroll frost"
     assert.equal(drawer.hasAttribute(MODEL_MENU_MARK), false);
   } finally { stop(); dom.window.close(); }
 });
+
+test("phone and desktop model content share text size while retaining native touch geometry", () => {
+  for(const phone of [false,true]){
+    const f=fixture(TRIGGER+CODEX);
+    if(phone)f.document.documentElement.setAttribute('data-bb-chat-ui-root-device','phone');
+    const item=f.document.querySelector('[role="option"]')!;
+    item.classList.add('text-xs');
+    const input=f.document.querySelector('input')!;
+    const original=item.getAttribute('class');
+    const stop=injectComposerMenuGlass(f.document);
+    try {
+      assert.equal(declaration(f.document,item,'font-size'),'12px');
+      assert.equal(declaration(f.document,item,'line-height'),'16px');
+      assert.equal(declaration(f.document,input,'font-size'),'12px');
+      assert.equal(item.getAttribute('class'),original,'native responsive padding and hit target classes stay intact');
+    } finally {stop();f.restore();}
+  }
+});

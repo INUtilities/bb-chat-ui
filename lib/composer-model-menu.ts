@@ -103,14 +103,16 @@ export function injectComposerModelMenus(document: Document): () => void {
       // Release size motion before restoring the native effort controls.
       cards.set(card, { previous, trigger, stop: () => { stopScroll(); stopSize(); stopEffort(); } });
     }
-    // The phone drawer has its own fixed height and controls: mark it for glass and track scroll frost only.
+    // Share desktop content enhancements; the native phone drawer still owns its outer height.
     const phoneTrigger = Array.from(document.querySelectorAll(PHONE_TRIGGER)).find(trigger => trigger.getAttribute("aria-expanded") === "true");
     if (phoneTrigger) {
       for (const card of Array.from(document.querySelectorAll<HTMLElement>(PHONE_DRAWER))) {
         if (cards.has(card) || document.getElementById(card.getAttribute("aria-labelledby") ?? "")?.textContent?.trim() !== "Model") continue;
         const previous = card.getAttribute(MODEL_MENU_MARK);
         card.setAttribute(MODEL_MENU_MARK, "");
-        cards.set(card, { previous, trigger: phoneTrigger, stop: trackModelScroll(card), phone: true });
+        const stopEffort = injectComposerEffort(card);
+        const stopScroll = trackModelScroll(card);
+        cards.set(card, { previous, trigger: phoneTrigger, stop: () => { stopScroll(); stopEffort(); }, phone: true });
       }
     }
     discoverSubmenus();

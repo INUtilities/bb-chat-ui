@@ -81,6 +81,9 @@ PR 머지 메뉴의 목록 inset·행 모서리는 컴포저 `+` 메뉴와 같�
   Fast mode는 native switch를 40×24px 토글로 표시한다. 손잡이 이동은 한 경로만 적용하며
   160ms 안에 전환한다.
   동작 줄이기 설정에서는 모션을 끈다.
+  phone 하단 시트도 같은 모델 목록·Effort 파형·Fast mode 토글을 사용한다.
+  모델 이름·섹션 이름·검색은 desktop과 같은 12px/16px이며 native 검색·선택 동작과
+  phone의 터치 padding은 유지한다. phone 모델 drawer의 바깥 높이에 desktop 높이 모션을 붙이지 않는다.
 
 - 컴포저 메뉴의 바깥 면은 `cardFaceCss`를 재사용한다. 작은 메뉴의 기존 그림자
   `0 6px 18px -12px`와 dark의 `--background` 60% 혼합은 유지한다.
@@ -405,7 +408,10 @@ phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송
 - 옵션 메뉴에 별도의 펼친 단계·위로 끌기·단계 햅틱을 추가하지 않는다. BB drawer의 선택과
   아래로 끌어 닫기·밖 누르기·Esc 경로를 유지한다. 닫히기 시작할 때 8px 튐이 남는다.
 - phone 모델 drawer는 trigger에 `aria-controls`가 없으므로 라벨이 `Model`인 열린 drawer를 찾아
-  표식과 스크롤 제목 frost만 붙인다.
+  desktop과 같은 Effort 변환·스크롤 제목 frost를 붙인다. 모델 목록·섹션·검색의 글자는
+  desktop과 같은 12px/16px이며 native 터치 영역·검색·선택·비활성 상태를 유지한다.
+- 옵션 drawer 내부의 메뉴 inset·행 모서리는 desktop과 같은 4px·10px다. phone 시트의
+  바깥 여백 8px·모서리 30px와 별개이며 정보 팝오버의 밀도를 바꾸지 않는다.
 - 독립 접힘·펼침 시트는 `attachSheet`, `phoneSheetCss`와 회귀 테스트를 디자인 레퍼런스로 보존한다.
   제품의 정보 팝오버에는 연결하지 않는다. 재사용 규격과 적용 범위는
   [떠 있는 옵션 시트 레퍼런스](design-references/floating-option-sheet.md)에 기록한다.

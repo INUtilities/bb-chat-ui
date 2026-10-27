@@ -17,11 +17,12 @@ function radioMarkup(labels: string[], selected: number, disabled: number[] = []
 }
 
 // Bind a small native host that updates checked state only when its radio is clicked.
-function fixture(options: { selected?: number; labels?: string[]; disabled?: number[] } = {}) {
+function fixture(options: { selected?: number; labels?: string[]; disabled?: number[]; phone?: boolean } = {}) {
   const labels = options.labels ?? LABELS;
-  const dom = new JSDOM(`<html><head></head><body>
-    <button aria-haspopup="dialog" aria-label="Provider, model and reasoning: Codex" aria-controls="provider-menu">Model</button>
-    <div role="dialog" id="provider-menu" data-bb-portaled-overlay>
+  const dom = new JSDOM(`<html${options.phone?' data-bb-chat-ui-root-device="phone"':''}><head></head><body>
+    <button aria-haspopup="dialog" aria-label="Provider, model and reasoning: Codex" ${options.phone?'aria-expanded="true"':'aria-controls="provider-menu"'}>Model</button>
+    <div role="dialog" id="provider-menu" data-bb-portaled-overlay ${options.phone?'data-persistent-drawer-content data-state="open" aria-labelledby="model-title"':''}>
+      ${options.phone?'<div data-persistent-drawer-handle></div><h2 id="model-title" class="sr-only">Model</h2>':''}
       <div id="effort-section"><div>Reasoning</div><div role="radiogroup" aria-label="Reasoning" tabindex="0" data-native="preserve">${radioMarkup(labels, options.selected ?? 1, options.disabled)}</div></div>
     </div>
   </body></html>`, { pretendToBeVisual: true });
@@ -75,6 +76,49 @@ function fixture(options: { selected?: number; labels?: string[]; disabled?: num
   }
   return { dom, document, card, clicks, group, radios, range, settle, restore };
 }
+
+test("phone model drawers share the desktop Effort waveform and preserve native selections", async () => {
+  const labels=["Low","Medium","High","Extra High","Max","Ultra"];
+  const f=fixture({phone:true,labels,selected:4,disabled:[2]});
+  const parent=f.group().parentElement,radios=f.radios();
+  const stop=injectComposerMenuGlass(f.document);
+  try {
+    const range=f.range();
+    assert.equal(range.max,"5");
+    assert.equal(range.value,"4");
+    assert.equal(range.getAttribute("aria-valuetext"),"Max");
+    assert.equal(f.card.querySelectorAll('[data-effort-tick]').length,73);
+    assert.equal(f.group().parentElement,parent);
+    assert.deepEqual(f.radios(),radios);
+    assert.deepEqual(f.clicks,[],"mounting the phone UI must not change effort");
+    range.value="1";range.dispatchEvent(new f.dom.window.Event("input",{bubbles:true}));await f.settle();
+    range.dispatchEvent(new f.dom.window.KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true,cancelable:true}));await f.settle();
+    assert.deepEqual(f.clicks,[1,3],"the shared controller skips disabled native options");
+    f.card.setAttribute("data-state","closed");await f.settle();
+    assert.equal(f.card.querySelector('[data-bb-chat-ui-effort]'),null);
+    assert.equal(f.group().hasAttribute(SOURCE),false);
+    range.dispatchEvent(new f.dom.window.KeyboardEvent("keydown",{key:"Home",bubbles:true}));
+    assert.deepEqual(f.clicks,[1,3],"closed drawer releases the old controller");
+    f.card.setAttribute("data-state","open");await f.settle();
+    assert.equal(f.range().getAttribute("aria-valuetext"),"Extra High");
+    assert.equal(f.card.querySelectorAll('[data-bb-chat-ui-effort]').length,1);
+  } finally {stop();f.restore();}
+});
+
+test("phone effort follows provider rerenders through the same controller", async () => {
+  const f=fixture({phone:true});
+  const stop=injectComposerMenuGlass(f.document);
+  try {
+    f.range();
+    f.group().innerHTML=radioMarkup(["Standard","Maximum"],1);
+    await f.settle();
+    assert.equal(f.range().max,"1");
+    assert.equal(f.range().getAttribute("aria-valuetext"),"Maximum");
+    stop();
+    assert.equal(f.group().hasAttribute(SOURCE),false);
+    assert.equal(f.card.querySelector('[data-bb-chat-ui-effort]'),null);
+  } finally {stop();f.restore();}
+});
 
 // Advance the real waveform controller without depending on wall-clock timing.
 function animationClock(f: ReturnType<typeof fixture>, reduced = false) {

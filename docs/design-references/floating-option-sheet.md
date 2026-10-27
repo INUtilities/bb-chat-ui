@@ -49,6 +49,10 @@ BB가 소유한 drawer는 높이·스크롤·아래로 끌어 닫기·밖 누르
 키보드가 열릴 때 BB가 쓰는 inline `bottom`을 보존하고, 별도 `translate`로 아래 8px를 띄운다.
 safe-area padding에는 아래 여백을 제외한 나머지를 남긴다.
 
+시트 내부의 컨트롤은 desktop과 공유한다. 모델 선택에는 같은 Effort 파형과 Fast mode 토글을
+사용하며 모델 이름·섹션·검색은 12px/16px다. 옵션 목록 inset·행 모서리는 4px·10px다.
+phone 터치 padding과 native 검색·선택·비활성 상태는 유지한다.
+
 현재 옵션 drawer에는 위로 끌어 펼치는 두 번째 단계를 붙이지 않는다. native 닫힘 전환이
 시작될 때 아래 여백 8px가 한 번 바뀌는 제약이 있다. 이 디자인 레퍼런스가 BB 앱을
 수정하거나 native 제스처를 가로채도 된다는 뜻은 아니다.

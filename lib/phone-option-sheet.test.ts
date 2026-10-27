@@ -34,6 +34,20 @@ test("phone option sheets leave information pills, the catalog and quote preview
     }
     assert.doesNotMatch(f.d.getElementById(PHONE_SHEET_STYLE_ID)!.textContent!, /\[data-bb-chat-ui-sheet\]/,
       "the runtime installs only native option drawer styling");
+    const sheet=f.d.getElementById(PHONE_SHEET_STYLE_ID) as HTMLStyleElement;
+    for(const id of ['plus','model','send','merge']){
+      const drawer=f.d.getElementById(id)!;
+      const values:Record<string,string>={};
+      for(const rule of Array.from(sheet.sheet!.cssRules)){
+        const css=rule as CSSStyleRule;
+        if(!css.selectorText||!drawer.matches(css.selectorText))continue;
+        for(const key of ['--bb-chat-ui-card-menu-pad','--bb-chat-ui-card-menu-radius']){
+          const value=css.style.getPropertyValue(key);if(value)values[key]=value;
+        }
+      }
+      assert.equal(values['--bb-chat-ui-card-menu-pad'],'4px',id+' uses desktop option menu inset');
+      assert.equal(values['--bb-chat-ui-card-menu-radius'],'10px',id+' uses desktop option row corners');
+    }
   } finally { stop(); f.dom.window.close(); }
 });
 

@@ -25,6 +25,11 @@ ${SUBMODELS} button[class~="hover:bg-state-hover"],
 ${MODELS} :is([role="option"],button[class~="hover:bg-state-hover"]) {
   ${cardStyle.rowRadius}
 }
+/* Model content uses desktop typography in both containers; native touch padding stays intact. */
+${MODELS} :is([class~="text-xs"],input[aria-label="Search models"]),
+${SUBMODELS} [class~="text-xs"] {
+  font-size:12px !important; line-height:16px !important;
+}
 /* Keep provider tabs on the card's single glass face. */
 ${MODELS} > div[class~="bg-background"] {
   background:transparent !important;

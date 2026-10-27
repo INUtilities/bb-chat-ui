@@ -129,6 +129,7 @@ ${D} { ${cardStyle.face} }
 ${PHONE_DARK} :is(${drawers}):not(#bb-chat-ui-sheet) { ${cardStyle.faceDark} }
 ${D} > div[aria-label="Prompt actions"] { ${cardStyle.flat} }
 ${D} {
+  --bb-chat-ui-card-menu-pad:4px; --bb-chat-ui-card-menu-radius:10px;
   left:var(--bb-chat-ui-sheet-inset) !important; right:var(--bb-chat-ui-sheet-inset) !important;
   width:auto !important; max-width:none !important;
   border-radius:var(--bb-chat-ui-sheet-radius) !important; overflow:hidden;
