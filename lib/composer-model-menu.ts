@@ -1,3 +1,4 @@
+import { injectComposerProviderMotion } from "./composer-provider-motion.ts";
 import { injectComposerEffort } from "./composer-effort.ts";
 import { injectComposerModelSize } from "./composer-model-size.ts";
 import { acceptJumpPulse, postHaptic, readHapticBridge } from "./send-haptic.ts";
@@ -121,11 +122,12 @@ export function injectComposerModelMenus(document: Document): () => void {
       if (!card || !card.matches(DIALOG) || cards.has(card) || trigger.getAttribute("aria-expanded") === "false" || card.getAttribute("data-state") === "closed") continue;
       const previous = card.getAttribute(MODEL_MENU_MARK);
       card.setAttribute(MODEL_MENU_MARK, "");
+      const stopProvider = injectComposerProviderMotion(card);
       const stopEffort = injectComposerEffort(card);
       const stopSize = injectComposerModelSize(card);
       const stopScroll = trackModelScroll(card);
       // Release size motion before restoring the native effort controls.
-      cards.set(card, { previous, trigger, stop: () => { stopScroll(); stopSize(); stopEffort(); } });
+      cards.set(card, { previous, trigger, stop: () => { stopProvider(); stopScroll(); stopSize(); stopEffort(); } });
     }
     // Share desktop content enhancements; the native phone drawer still owns its outer height.
     const phoneTrigger = Array.from(document.querySelectorAll(PHONE_TRIGGER)).find(trigger => trigger.getAttribute("aria-expanded") === "true");
@@ -140,11 +142,12 @@ export function injectComposerModelMenus(document: Document): () => void {
         const composer = phoneTrigger.closest<HTMLElement>('[data-promptbox]');
         const previousInert = composer?.getAttribute('inert') ?? null;
         if (composer && !composer.contains(card)) composer.setAttribute('inert', '');
-        const stopEffort = injectComposerEffort(card);
+        const stopProvider = injectComposerProviderMotion(card);
+      const stopEffort = injectComposerEffort(card);
         const stopScroll = trackModelScroll(card);
         const stopHaptics = bindActionHaptics(card);
         cards.set(card, { previous, trigger: phoneTrigger, stop: () => {
-          stopHaptics(); stopScroll(); stopEffort();
+          stopProvider(); stopHaptics(); stopScroll(); stopEffort();
           if (composer && !composer.contains(card)) {
             if (previousInert === null) composer.removeAttribute('inert');
             else composer.setAttribute('inert', previousInert);
