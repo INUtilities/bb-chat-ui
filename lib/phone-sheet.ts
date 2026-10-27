@@ -128,6 +128,8 @@ export function phoneDrawerCss(drawers: string = PHONE_DRAWERS): string {
 ${D} { ${cardStyle.face} }
 ${PHONE_DARK} :is(${drawers}):not(#bb-chat-ui-sheet) { ${cardStyle.faceDark} }
 ${D} > div[aria-label="Prompt actions"] { ${cardStyle.flat} }
+${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div[class~="bg-background"],
+${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div > div[class~="bg-background"] { background:transparent !important; }
 ${D} {
   --bb-chat-ui-card-menu-pad:4px; --bb-chat-ui-card-menu-radius:10px;
   left:var(--bb-chat-ui-sheet-inset) !important; right:var(--bb-chat-ui-sheet-inset) !important;

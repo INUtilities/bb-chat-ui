@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { injectPhoneSheet, PHONE_DRAWERS, PHONE_SHEET_STYLE_ID, SHEET } from "./phone-sheet.ts";
+import { injectPhoneSheet, phoneDrawerCss, PHONE_DRAWERS, PHONE_SHEET_STYLE_ID, SHEET } from "./phone-sheet.ts";
 
 function fixture() {
   const dom = new JSDOM(`<html data-bb-chat-ui-root-device="phone"><head></head><body>
@@ -55,6 +55,24 @@ test("sheet styling covers composer option drawers and PR methods while excludin
   const f = fixture();
   try {
     assert.deepEqual(Array.from(f.d.querySelectorAll(PHONE_DRAWERS)).map(el=>el.id), ["plus", "model", "send", "merge"]);
+  } finally { f.dom.window.close(); }
+});
+
+test("phone model provider tabs are transparent on the drawer's single frost face", () => {
+  const f = fixture();
+  try {
+    const tabs = f.d.createElement("div");
+    tabs.className = "bg-background";
+    const body = f.d.createElement("div");
+    body.append(tabs);
+    f.d.getElementById("model")!.append(body);
+    const style = f.d.createElement("style");
+    style.textContent = phoneDrawerCss();
+    f.d.head.append(style);
+    const rules = Array.from(style.sheet!.cssRules) as CSSStyleRule[];
+    const rule = rules.find(rule => rule.selectorText && tabs.matches(rule.selectorText) && rule.style.background === "transparent");
+    assert.ok(rule, "provider tabs must reveal the drawer face");
+    assert.notEqual(rule.style.backdropFilter, "blur(24px) saturate(1.5)");
   } finally { f.dom.window.close(); }
 });
 
