@@ -518,3 +518,25 @@ Effort 단계가 하나인 provider도 같은 게이지를 쓴다. 중앙 눈금
 비교 페이지·8프레임 스트립·원시 위치·layout shift·long task 기록은
 `/Users/kebab/.bb/thread-storage/thr_2azf6e7w23/phone-sheet-polish/toolbar-motion/compare.html`과
 같은 폴더의 `metrics-v14.json`, `phone-ab-strips.html`, `desktop-ab-strips.html`에 둔다.
+
+### phone 펼침의 버튼 줄과 잘림
+
+phone native grid/main은 펼침 직후부터 최종 높이의 내용 배치를 사용하고 안쪽을 자른다.
+높이가 작을 때 실제 버튼 줄은 그 잘림 아래에 있다. mount와 opacity가 높이 전환과
+동시에 시작해도 버튼이 실제로 보이는 시각은 늦어진다. 이전 검수의 mount·opacity
+확인만으로는 이 차이를 발견하지 못했으므로, 화면 좌표와 ancestor의 clipping도 확인한다.
+
+phone 펼침은 닫기와 같은 절대 위치의 시각적 복제본을 native grid 바깥, form 하단에
+고정한다. 높이와 같은 시작 시각·360ms·kit EASE.out으로 opacity/translateY만 바꾼다.
+등장 시점에 CSS height 애니메이션의 현재 시각과 음수 delay를 한 번 읽어 같은
+브라우저 시계에 맞춘다. style/layout 처리에 걸린 시간을 먼저 진행한 fade로 표시하지 않는다.
+실제 줄은 중복 표시를 막기 위해 잠시 visibility를 숨기되 DOM·핸들러·배치를 유지한다.
+모션이 끝나면 원래 visibility를 복구하고 실제 버튼으로 교대한다. 이 짧은 시각 복제본은
+inert·aria-hidden·pointer-events:none이며 외부 액션을 실행하지 않는다.
+
+늦은 native mount에는 마지막 native 줄의 모습을 먼저 사용한다. 실제 줄이 오면
+시각 내용만 갱신하며 키보드/viewport resize 때문에 등장 시계를 다시 시작하지 않는다.
+첫 열림에는 native 줄이 처음 준비된 시점부터 같은 높이 시계에 맞춘다. 줄이 아직
+준비되지 않았으면 완료된 복제본을 유지하고 도착 후 교대한다. 빠른 반전·voice·
+동작 줄이기·해제 때 복제본과 임시 visibility를 복원한다. 입력마다 좌표를 읽지 않는다.
+desktop은 기존 실제 줄의 모션 경로와 CSS를 유지한다.
