@@ -140,3 +140,27 @@ test('native handoff handle stays transparent when the host adds a solid full-wi
   assert.ok(matches.some(r=>r.style.background==='transparent'&&r.style.getPropertyPriority('background')==='important'),'native handoff handle cannot add another opaque surface');
  }finally{f.dom.window.close();}
 });
+
+
+test("permissions and context native drawers share phone geometry and handle haptics without matching foreign dialogs",async()=>{
+ const f=fixture(),pulses:unknown[]=[];let now=1000;
+ Object.defineProperty(f.w.performance,'now',{value:()=>now});
+ (f.w as any).bb={native:{capabilities:['haptic'],post:(message:unknown)=>pulses.push(message)}};
+ const footer=f.d.createElement('div');footer.setAttribute('data-scroll-footer','');footer.innerHTML='<button aria-label="Permission mode">Approve for me</button><button aria-label="Context window 23% used">23%</button>';f.d.body.append(footer);
+ const nodes=['Permission mode','Context window','Other'].map(title=>{const n=f.d.createElement('section');n.setAttribute('data-persistent-drawer-content','');n.innerHTML=`<div data-persistent-drawer-handle><div></div></div><h2>${title}</h2><div><button>Native content</button></div>`;f.d.body.append(n);return n});
+ const stop=injectPhoneSheet(f.d);try{
+  await flush(f.w);
+  for(const n of nodes.slice(0,2)){
+   assert.ok(n.matches(PHONE_DRAWERS),'footer option drawer must be included');
+   const rules=Array.from((f.d.getElementById(PHONE_SHEET_STYLE_ID)as HTMLStyleElement).sheet!.cssRules)as CSSStyleRule[];
+   assert.ok(rules.some(r=>r.selectorText&&n.matches(r.selectorText)&&r.style.getPropertyValue('border-radius')==='var(--bb-chat-ui-sheet-radius)'));
+   n.firstElementChild!.dispatchEvent(new f.w.MouseEvent('pointerdown',{bubbles:true,button:0}));now+=400;
+  }
+  assert.equal(pulses.length,2);assert.ok(!nodes[2].matches(PHONE_DRAWERS));
+  f.d.documentElement.setAttribute('data-bb-chat-ui-root-device','desktop');await flush(f.w);
+  assert.ok(!nodes[0].matches(PHONE_DRAWERS));assert.equal(f.d.getElementById(PHONE_SHEET_STYLE_ID),null);
+  f.d.documentElement.setAttribute('data-bb-chat-ui-root-device','phone');await flush(f.w);
+  const replacement=nodes[1].cloneNode(true)as HTMLElement;replacement.removeAttribute('data-bb-chat-ui-option-menu');nodes[1].replaceWith(replacement);await flush(f.w);await flush(f.w);
+  assert.ok(replacement.matches(PHONE_DRAWERS),'React replacement is recognized');stop();assert.ok(!replacement.matches(PHONE_DRAWERS));
+ }finally{stop();f.dom.window.close()}
+});

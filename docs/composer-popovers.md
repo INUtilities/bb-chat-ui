@@ -409,12 +409,15 @@ native 큐가 열릴 때 자동으로 포커스를 보내는 숨겨진 `Collapse
 
 ## phone 옵션 메뉴 하단 시트
 
-phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송 옵션·PR 머지 방식 등
+phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송 옵션·권한 모드·context·PR 머지 방식 등
 **컴포저 옵션 메뉴만** iOS식 떠 있는 하단 시트로 꾸민다. 정보 pill 상세 카드·전체 정보 목록·
 인용 원문은 기존 팝오버 위치·높이·스크롤·등장 모션을 유지한다.
 
 `lib/phone-sheet.ts`의 `injectPhoneSheet`는 phone일 때만 옵션 drawer stylesheet를 설치한다.
-`bb--composer`가 소유한 `data-persistent-drawer-content`와 명시적인 PR·모델 메뉴 표식만 대상으로 한다.
+`bb--composer`가 소유한 `data-persistent-drawer-content`와 명시적인 PR·모델 메뉴 표식을 대상으로 한다.
+소유 표식이 없는 권한 모드·context drawer는 컴포저 footer trigger와 직접 자식 제목
+`Permission mode`·`Context window`를 함께 확인해 `data-bb-chat-ui-option-menu`를 붙인다.
+React 교체 때 다시 찾고 desktop 전환·해제 시 추가한 표식을 제거한다.
 다른 플러그인 drawer와 desktop에는 적용하지 않는다. 정보 카드 DOM을 관찰하거나 시트 controller를
 자동으로 연결하지 않는다. 기기 변경·플러그인 해제 때 stylesheet를 제거한다.
 

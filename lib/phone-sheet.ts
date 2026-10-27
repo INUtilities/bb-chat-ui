@@ -28,6 +28,7 @@ export const PHONE_DRAWERS = [
   '[data-persistent-drawer-content]:has(> div[aria-label="Prompt actions"])',
   "[data-persistent-drawer-content][data-bb-chat-ui-pr-menu]",
   "[data-persistent-drawer-content][data-bb-chat-ui-model-menu]",
+  "[data-persistent-drawer-content][data-bb-chat-ui-option-menu]",
 ].join(", ");
 
 // :has() cannot nest, so each backdrop names its drawer by the drawer's own child or mark.
@@ -36,6 +37,7 @@ const BACKDROPS = [
   ':has(+ [data-persistent-drawer-content] > div[aria-label="Prompt actions"])',
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-pr-menu])",
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-model-menu])",
+  ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-option-menu])",
 ].join(", ");
 
 export type SheetStage = "collapsed" | "expanded";
@@ -452,6 +454,8 @@ export function injectPhoneSheet(document: Document): () => void {
   let frame = 0;
   let disposed = false;
   let lastHandleAt: number | null = null;
+  const marked = new Set<HTMLElement>();
+  const optionMark = "data-bb-chat-ui-option-menu";
 
   const phone = () => root.getAttribute("data-bb-chat-ui-root-device") === "phone";
   const onHandlePress = (event: PointerEvent) => {
@@ -468,8 +472,21 @@ export function injectPhoneSheet(document: Document): () => void {
     frame = 0;
     if (disposed) return;
     if (!phone()) {
+      for (const node of marked) node.removeAttribute(optionMark);
+      marked.clear();
       style?.remove(); style = null;
       return;
+    }
+    for (const node of marked) if (!node.isConnected) { node.removeAttribute(optionMark); marked.delete(node); }
+    for (const node of Array.from(document.querySelectorAll<HTMLElement>('[data-persistent-drawer-content]'))) {
+      const owner = node.getAttribute('data-bb-plugin');
+      if (owner && owner !== 'bb--composer') continue;
+      const title = node.querySelector(':scope > h2')?.textContent?.trim();
+      const trigger = title === 'Permission mode' ? 'button[aria-label="Permission mode"]'
+        : title === 'Context window' ? 'button[aria-label^="Context window "]' : null;
+      if (trigger && document.querySelector(`[data-scroll-footer] ${trigger}`) && !node.hasAttribute(optionMark)) {
+        node.setAttribute(optionMark, ''); marked.add(node);
+      }
     }
     if (!style) {
       style = document.createElement("style");
@@ -481,6 +498,13 @@ export function injectPhoneSheet(document: Document): () => void {
   const schedule = () => { if (!frame && !disposed) frame = view.requestAnimationFrame(sync); };
   const rootObserver = new view.MutationObserver(schedule);
   rootObserver.observe(root, { attributes: true, attributeFilter: ["data-bb-chat-ui-root-device"] });
+  const drawers = new view.MutationObserver(records => {
+    if (!phone()) return;
+    if (records.some(record => (record.target instanceof view.Element && record.target.closest('[data-persistent-drawer-content]')) ||
+      [...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some(node => node instanceof view.Element &&
+        (node.matches('[data-persistent-drawer-content]') || node.querySelector('[data-persistent-drawer-content]'))))) schedule();
+  });
+  drawers.observe(document.body, { childList:true, subtree:true });
   schedule();
 
   return () => {
@@ -488,6 +512,9 @@ export function injectPhoneSheet(document: Document): () => void {
     disposed = true;
     if (frame) view.cancelAnimationFrame(frame);
     rootObserver.disconnect();
+    drawers.disconnect();
+    for (const node of marked) node.removeAttribute(optionMark);
+    marked.clear();
     document.removeEventListener("pointerdown", onHandlePress, true);
     style?.remove();
   };
