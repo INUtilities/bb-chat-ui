@@ -1,154 +1,104 @@
-type Bar = { node: HTMLElement; coordinate: number; major: boolean; mid: boolean; noise: number };
-type Impulse = { origin: number; time: number };
+import { EASE } from './motion.ts';
 
-// Give each fixed tick a stable texture rather than introducing random flicker.
+type Item = { node: HTMLElement; x: number; from: number; to: number; alpha: number; fromAlpha: number; toAlpha: number };
+type Bar = Item & { coordinate: number; major: boolean; mid: boolean; noise: number };
+
 function grain(coordinate: number): number {
   const seed = Math.sin(coordinate * 127.1 + 19.7) * 43758.5453;
   return seed - Math.floor(seed);
 }
 
-// Draw the approved compact waveform while the native reasoning controls own selection.
+// Evaluate the kit curve for a shared read-free animation clock.
+const curve = EASE.out.match(/[\d.]+/g)!.map(Number);
+function ease(progress: number): number {
+  const [x1,y1,x2,y2] = curve;
+  const axis = (t:number,a:number,b:number) => 3*(1-t)*(1-t)*t*a+3*(1-t)*t*t*b+t*t*t;
+  let lo=0,hi=1;
+  for(let i=0;i<16;i++){const mid=(lo+hi)/2;if(axis(mid,x1,x2)<progress)lo=mid;else hi=mid;}
+  return axis((lo+hi)/2,y1,y2);
+}
+
+// Keep the ruler and matching labels alive when a provider changes its steps.
+// Only transform/opacity vary per frame; geometry is read once per new scale.
 export function mountEffortWave(track: HTMLElement) {
-  const document = track.ownerDocument;
-  const view = document.defaultView!;
-  const media = view.matchMedia?.("(prefers-reduced-motion: reduce)");
-  const viewport = document.createElement("div");
-  viewport.setAttribute("data-effort-viewport", "");
-  viewport.setAttribute("aria-hidden", "true");
-  viewport.innerHTML = '<div data-effort-scale></div><div data-effort-pin><span data-effort-head></span></div>';
-  track.prepend(viewport);
-  const scale = viewport.querySelector<HTMLElement>("[data-effort-scale]")!;
-  const pin = viewport.querySelector<HTMLElement>("[data-effort-pin]")!;
-  const head = pin.firstElementChild as HTMLElement;
-  let bars: Bar[] = [], labels: HTMLElement[] = [], impulses: Impulse[] = [];
-  let index = -1, last = 0, position = 0, velocity = 0, frame = 0, lastTime = 0, stopped = false;
+  const document=track.ownerDocument,view=document.defaultView!;
+  const media=view.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const viewport=document.createElement('div');viewport.setAttribute('data-effort-viewport','');viewport.setAttribute('aria-hidden','true');
+  viewport.innerHTML='<div data-effort-scale></div><div data-effort-pin><span data-effort-head></span></div>';track.prepend(viewport);
+  const scale=viewport.querySelector<HTMLElement>('[data-effort-scale]')!,pin=viewport.querySelector<HTMLElement>('[data-effort-pin]')!,head=pin.firstElementChild as HTMLElement;
+  const bars=new Map<string,Bar>(),labels=new Map<string,Item>();
+  let names:string[]=[],index=-1,provider='',position=0,fromPosition=0,target=0,width=0,frame=0,started=0,stopped=false,pulse=false;
+  const items=()=>[...bars.values(),...labels.values()];
+  const point=(step:number,count:number)=>count===1?.5:step/(count-1);
 
-  // Add a small damped length pulse that spreads from the newly selected option.
-  function ripple(coordinate: number, now: number): number {
-    let value = 0;
-    for (const impulse of impulses) {
-      const distance = Math.abs(coordinate - impulse.origin);
-      const age = (now - impulse.time) / 1000 - distance / 7;
-      if (age >= 0) value += 1.25 * Math.sin(age * 23) * Math.exp(-age * 12 - distance * .35);
+  function paint(progress=1):void {
+    const count=Math.max(1,names.length-1);
+    for(const bar of bars.values()){
+      const distance=(bar.x-position)*count,focus=Math.exp(-distance*distance/(2*.6*.6));
+      const height=3+12*focus*(bar.major?1:.25+.75*bar.noise)+(bar.major?3:bar.mid?1:0)+(bar.major?0:bar.noise*1.8);
+      bar.node.style.transform=`translateY(-50%) translateX(${(bar.x-bar.to)*width}px) scaleY(${height/24})`;
+      bar.node.style.opacity=String(bar.alpha*(.15+.5*focus+(bar.major?.15:bar.noise*.07))*(pulse?.8+.2*progress:1));
     }
-    return value;
-  }
-
-  // Move only the pin horizontally and vary the fixed bars around its current crest.
-  function paint(now: number): void {
-    const width = .6 + Math.min(.08, Math.abs(velocity) * .005);
-    for (const bar of bars) {
-      const distance = bar.coordinate / 24 - position;
-      const focus = Math.exp(-distance * distance / (2 * width * width));
-      const texture = .25 + .75 * bar.noise;
-      const height = 3 + 12 * focus * (bar.major ? 1 : texture)
-        + (bar.major ? 3 : bar.mid ? 1 : 0) + (bar.major ? 0 : bar.noise * 1.8);
-      const pulse = media?.matches ? 0 : ripple(bar.coordinate / 24, now);
-      bar.node.style.height = `${Math.max(3, height + pulse)}px`;
-      bar.node.style.opacity = String(.15 + .5 * focus + (bar.major ? .15 : bar.noise * .07));
+    for(const item of labels.values()){
+      item.node.style.transform=`translateX(calc(-50% + ${(item.x-item.to)*width}px))`;
+      item.node.style.opacity=String(item.alpha*(pulse?.8+.2*progress:1));
     }
-    pin.style.transform = `translateX(${position / last * 100}%)`;
-    head.style.transform = `translateY(${-ripple(position, now) / 2}px)`;
+    pin.style.transform=`translateX(${position*100}%)`;
+    head.style.opacity=String(pulse?.6+.4*progress:1);
   }
-
-  // Release active frames and waves without changing the provider's selected value.
-  function cancel(): void {
-    view.cancelAnimationFrame(frame);
-    frame = 0;
-    lastTime = 0;
-    impulses = [];
-  }
-
-  // Integrate one shared spring so rapid retargeting preserves the pin and crest's momentum.
-  function animate(now: number): void {
-    if (stopped) return;
-    const elapsed = lastTime ? Math.min(.04, (now - lastTime) / 1000) : 1 / 60;
-    lastTime = now;
-    const steps = Math.ceil(elapsed / .008), dt = elapsed / steps;
-    for (let step = 0; step < steps; step++) {
-      velocity += ((index - position) * 300 - velocity * 30) * dt;
-      position += velocity * dt;
+  function cancel():void {view.cancelAnimationFrame(frame);frame=0;}
+  function finish():void {
+    position=target;
+    for(const collection of [bars,labels])for(const [key,item]of collection){
+      item.x=item.to;item.alpha=item.toAlpha;
+      if(!item.toAlpha){item.node.remove();collection.delete(key);}
     }
-    impulses = impulses.filter(impulse => now - impulse.time < 1000);
-    const moving = Math.abs(index - position) > .0003 || Math.abs(velocity) > .003;
-    if (!moving) { position = index; velocity = 0; }
-    paint(now);
-    if (moving || impulses.length) frame = view.requestAnimationFrame(animate);
-    else { frame = 0; lastTime = 0; }
+    pulse=false;paint();
   }
-
-  // Rebuild spaced ticks only when a provider changes its number of supported options.
-  function rebuild(count: number): void {
-    scale.replaceChildren();
-    scale.style.setProperty("--bb-effort-intervals", String(last));
-    bars = [];
-    labels = [];
-    for (let coordinate = -12; coordinate <= last * 24 + 12; coordinate += 2) {
-      const node = document.createElement("i");
-      node.setAttribute("data-effort-tick", "");
-      const major = coordinate % 24 === 0, mid = !major && coordinate % 12 === 0;
-      node.toggleAttribute("data-major", major);
-      node.style.left = `${coordinate / (last * 24) * 100}%`;
-      scale.append(node);
-      const noise = grain(coordinate);
-      bars.push({ node, coordinate, major, mid, noise });
-    }
-    for (let step = 0; step < count; step++) {
-      const label = document.createElement("span");
-      label.setAttribute("data-effort-label", "");
-      label.style.left = `${step / last * 100}%`;
-      scale.append(label);
-      labels.push(label);
+  function animate(now:number):void {
+    if(stopped)return;
+    const progress=Math.min(1,Math.max(0,(now-started)/320)),eased=ease(progress);
+    position=fromPosition+(target-fromPosition)*eased;
+    for(const item of items()){item.x=item.from+(item.to-item.from)*eased;item.alpha=item.fromAlpha+(item.toAlpha-item.fromAlpha)*eased;}
+    paint(eased);
+    if(progress<1)frame=view.requestAnimationFrame(animate);else{frame=0;finish();}
+  }
+  function item(node:HTMLElement,x:number,initial:boolean):Item {return{node,x,from:x,to:x,alpha:initial?1:0,fromAlpha:initial?1:0,toAlpha:1};}
+  function rebuild(next:string[],initial:boolean):void {
+    width=scale.getBoundingClientRect().width;
+    scale.style.setProperty('--bb-effort-intervals',String(Math.max(1,next.length-1)));
+    for(const existing of items())existing.toAlpha=0;
+    const last=next.length-1;
+    for(let step=0;step<next.length;step++){
+      const name=next[step],key=JSON.stringify([name,next.slice(0,step).filter(n=>n===name).length]),x=point(step,next.length);
+      let label=labels.get(key);
+      if(!label){const node=document.createElement('span');node.setAttribute('data-effort-label','');node.textContent=name;scale.append(node);label=item(node,x,initial);labels.set(key,label);}
+      label.to=x;label.toAlpha=1;label.node.style.left=`${x*100}%`;
+      // Assign each minor tick to its nearest named step, preserving its identity.
+      const start=step===0?-12:-10,end=12;
+      for(let offset=start;offset<=end;offset+=2){
+        const coordinate=step*24+offset,tickKey=key+':'+offset,tickX=last?coordinate/(last*24):.5+offset/24;
+        let bar=bars.get(tickKey);
+        if(!bar){const node=document.createElement('i');node.setAttribute('data-effort-tick','');node.toggleAttribute('data-major',offset===0);node.style.height='24px';scale.prepend(node);bar={...item(node,tickX,initial),coordinate,major:offset===0,mid:Math.abs(offset)===12,noise:grain(coordinate)};bars.set(tickKey,bar);}
+        bar.to=tickX;bar.toAlpha=1;bar.node.style.left=`${tickX*100}%`;
+      }
     }
   }
-
-  // Reflect native labels immediately and animate only actual selection changes.
-  function sync(names: string[], next: number): void {
-    if (stopped) return;
-    const replaced = last !== names.length - 1;
-    if (replaced) {
-      cancel();
-      last = names.length - 1;
-      position = next;
-      velocity = 0;
-      rebuild(names.length);
-    }
-    for (let step = 0; step < names.length; step++) {
-      const label = labels[step];
-      if (label.textContent !== names[step]) label.textContent = names[step];
-      label.toggleAttribute("data-current", step === next);
-    }
-    if (next === index && !replaced) return;
-    index = next;
-    if (replaced || media?.matches) {
-      cancel();
-      position = index;
-      velocity = 0;
-      paint(view.performance.now());
-      return;
-    }
-    impulses.push({ origin: index, time: view.performance.now() });
-    impulses = impulses.slice(-4);
-    if (!frame) frame = view.requestAnimationFrame(animate);
+  function sync(next:string[],selected:number,nextProvider=''):void {
+    if(stopped||!next.length)return;
+    const initial=index<0,changed=next.length!==names.length||next.some((name,i)=>name!==names[i]);
+    if(!initial&&!changed&&selected===index&&nextProvider===provider)return;
+    cancel();fromPosition=position;
+    if(changed)rebuild(next,initial);
+    names=[...next];index=selected;target=point(selected,names.length);pulse=!initial&&(changed||nextProvider!==provider);provider=nextProvider;
+    for(const item of items()){item.from=item.x;item.fromAlpha=item.alpha;}
+    // Existing labels can be reordered, so determine selection by the new name.
+    for(const [key,item]of labels)item.node.toggleAttribute('data-current',item.toAlpha===1&&key===JSON.stringify([names[selected],names.slice(0,selected).filter(n=>n===names[selected]).length]));
+    if(initial||media?.matches){finish();return;}
+    started=view.performance.now();paint(0);frame=view.requestAnimationFrame(animate);
   }
-
-  // Snap to the committed tick when the user enables reduced motion.
-  function reduced(): void {
-    if (!media?.matches) return;
-    cancel();
-    position = index;
-    velocity = 0;
-    paint(view.performance.now());
-  }
-
-  // Dispose the visual controller when its native provider group is removed.
-  function stop(): void {
-    stopped = true;
-    cancel();
-    media?.removeEventListener?.("change", reduced);
-    viewport.remove();
-  }
-
-  media?.addEventListener?.("change", reduced);
-  return { sync, stop };
+  const reduced=()=>{if(media?.matches){cancel();finish();}};
+  const resize=()=>{width=scale.getBoundingClientRect().width;paint();};
+  media?.addEventListener?.('change',reduced);view.addEventListener('resize',resize);
+  return {sync,stop(){stopped=true;cancel();media?.removeEventListener?.('change',reduced);view.removeEventListener('resize',resize);viewport.remove();}};
 }

@@ -444,3 +444,21 @@ test("dispose restores native effort markup and prevents detached gauge or obser
     assert.equal(f.group().hasAttribute(SOURCE), false);
   } finally { stop(); f.restore(); }
 });
+
+for (const phone of [false,true]) test(`provider replacement keeps one Effort frame and animates High to its new position (${phone?'phone':'desktop'})`,async()=>{
+ const f=fixture({phone,selected:2}),clock=animationClock(f),stop=injectComposerMenuGlass(f.document);
+ try{
+ const gauge=f.range().parentElement!.parentElement!,pin=f.card.querySelector<HTMLElement>('[data-effort-pin]')!,before=pin.style.transform;
+ const high=[...f.card.querySelectorAll<HTMLElement>('[data-effort-label]')].find(n=>n.textContent==='High')!;
+ const oldGroup=f.group();oldGroup.outerHTML='<div role="radiogroup" aria-label="Reasoning">'+radioMarkup(['Low','Medium','High'],2)+'</div>';await f.settle();
+ assert.equal(f.range().parentElement!.parentElement,gauge,'native replacement retains the same gauge frame');assert.equal(f.card.querySelector('[data-effort-pin]'),pin);assert.equal(pin.style.transform,before,'changing counts starts at the visible selection');
+ assert.ok(high.isConnected,'shared labels retain identity');assert.ok(clock.pending.size>0,'same selected index at a new count still moves');clock.advance();assert.notEqual(pin.style.transform,before);clock.finish();assert.equal(pin.style.transform,'translateX(100%)');assert.equal(high.style.left,'100%');assert.deepEqual(f.clicks,[],'provider display updates do not write settings');assert.equal(oldGroup.hasAttribute(SOURCE),false);
+ const height=f.card.querySelector<HTMLElement>('[data-effort-tick]')!.style.height;f.group().innerHTML=radioMarkup(['Minimal','Standard','High'],2);await f.settle();assert.ok(clock.pending.size>0,'changed provider labels transition even at the same index and count');clock.finish();assert.equal(f.card.querySelector<HTMLElement>('[data-effort-tick]')!.style.height,height,'wave frames vary transform and opacity instead of layout height');
+ stop();assert.equal(f.card.querySelector('[data-effort-pin]'),null);assert.equal(f.group().hasAttribute(SOURCE),false);assert.equal(clock.pending.size,0);
+ }finally{stop();f.restore()}
+});
+
+test('provider changes transition even with identical Effort names and selection',async()=>{
+ const f=fixture(),clock=animationClock(f);f.card.insertAdjacentHTML('afterbegin','<div><button title="A" aria-selected="true">A</button><button title="B" aria-selected="false">B</button></div>');const stop=injectComposerMenuGlass(f.document);
+ try{const gauge=f.range().parentElement!.parentElement;f.card.querySelector('[title=A]')!.setAttribute('aria-selected','false');f.card.querySelector('[title=B]')!.setAttribute('aria-selected','true');await f.settle();assert.equal(f.range().parentElement!.parentElement,gauge);assert.ok(clock.pending.size>0);clock.advance();assert.ok(Number(f.card.querySelector<HTMLElement>('[data-effort-head]')!.style.opacity)<1);clock.finish();assert.equal(f.card.querySelector<HTMLElement>('[data-effort-head]')!.style.opacity,'1');assert.deepEqual(f.clicks,[])}finally{stop();f.restore()}
+});

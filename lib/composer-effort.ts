@@ -6,7 +6,7 @@ const HEADING = "data-bb-chat-ui-effort-heading";
 const GAUGE = "data-bb-chat-ui-effort";
 
 type EffortState = { buttons: HTMLButtonElement[]; index: number };
-type Gauge = { sync(): boolean; stop(): void };
+type Gauge = { sync(group?: HTMLElement): boolean; stop(): void };
 
 // Read the provider's real options and selected state without changing its settings.
 function readEffort(group: HTMLElement): EffortState {
@@ -33,10 +33,9 @@ function mountGauge(group: HTMLElement): Gauge | null {
   const view = document.defaultView;
   let state = readEffort(group);
   if (!view || state.buttons.length < 2 || state.index < 0) return null;
-  const previousSource = group.getAttribute(SOURCE);
-  const heading = group.previousElementSibling;
-  const nativeHeading = heading?.textContent?.trim() === "Reasoning" ? heading : null;
-  const previousHeading = nativeHeading?.getAttribute(HEADING) ?? null;
+  let previousSource = group.getAttribute(SOURCE);
+  let nativeHeading = group.previousElementSibling?.textContent?.trim() === "Reasoning" ? group.previousElementSibling : null;
+  let previousHeading = nativeHeading?.getAttribute(HEADING) ?? null;
   const box = document.createElement("div");
   box.setAttribute(GAUGE, "");
   box.innerHTML = '<div data-effort-caption><span>Effort</span><output></output></div><div data-effort-track><input type="range" aria-label="Effort" min="0" step="1"></div>';
@@ -59,7 +58,10 @@ function mountGauge(group: HTMLElement): Gauge | null {
     if (output.textContent !== text) output.textContent = text;
     input.disabled = group.getAttribute("aria-disabled") === "true" || state.buttons.every(button => button.disabled || button.getAttribute("aria-disabled") === "true");
     box.toggleAttribute("data-disabled", input.disabled);
-    wave.sync(state.buttons.map(label), value);
+    const selectedClass = ["border", "foreground"].join("-");
+    const card = group.closest('[data-bb-chat-ui-model-menu]');
+    const provider = Array.from(card?.querySelectorAll<HTMLButtonElement>('button[title]') ?? []).find(button => button.classList.contains(selectedClass) || button.getAttribute('aria-selected') === 'true')?.title ?? '';
+    wave.sync(state.buttons.map(label), value, provider);
   }
 
   // Test availability at the native boundary rather than inventing unsupported values.
@@ -156,9 +158,20 @@ function mountGauge(group: HTMLElement): Gauge | null {
   }
 
   // Follow provider state and replaced native options while preserving the active drag.
-  function sync(): boolean {
-    const next = readEffort(group);
+  function sync(nextGroup = group): boolean {
+    const next = readEffort(nextGroup);
     if (next.index < 0 || next.buttons.length < 2) return false;
+    if (nextGroup !== group) {
+      settle();
+      restoreAttribute(group, SOURCE, previousSource);
+      if (nativeHeading) restoreAttribute(nativeHeading, HEADING, previousHeading);
+      group = nextGroup;
+      previousSource = group.getAttribute(SOURCE);
+      nativeHeading = group.previousElementSibling?.textContent?.trim() === 'Reasoning' ? group.previousElementSibling : null;
+      previousHeading = nativeHeading?.getAttribute(HEADING) ?? null;
+      group.setAttribute(SOURCE, ''); nativeHeading?.setAttribute(HEADING, '');
+    }
+    if (box.previousElementSibling !== group) group.after(box);
     if (next.buttons.length !== state.buttons.length || next.buttons.some((button, i) => button !== state.buttons[i])) {
       settle();
     }
@@ -208,10 +221,14 @@ export function injectComposerEffort(card: HTMLElement): () => void {
 
   // Discover new native groups and release gauges whose source was replaced.
   function sync(): void {
+    const groups = Array.from(card.querySelectorAll<HTMLElement>(GROUP));
     for (const [group, gauge] of gauges) {
-      if (!card.contains(group) || !gauge.sync()) { gauge.stop(); gauges.delete(group); }
+      const replacement = groups.find(next => !gauges.has(next));
+      if (!card.contains(group) && replacement && gauge.sync(replacement)) {
+        gauges.delete(group); gauges.set(replacement, gauge);
+      } else if (!card.contains(group) || !gauge.sync()) { gauge.stop(); gauges.delete(group); }
     }
-    for (const group of Array.from(card.querySelectorAll<HTMLElement>(GROUP))) {
+    for (const group of groups) {
       if (gauges.has(group)) continue;
       const gauge = mountGauge(group);
       if (gauge) gauges.set(group, gauge);
@@ -227,7 +244,7 @@ export function injectComposerEffort(card: HTMLElement): () => void {
   }
 
   const observer = view ? new view.MutationObserver(changed) : null;
-  observer?.observe(card, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-checked", "aria-disabled", "disabled", "aria-label"] });
+  observer?.observe(card, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-checked", "aria-disabled", "disabled", "aria-label", "class", "aria-selected"] });
   sync();
   // Disconnect provider observation and restore every native reasoning group.
   return () => {
