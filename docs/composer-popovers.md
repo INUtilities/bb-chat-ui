@@ -377,3 +377,40 @@ fallback을 둔다. reference 변수는 device=phone이면 viewport와 무관하
 | 세로 / 가로 margin | −2px / 3px | −2px / 4px |
 
 왼쪽 padding은 `--bb-chat-ui-pill-reference-pad-left`, 삭제 원은 `--bb-chat-ui-pill-reference-remove`로 선택한다. 원 안의 × 도형은 desktop 10→8px·phone 12→9px로 축소하며 원 16px·18px와 phone 24px 투명 터치 영역은 유지한다. 높이 22px에서 세로 margin 0은 desktop 입력 줄(22px)을 1.17px 늘려 −2px로 보정했다. 입력 줄 22px·보낸 줄 24px의 pill 유무 높이 차이는 0을 유지한다. phone 24px pill도 입력 27px·보낸 줄 24px에서 높이 차이 0을 유지하도록 세로 margin −2px를 쓴다.
+
+## phone 하단 시트
+
+phone(`html[data-bb-chat-ui-root-device="phone"]`)에서는 Chat UI가 띄우거나 꾸미는 팝오버를
+iOS식 떠 있는 하단 시트로 띄운다. 코드는 `lib/phone-sheet.ts`이며 `phone-sheet` content script가
+phone일 때만 별도 stylesheet를 설치한다. desktop CSS 문자열은 바꾸지 않고 테스트로 고정한다.
+
+| 단계 | 모양 |
+|---|---|
+| 접힘 | 좌우·아래 8px 떨어져 뜬다. 네 모서리 30px. 높이는 내용만큼, 상한은 `min(화면 50%, 416px)` |
+| 펼침 | 양옆에 붙고 스레드 창 위(BB 헤더 아래) 8px까지 올라간다. 위 두 모서리만 30px |
+| 손잡이 | 시트 위 24px 줄의 배경 그림 40×4px(위 8px). DOM을 추가하지 않는다 |
+
+- 값은 참고 사진(iPhone 3x) 실측이다. frost 면·blur·saturate는 카드와 같고 한 겹이다.
+- 대상: 정보 pill 상세 카드, 전체 정보 목록, 인용 원문. 카드의 원래 DOM 부모를 유지하고
+  표식(`data-bb-chat-ui-sheet`)과 inline CSS 변수만 쓴다. 닫히거나 해제되면 모두 지운다.
+- 컴포저 조상에 `container-type`이 있어 `position:fixed`의 기준이 화면이 아니다. 위치는 화면 좌표로
+  계산해 실제 기준 상자의 좌표로 바꿔 쓴다. 덮는 범위는 `[data-thread-window]`이다.
+- 손잡이 줄은 항상 끌 수 있다. 접힘 단계에서는 본문을 끌어도 시트가 움직이고 본문은 스크롤하지 않는다.
+  펼침 단계에서는 본문이 스크롤되고, 맨 위에서 아래로 끌 때만 시트가 내려간다.
+  짧은 카드도 위로 끌면 펼친다. 놓으면 가까운 단계로 맞추고, 25% 넘게 또는 빠르게 내리면 닫는다.
+- iOS가 제스처를 네이티브 스크롤로 가져가지 않도록 손잡이 줄은 `touchstart`, 접힌 본문은 첫
+  `touchmove`부터 취소한다. 본문 탭은 그대로 클릭된다.
+- 드래그로 닫을 때는 카드 자신의 닫기 동작을 누른다. 밖 누르기·Esc·×는 기존 닫기 경로를 쓴다.
+- 단계가 바뀌거나 끌어서 닫을 때 `impact-light` 햅틱을 낸다.
+- 모션: 열기·단계 맞춤 320ms `EASE.out`, 닫기 260ms `EASE.exit`, 동작 줄이기면 즉시.
+  단계 사이의 위치·너비·모서리 변화는 kit 모션 규칙(transform·opacity·height)의 예외다.
+- 키보드는 `visualViewport`로 재고(80px 미만은 무시), 시트를 키보드 위에 띄운다. safe-area는
+  `--bb-safe-area-bottom`(없으면 `env()`)을 아래 padding에 넣는다.
+- 포커스가 접힌 가장자리 아래 요소로 가면 펼침 단계로 연다.
+- 카드 바깥의 스크롤 흐림 힌트는 시트가 열린 동안 숨긴다.
+
+BB drawer(`+` 메뉴, 모델 메뉴, PR 머지 방식 메뉴)는 BB가 위치·끌기·닫기를 소유한다.
+플러그인은 CSS로 좌우·아래 8px 떠 있는 모양, 30px 모서리, frost 한 겹, 손잡이 크기, 투명한 뒤 배경만 바꾼다.
+BB가 키보드 때 inline `bottom`을 쓰므로 `translate`로 띄운다. 펼친 단계·위로 끌기·단계 햅틱은 없다.
+닫히기 시작할 때 8px 튐이 남는다. phone 모델 drawer는 trigger에 `aria-controls`가 없어
+라벨이 `Model`인 열린 drawer를 찾아 표식과 스크롤 제목 frost만 붙인다.
