@@ -10,6 +10,12 @@ Viewport는 관찰 연결을 갱신한 뒤 모든 크기를 읽고, 마지막에
 
 정보 줄의 재배치 입력은 표시하는 필의 내용·아이콘·활성 항목과 너비·기기 규격으로 제한한다. Diff 파일 경로 같은 상세 데이터의 revision만 바뀌면 열린 상세 내용은 갱신하되 필의 크기와 위치를 다시 읽지 않는다. ResizeObserver가 같은 너비와 다른 높이를 전달하면 열린 카드의 스크롤 힌트 위치만 갱신한다. 실제 너비나 필 표시 내용이 바뀌면 다시 배치한다.
 
+정보 카드 CSS는 원래 순서의 상시 조각과 상세 카드 조각으로 나눈다. 내보내는 CSS 원문은 그대로 유지하고, 주입할 때만 여섯 상세 조각을 `@media all`로 감싼다. 연결된 모든 컴포저에서 소유한 `UNIT+OPEN` 노드가 없으면 상세 조각을 `not all`로 바꾼다. 메뉴만 열린 상태는 이 상세 스타일의 소유자가 아니며 메뉴·요청·필 스타일은 계속 활성 상태로 둔다.
+
+상세 스타일은 OPEN 표식을 쓰거나 native disclosure를 누르기 전에 동기로 켠다. 처음부터 열린 노드도 첫 크기 측정 전에 처리한다. 전체 컴포저 분류가 끝날 때까지 비활성화는 보류하며, 편집 때문에 닫기를 거절하거나 다른 패널에 열린 카드가 남으면 스타일을 유지한다. 카드 교체 중에는 잠시 껐다 켜지 않는다.
+
+분류 중 예외가 발생하면 원래 예외를 전달하고 해당 주입의 상세 스타일을 계속 켜 둔다. CSSOM을 제어할 수 없거나 stylesheet identity가 바뀌면 원래 CSS 전체를 활성 상태로 복구한다. 활성 스타일을 검사하는 테스트는 실제 CSSOM과 media 조건을 따라야 하며, 검사 중 `style.textContent`를 다시 쓰면 이 복구 경로로 바뀔 수 있다.
+
 표준 DOM, MutationObserver, ResizeObserver, requestAnimationFrame만 사용한다. 운영체제, user agent, 브라우저 실행 옵션이나 머신별 설정으로 동작을 나누지 않는다.
 
 회귀 테스트는 `composer-glass-lifecycle.test.ts`, `composer-viewport.test.ts`, `composer-info.test.ts`의 발견·inline composer 항목에 있다. 작업 횟수 감소가 실제 paint 시간 개선을 증명하지는 않는다. macOS와 phone의 실제 화면 검증은 해당 기기에서 별도로 수행해야 한다.
