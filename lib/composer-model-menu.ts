@@ -131,7 +131,8 @@ export function injectComposerModelMenus(document: Document): () => void {
     const phoneTrigger = Array.from(document.querySelectorAll(PHONE_TRIGGER)).find(trigger => trigger.getAttribute("aria-expanded") === "true");
     if (phoneTrigger) {
       for (const card of Array.from(document.querySelectorAll<HTMLElement>(PHONE_DRAWER))) {
-        if (cards.has(card) || document.getElementById(card.getAttribute("aria-labelledby") ?? "")?.textContent?.trim() !== "Model") continue;
+        const title = document.getElementById(card.getAttribute("aria-labelledby") ?? "")?.textContent?.trim();
+        if (cards.has(card) || (title !== "Model" && title !== "Handoff to new thread")) continue;
         const previous = card.getAttribute(MODEL_MENU_MARK);
         card.setAttribute(MODEL_MENU_MARK, "");
         // Native editor focus restoration also runs while its phone drawer is open.

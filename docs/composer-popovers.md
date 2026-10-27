@@ -455,3 +455,9 @@ phone 모델 옵션의 Fast mode·provider 전환·Effort 단계 변경은 `impa
 같은 provider·같은 Effort 단계는 반복하지 않으며 공통 400ms 간격을 따른다.
 Effort 파형의 drag·키보드 선택도 native radio commit에서 한 번만 처리한다.
 desktop·비활성 버튼·닫힌 시트에는 적용하지 않는다.
+
+모델 drawer가 `Handoff to new thread` 확인 화면으로 바뀌어도 같은 모델·Effort
+보강과 단일 frost를 유지한다. 이 상태에서 플러그인을 다시 연결해도 한 번만 보강한다.
+native가 Handoff 손잡이에 넣는 솔리드 배경은 투명하게 덮고 높이·끌기 영역은 유지한다.
+확인 화면이 열려 있는 동안만 뒤 컴포저의 inert를 유지하고, 닫기·제거·해제 시 복구한다.
+실제 Handoff 실행은 native 컴포저가 소유한다.

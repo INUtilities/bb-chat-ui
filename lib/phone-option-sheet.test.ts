@@ -130,3 +130,13 @@ test("device changes and disposal restore option drawer styling without touching
     assert.equal(f.d.body.innerHTML, before);
   } finally { stop(); f.dom.window.close(); }
 });
+
+test('native handoff handle stays transparent when the host adds a solid full-width header',()=>{
+ const f=fixture();try{
+  const card=f.d.getElementById('model')!,handle=f.d.createElement('div');
+  handle.setAttribute('data-persistent-drawer-handle','');handle.className='bg-background';card.prepend(handle);
+  const style=f.d.createElement('style');style.textContent=phoneDrawerCss();f.d.head.append(style);
+  const matches=(Array.from(style.sheet!.cssRules)as CSSStyleRule[]).filter(r=>r.selectorText&&handle.matches(r.selectorText));
+  assert.ok(matches.some(r=>r.style.background==='transparent'&&r.style.getPropertyPriority('background')==='important'),'native handoff handle cannot add another opaque surface');
+ }finally{f.dom.window.close();}
+});

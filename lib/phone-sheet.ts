@@ -139,7 +139,7 @@ ${D} {
   padding-bottom:max(0px, calc(var(--bb-safe-area-bottom,env(safe-area-inset-bottom,0px)) - var(--bb-chat-ui-sheet-inset))) !important;
 }
 ${D}[data-state="open"] { translate:0 calc(-1 * var(--bb-chat-ui-sheet-inset)); }
-${D} > [data-persistent-drawer-handle] { height:var(--bb-chat-ui-sheet-pad-top) !important; padding-top:var(--bb-chat-ui-sheet-grab-top); align-items:flex-start !important; }
+${D} > [data-persistent-drawer-handle] { height:var(--bb-chat-ui-sheet-pad-top) !important; padding-top:var(--bb-chat-ui-sheet-grab-top); align-items:flex-start !important; background:transparent !important; }
 ${D} > [data-persistent-drawer-handle] > div { width:var(--bb-chat-ui-sheet-grab-w) !important; height:var(--bb-chat-ui-sheet-grab-h) !important; background:${GRAB} !important; }
 ${PHONE} [data-persistent-drawer-backdrop]:is(${BACKDROPS}) { background:transparent !important; }
 `;
