@@ -30,11 +30,11 @@ ${phone} [data-follow-up-composer]:has(${expanded}) > [data-follow-up-composer-f
 ${phone} [${mark}]{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;isolation:isolate;overflow:visible!important}`;
  type Run={animation:Animation;from:number;to:number};
  let resize:ResizeObserver|null=null;
- let state:{face:HTMLElement;rect:DOMRect;clip:Run;content:Animation|null;footer:Animation|null;messages:Run|null;messageNode:HTMLElement|null;scrollTop:number;total:number;extension:number;bottomFrom:number;pills:HTMLElement|null;pill:Run|null;started:number;hadMark:boolean}|null=null,disposed=false;
+ let state:{face:HTMLElement;rect:DOMRect;edge:Run;surfaceAnimation:Animation;content:Animation|null;footer:Animation|null;messages:Run|null;messageNode:HTMLElement|null;scrollTop:number;total:number;extension:number;bottomFrom:number;pills:HTMLElement|null;pill:Run|null;started:number;hadMark:boolean}|null=null,disposed=false;
  const progress=(run:Run)=>run.animation.effect?.getComputedTiming().progress??0;
  const value=(run:Run)=>run.from+(run.to-run.from)*progress(run);
  const stop=(animation:Animation|null)=>{if(animation){animation.onfinish=null;animation.oncancel=null;animation.cancel()}};
- function cancel(){resize?.disconnect();resize=null;if(!state)return;const old=state;state=null;stop(old.clip.animation);stop(old.content);stop(old.footer);stop(old.messages?.animation??null);lastViewport=view.visualViewport?.height??view.innerHeight;lastScroll=scroller?.scrollTop??lastScroll;stop(old.pill?.animation??null);old.face.remove();if(!old.hadMark)composer.removeAttribute(mark)}
+ function cancel(){resize?.disconnect();resize=null;if(!state)return;const old=state;state=null;stop(old.edge.animation);stop(old.surfaceAnimation);stop(old.content);stop(old.footer);stop(old.messages?.animation??null);lastViewport=view.visualViewport?.height??view.innerHeight;lastScroll=scroller?.scrollTop??lastScroll;stop(old.pill?.animation??null);old.face.remove();if(!old.hadMark)composer.removeAttribute(mark)}
  function expand(fromHeight:number){
   if(disposed)return;
   if(document.documentElement.getAttribute('data-bb-chat-ui-root-device')!=='phone'||media?.matches||typeof composer.animate!=='function'){cancel();return}
@@ -46,15 +46,19 @@ ${phone} [${mark}]{background:transparent!important;backdrop-filter:none!importa
   const now=view.performance.now();let footer:Animation|null,messages:Run|null,messageNode:HTMLElement|null,total:number,bottomFrom:number;let face:HTMLElement,pills:HTMLElement|null,content:Animation|null,from:number,pillFrom:number,started:number,hadMark:boolean;
   if(state){
    const old=state;face=old.face;pills=old.pills;content=old.content;footer=old.footer;messages=old.messages;messageNode=old.messageNode;total=old.total;started=old.started;hadMark=old.hadMark;
-   from=Math.max(0,old.rect.top+value(old.clip)-rect.top);
+   from=old.rect.top+value(old.edge)-rect.top;
    pillFrom=(old.pill?value(old.pill):0)+(old.rect.top-rect.top);
-   const oldBottom=old.rect.bottom+old.extension-(old.bottomFrom+(old.extension-old.bottomFrom)*progress(old.clip));
+   const oldBottom=old.rect.bottom+old.extension-(old.bottomFrom+(old.extension-old.bottomFrom)*progress(old.edge));
    bottomFrom=Math.max(0,rect.bottom+extension-oldBottom);
-   stop(old.clip.animation);stop(old.pill?.animation??null);
+   stop(old.edge.animation);stop(old.surfaceAnimation);stop(old.pill?.animation??null);
   }else{
    const css=view.getComputedStyle(composer);face=document.createElement('div');face.setAttribute('data-bb-chat-ui-expand-face','');face.setAttribute('aria-hidden','true');face.setAttribute('inert','');
    face.style.cssText='position:absolute;inset:0;z-index:-1;pointer-events:none;';
    face.style.background=css.background;face.style.backdropFilter=css.backdropFilter;face.style.setProperty('-webkit-backdrop-filter',css.getPropertyValue('-webkit-backdrop-filter')||css.backdropFilter);face.style.boxShadow=css.boxShadow;face.style.borderRadius=css.borderRadius;
+   // One frost face moves inside a transparent overflow window. Both keep
+   // fixed corner radii: translation changes the edges without stretching them.
+   const surface=document.createElement('div');surface.setAttribute('data-bb-chat-ui-expand-surface','');surface.style.cssText=face.style.cssText;surface.style.willChange='transform';
+   face.style.background='transparent';face.style.backdropFilter='none';face.style.setProperty('-webkit-backdrop-filter','none');face.style.boxShadow='none';face.style.overflow='hidden';face.style.willChange='transform';face.append(surface);
    hadMark=composer.hasAttribute(mark);composer.setAttribute(mark,'');composer.append(face);
    from=Math.max(0,rect.height+extension-fromHeight);bottomFrom=0;pillFrom=from;started=now;
    const layout=composer.querySelector<HTMLElement>(':scope > [data-promptbox-layout]');
@@ -69,10 +73,14 @@ ${phone} [${mark}]{background:transparent!important;backdrop-filter:none!importa
   }
   face.style.bottom=`-${extension}px`;
   const remaining=Math.max(1,durationMs-(now-started));
-  const animation=face.animate([{clipPath:`inset(${from}px 0px ${bottomFrom}px round 25px)`},{clipPath:`inset(0px 0px ${extension}px round 22px)`}],{duration:remaining,easing:EASE.out,fill:'both'});
+  const visibleHeight=rect.height+extension-from-bottomFrom;
+  const height=Math.max(rect.height+extension,visibleHeight);
+  face.style.top=`${rect.height+extension-height}px`;
+  const animation=face.animate([{transform:`translateY(${-bottomFrom}px)`},{transform:`translateY(${-extension}px)`}],{duration:remaining,easing:EASE.out,fill:'both'});
+  const surfaceAnimation=face.querySelector<HTMLElement>('[data-bb-chat-ui-expand-surface]')!.animate([{transform:`translateY(${height-visibleHeight}px)`},{transform:`translateY(${height-rect.height}px)`}],{duration:remaining,easing:EASE.out,fill:'both'});
   const pillAnimation=pills?.animate([{transform:`translateY(${pillFrom}px)`},{transform:'translateY(0px)'}],{duration:remaining,easing:EASE.out,fill:'both'})??null;
-  state={face,rect,clip:{animation,from,to:0},content,footer,messages,messageNode,scrollTop:scroller?.scrollTop??lastScroll,total,extension,bottomFrom,pills,pill:pillAnimation?{animation:pillAnimation,from:pillFrom,to:0}:null,started,hadMark};
-  animation.onfinish=()=>{if(state?.clip.animation===animation)cancel()};
+  state={face,rect,edge:{animation,from,to:0},surfaceAnimation,content,footer,messages,messageNode,scrollTop:scroller?.scrollTop??lastScroll,total,extension,bottomFrom,pills,pill:pillAnimation?{animation:pillAnimation,from:pillFrom,to:0}:null,started,hadMark};
+  animation.onfinish=()=>{if(state?.edge.animation===animation)cancel()};
   if(!resize&&typeof view.ResizeObserver==='function'){resize=new view.ResizeObserver(()=>{if(state)expand(state.rect.height)});resize.observe(composer);if(anchor)resize.observe(anchor);}
  }
  const restoreEnabled=()=>{if(originalEnabled===null)composer.removeAttribute(enabled);else composer.setAttribute(enabled,originalEnabled)};

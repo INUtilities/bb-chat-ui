@@ -528,7 +528,7 @@ Effort 단계가 하나인 provider도 같은 게이지를 쓴다. 중앙 눈금
 
 ### phone 펼침: 최종 레이아웃과 표시 면의 분리
 
-실제 iPhone 비교에서 사용자가 고른 D를 phone의 기본 펼침으로 쓴다. A/B/C 분기·비교 스위치·
+실제 iPhone 비교에서 사용자가 고른 E를 phone의 기본 펼침으로 쓴다. 다른 실험 분기·비교 스위치·
 sessionStorage 선택은 제품에 없다. 닫힘과 desktop은 기존 동작을 유지한다.
 
 기존 방식은 마지막 접힌 높이를 px로 고정하고 새 높이까지 전환했다. native main은 그 높이로
@@ -537,8 +537,9 @@ CSS 전환이 취소·재개된다. phone에서는 이 중간 레이아웃을 �
 확정한다. 안쪽 grid/main과 아래 footer의 크기 전환도 즉시 끝낸다.
 
 - form의 기존 테마 배경·blur·shadow를 별도 inert·aria-hidden 면 하나에 옮기고 원래 면은
-  전환 동안 투명하게 한다. 이 면의 `clip-path:inset()`을 이전 화면 경계에서 새 경계까지
-  360ms·kit `EASE.out`으로 연다. 끝나면 원래 면을 복구하고 추가 면을 제거한다.
+  전환 동안 투명하게 한다. 투명한 overflow 창과 그 안의 단일 frost 면을 각각 translateY로
+  이동해 이전 화면 경계에서 새 경계까지 360ms·kit `EASE.out`으로 연다. 두 층의 모서리는
+  고정 반지름이며 scale과 clip-path는 쓰지 않는다. 끝나면 원래 면을 복구하고 두 층을 제거한다.
 - native 입력·버튼 DOM은 옮기거나 복제하지 않는다. 같은 시계의 opacity·translate로 표시한다.
   펼침 버튼 복제본과 native visibility 숨김·교대는 쓰지 않는다. 닫힘의 inert 시각 복제본은 유지한다.
 - 아래 권한·context footer가 늘어나는 거리도 anchor의 실제 경계로 읽어 포함한다. phone 실측은
@@ -546,7 +547,7 @@ CSS 전환이 취소·재개된다. phone에서는 이 중간 레이아웃을 �
 - native scrollTop은 바꾸지 않는다. 키보드 이동과 구별되는 작은 native 스크롤 보정만 본문 층의
   transform으로 이어 간다. 키보드가 화면 전체를 옮기는 동작을 대체하지 않는다.
 - 활성 전환 중 실제 크기가 바뀔 때만 ResizeObserver(composer·anchor)를 읽고, 현재 보이는
-  clip 경계에서 기존 끝 시간까지 새 목표로 잇는다. 일반 입력마다 측정하거나 매 프레임 JS로
+  위·아래 경계에서 기존 끝 시간까지 두 translate를 새 목표로 잇는다. 일반 입력마다 측정하거나 매 프레임 JS로
   스타일을 갱신하지 않는다.
 - reduced motion에서는 즉시 반영한다. 접힘·기기 변경·composer 제거·해제 때 면·애니메이션·
   관찰과 추가 표식을 정리한다. phone일 때만 전용 stylesheet와 활성 표식을 설치한다.
@@ -555,4 +556,8 @@ CSS 전환이 취소·재개된다. phone에서는 이 중간 레이아웃을 �
 확인하지 못했다. D의 form 높이는 50/124px 두 값뿐이었고 초기 pill 이동은 0~0.12px였다.
 실제 iPhone의 잔여 끊김이 모두 사라졌다는 뜻은 아니다. Safari의 키보드·compositor 체감은
 사용자 피드백을 기준으로 한다. 원시 기록은 `phone-sheet-polish/toolbar-motion/d-visual/`,
-확정 검수는 `phone-sheet-polish/final-d/`에 둔다(thread-storage의 `thr_2azf6e7w23`).
+D 확정 검수는 `phone-sheet-polish/final-d/`에 둔다. 이후 D/E 비교에서 사용자는
+미세한 어긋남이 덜한 E를 선택했다. Chrome phone·6x·각 3회 측정에서 Paint 중앙값은
+D 10.07ms·E 9.63ms였으나 compositor CPU는 D 2.21ms·E 2.73ms로, 성능 우위를
+확정하지 않는다. 비교 기록은 `phone-context-frost-transform/motion/`, 최종 E 검수는
+`phone-context-frost-transform/final-e/`에 둔다(thread-storage의 `thr_2azf6e7w23`).
