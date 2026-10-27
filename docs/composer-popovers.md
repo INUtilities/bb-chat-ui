@@ -497,3 +497,24 @@ Effort 게이지 틀은 native Reasoning 그룹 교체에도 유지한다. 같�
 Effort 단계가 하나인 provider도 같은 게이지를 쓴다. 중앙 눈금 하나와 라벨·선택 핀을
 표시하며 범위는 min=0·max=0, aria-readonly=true다. 지원하지 않는 단계나 native 클릭을
 만들지 않는다. 여러 단계와 오갈 때 틀·핀을 재사용해 중앙 위치에서 이어 움직인다.
+
+### 옵션 줄 A/B 검수와 선택
+
+`c5c44d4`의 동시 전환 A를 유지한다. B는 퇴장 200ms 뒤 높이 360ms,
+등장은 높이 360ms 뒤 260ms로 나눈 실험이다. 같은 native DOM과 제품 controller를
+쓰는 한 페이지 데모와 실제 BB phone·desktop에서 CPU 6배 조건으로 비교했다.
+
+- 격리 검수 데이터의 99% 표시·목표 높이 오차 0.15px 이내 도달은
+  phone 등장 A 337ms / B 553ms, 퇴장 328ms / 510ms였다.
+  desktop은 등장 355ms / 572ms, 퇴장 318ms / 519ms였다.
+- 입력란 최대 인접 프레임 이동은 phone 약 20.7px, desktop 약 16.1px로
+  두 방식이 같았다. B는 버튼 등장 이동을 줄이지만 입력·높이의 움직임을 줄이지 못한다.
+- 실제 앱의 초안 비우기·접기에서도 B는 더 늦었다. 인접 관측 사이의 큰 이동에는
+  native 입력 배치·focus 변경·6배 CPU의 긴 프레임 간격이 섞이므로, 이를 모두
+  버튼 줄 모션의 불연속으로 판정하지 않는다. 실제 앱의 long task 감소는 입증하지 못했다.
+- 기본 모션은 A의 360ms이며 B는 전체 560ms·620ms다. 추가 대기 없이 입력에
+  반응하는 A를 선택한다. B 소스는 제품에 포함하지 않는다.
+
+비교 페이지·8프레임 스트립·원시 위치·layout shift·long task 기록은
+`/Users/kebab/.bb/thread-storage/thr_2azf6e7w23/phone-sheet-polish/toolbar-motion/compare.html`과
+같은 폴더의 `metrics-v14.json`, `phone-ab-strips.html`, `desktop-ab-strips.html`에 둔다.
