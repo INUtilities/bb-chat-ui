@@ -377,7 +377,7 @@ fallback을 둔다. reference 변수는 device=phone이면 viewport와 무관하
 테마 표면색을 사용하는 마스크만 겹친다. 동작 줄이기에서는 생성하지 않으며,
 대화 전환·플러그인 해제·스크롤·창 크기 변경·끝점 제거 때 임시 표면과 모션을 정리한다.
 
-- desktop·phone 모두 높이와 모서리를 같은 360ms와 kit 감속 곡선
+- desktop 펼침과 desktop·phone 접힘은 높이와 모서리를 같은 360ms와 kit 감속 곡선
   `cubic-bezier(0.22, 1, 0.36, 1)`으로 시작한다. 접힌 48px 줄과 테두리의
   실제 높이 50px에 맞춰 모서리 목표는 25px이며 펼침은 1.375rem이다.
   `999px`를 보간하면 현재 높이의 절반에서 모서리가 일찍 잘리므로 사용하지 않는다.
@@ -501,9 +501,10 @@ Effort 단계가 하나인 provider도 같은 게이지를 쓴다. 중앙 눈금
 표시하며 범위는 min=0·max=0, aria-readonly=true다. 지원하지 않는 단계나 native 클릭을
 만들지 않는다. 여러 단계와 오갈 때 틀·핀을 재사용해 중앙 위치에서 이어 움직인다.
 
-### 옵션 줄 A/B 검수와 선택
+### 이전 옵션 줄 A/B 검수 기록
 
-`c5c44d4`의 동시 전환 A를 유지한다. B는 퇴장 200ms 뒤 높이 360ms,
+`c5c44d4`의 동시 전환 A는 desktop과 접힘에 유지한다. phone 펼침은 아래의
+최종 레이아웃·표시 면 분리 규칙으로 대체했다. 당시 B는 퇴장 200ms 뒤 높이 360ms,
 등장은 높이 360ms 뒤 260ms로 나눈 실험이다. 같은 native DOM과 제품 controller를
 쓰는 한 페이지 데모와 실제 BB phone·desktop에서 CPU 6배 조건으로 비교했다.
 
@@ -516,30 +517,39 @@ Effort 단계가 하나인 provider도 같은 게이지를 쓴다. 중앙 눈금
   native 입력 배치·focus 변경·6배 CPU의 긴 프레임 간격이 섞이므로, 이를 모두
   버튼 줄 모션의 불연속으로 판정하지 않는다. 실제 앱의 long task 감소는 입증하지 못했다.
 - 기본 모션은 A의 360ms이며 B는 전체 560ms·620ms다. 추가 대기 없이 입력에
-  반응하는 A를 선택한다. B 소스는 제품에 포함하지 않는다.
+  반응하는 A를 당시 선택했다. 비교 소스는 제품에 포함하지 않는다.
 
 비교 페이지·8프레임 스트립·원시 위치·layout shift·long task 기록은
 `/Users/kebab/.bb/thread-storage/thr_2azf6e7w23/phone-sheet-polish/toolbar-motion/compare.html`과
 같은 폴더의 `metrics-v14.json`, `phone-ab-strips.html`, `desktop-ab-strips.html`에 둔다.
 
-### phone 펼침의 버튼 줄과 잘림
+### phone 펼침: 최종 레이아웃과 표시 면의 분리
 
-phone native grid/main은 펼침 직후부터 최종 높이의 내용 배치를 사용하고 안쪽을 자른다.
-높이가 작을 때 실제 버튼 줄은 그 잘림 아래에 있다. mount와 opacity가 높이 전환과
-동시에 시작해도 버튼이 실제로 보이는 시각은 늦어진다. 이전 검수의 mount·opacity
-확인만으로는 이 차이를 발견하지 못했으므로, 화면 좌표와 ancestor의 clipping도 확인한다.
+실제 iPhone 비교에서 사용자가 고른 D를 phone의 기본 펼침으로 쓴다. A/B/C 분기·비교 스위치·
+sessionStorage 선택은 제품에 없다. 닫힘과 desktop은 기존 동작을 유지한다.
 
-phone 펼침은 닫기와 같은 절대 위치의 시각적 복제본을 native grid 바깥, form 하단에
-고정한다. 높이와 같은 시작 시각·360ms·kit EASE.out으로 opacity/translateY만 바꾼다.
-등장 시점에 CSS height 애니메이션의 현재 시각과 음수 delay를 한 번 읽어 같은
-브라우저 시계에 맞춘다. style/layout 처리에 걸린 시간을 먼저 진행한 fade로 표시하지 않는다.
-실제 줄은 중복 표시를 막기 위해 잠시 visibility를 숨기되 DOM·핸들러·배치를 유지한다.
-모션이 끝나면 원래 visibility를 복구하고 실제 버튼으로 교대한다. 이 짧은 시각 복제본은
-inert·aria-hidden·pointer-events:none이며 외부 액션을 실행하지 않는다.
+기존 방식은 마지막 접힌 높이를 px로 고정하고 새 높이까지 전환했다. native main은 그 높이로
+제한되지만 안쪽 입력·버튼은 최종 배치를 사용해 잘리며, 약 300ms 뒤 native 높이 정리에서
+CSS 전환이 취소·재개된다. phone에서는 이 중간 레이아웃을 없애고 펼침 layout을 즉시 `auto`로
+확정한다. 안쪽 grid/main과 아래 footer의 크기 전환도 즉시 끝낸다.
 
-늦은 native mount에는 마지막 native 줄의 모습을 먼저 사용한다. 실제 줄이 오면
-시각 내용만 갱신하며 키보드/viewport resize 때문에 등장 시계를 다시 시작하지 않는다.
-첫 열림에는 native 줄이 처음 준비된 시점부터 같은 높이 시계에 맞춘다. 줄이 아직
-준비되지 않았으면 완료된 복제본을 유지하고 도착 후 교대한다. 빠른 반전·voice·
-동작 줄이기·해제 때 복제본과 임시 visibility를 복원한다. 입력마다 좌표를 읽지 않는다.
-desktop은 기존 실제 줄의 모션 경로와 CSS를 유지한다.
+- form의 기존 테마 배경·blur·shadow를 별도 inert·aria-hidden 면 하나에 옮기고 원래 면은
+  전환 동안 투명하게 한다. 이 면의 `clip-path:inset()`을 이전 화면 경계에서 새 경계까지
+  360ms·kit `EASE.out`으로 연다. 끝나면 원래 면을 복구하고 추가 면을 제거한다.
+- native 입력·버튼 DOM은 옮기거나 복제하지 않는다. 같은 시계의 opacity·translate로 표시한다.
+  펼침 버튼 복제본과 native visibility 숨김·교대는 쓰지 않는다. 닫힘의 inert 시각 복제본은 유지한다.
+- 아래 권한·context footer가 늘어나는 거리도 anchor의 실제 경계로 읽어 포함한다. phone 실측은
+  44px였다. 위 pill 줄은 그 거리까지 transform으로 보정해 시작 위치를 유지한다.
+- native scrollTop은 바꾸지 않는다. 키보드 이동과 구별되는 작은 native 스크롤 보정만 본문 층의
+  transform으로 이어 간다. 키보드가 화면 전체를 옮기는 동작을 대체하지 않는다.
+- 활성 전환 중 실제 크기가 바뀔 때만 ResizeObserver(composer·anchor)를 읽고, 현재 보이는
+  clip 경계에서 기존 끝 시간까지 새 목표로 잇는다. 일반 입력마다 측정하거나 매 프레임 JS로
+  스타일을 갱신하지 않는다.
+- reduced motion에서는 즉시 반영한다. 접힘·기기 변경·composer 제거·해제 때 면·애니메이션·
+  관찰과 추가 표식을 정리한다. phone일 때만 전용 stylesheet와 활성 표식을 설치한다.
+
+키보드를 흉내 낸 세 조건에서 A의 목표는 124px 하나였으며 목표가 두 번 바뀌는 가설은
+확인하지 못했다. D의 form 높이는 50/124px 두 값뿐이었고 초기 pill 이동은 0~0.12px였다.
+실제 iPhone의 잔여 끊김이 모두 사라졌다는 뜻은 아니다. Safari의 키보드·compositor 체감은
+사용자 피드백을 기준으로 한다. 원시 기록은 `phone-sheet-polish/toolbar-motion/d-visual/`,
+확정 검수는 `phone-sheet-polish/final-d/`에 둔다(thread-storage의 `thr_2azf6e7w23`).

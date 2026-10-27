@@ -63,4 +63,6 @@
 - phone 하단 시트는 `+`·모델 선택·전송 옵션·권한 모드·context·PR 머지 방식 같은 컴포저 옵션 메뉴에만 적용한다. 좌우·아래 8px·모서리 30px·손잡이 40×4px·frost 한 겹을 쓰며 BB drawer의 높이·선택·끌기·닫기는 유지한다. 정보 pill 상세·전체 정보 목록·인용 원문은 기존 팝오버를 유지한다. stylesheet는 phone일 때만 설치하고 desktop CSS는 바꾸지 않는다. 독립 접힘·펼침 controller는 디자인 레퍼런스 데모에만 명시적으로 연결한다. 자세한 규칙은 `docs/composer-popovers.md`의 phone 옵션 메뉴 하단 시트 절이다.
 - phone 옵션 시트 내부는 desktop과 같은 컨트롤을 쓴다. 모델 선택의 Effort 파형·Fast mode 토글을 공유하고 모델·섹션·검색은 12px/16px, 메뉴 inset·행 모서리는 4px·10px로 맞춘다. native 검색·선택·비활성 상태와 phone 터치 padding은 유지한다.
 
+- phone 컴포저 펼침은 레이아웃을 즉시 최종 높이로 두고, frost 면의 clip-path와 실제 내용·버튼의 opacity·translate만 같은 360ms·kit easing으로 전환한다. 아래 권한·context 줄의 높이 변화와 위 pill·native 스크롤 보정을 포함한다. 펼침 버튼 복제본·비교 스위치·세션 선택은 쓰지 않는다. 접힘과 desktop은 기존 동작을 유지하며 reduced motion은 즉시 반영한다. 세부 수명·정리 규칙은 `docs/composer-popovers.md`의 phone 펼침 절을 따른다.
+
 - 문장 안 reference pill(인용·멘션·예전 인용)은 desktop 22px·phone 24px이며 글자는 13/16·14/18이다. 세로 padding은 0, 세로 margin은 두 기기 모두 −2px이며 가로 margin은 3px·4px다. −2px는 desktop 입력 22px·보낸 줄 24px, phone 입력 27px·보낸 줄 24px의 증가를 막는 보정이다. × 도형은 desktop 8px·phone 9px이며 보이는 원은 16px·18px이고 phone의 투명한 가상 터치 영역은 24px 이상이다. 라벨만 잘라 말줄임하며 일반 글줄의 높이를 늘리지 않는다. 상단 navigation pill 32px와 첨부 칩은 이 규칙의 대상이 아니다.

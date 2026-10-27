@@ -1,6 +1,7 @@
 import { PHONE_NARROW, NARROW_VIEWPORT, ROOMY_VIEWPORT, isDesktopChrome, hasSmallHitTarget } from "./device-chrome.ts";
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
 import { COMPOSER_HANDOFF_RESIZING, injectComposerHandoff } from "./composer-handoff.ts";
+import { injectPhoneExpansionVisual } from "./composer-expand-visual.ts";
 import { injectComposerToolbar } from "./composer-toolbar.ts";
 
 const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
@@ -779,6 +780,7 @@ export function injectComposerGlass(document: Document): () => void {
       stopPin();
     };
 
+    const expansionVisual = injectPhoneExpansionVisual(composer);
     const changes = new MutationObserver(() => {
       const nextCompact = composer.hasAttribute("data-promptbox-compact");
       const view = viewOf();
@@ -831,6 +833,12 @@ export function injectComposerGlass(document: Document): () => void {
         finishMotion();
         composer.style.transition = "none";
         return;
+      }
+      const phoneExpansion = document.documentElement.getAttribute('data-bb-chat-ui-root-device') === 'phone';
+      if (nextCompact || !phoneExpansion) expansionVisual.cancel();
+      if (!nextCompact && phoneExpansion && (change || motion || HOST_HEIGHT_TRANSITION.test(composer.style.transition))) {
+        const from = idleHeights.get(composer) ?? 50;
+        stopFinish(); finishMotion(); expansionVisual.expand(from); return;
       }
       const plan = planComposerHeight({
         transition: composer.style.transition,
@@ -893,6 +901,7 @@ export function injectComposerGlass(document: Document): () => void {
     });
     radiusWatches.set(composer, () => {
       stopToolbar();
+      expansionVisual.destroy();
       stopHandoff();
       changes.disconnect();
       clearRadius();

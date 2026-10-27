@@ -312,3 +312,8 @@ test('video previews keep the same native attachment corners as images across re
   stop();assert.equal(media.hasAttribute('data-bb-chat-ui-has-image'),false);
  }finally{stop();f.cleanup()}
 });
+
+test('phone opens at native final layout without pinning its former height or installing a comparison switch',async()=>{
+ const f=fixture(),{composer}=f.add();f.document.documentElement.setAttribute('data-bb-chat-ui-root-device','phone');composer.setAttribute('data-promptbox-compact','');let height=50;composer.getBoundingClientRect=()=>({height,top:500-height,bottom:500,width:300,left:0,right:300,x:0,y:500-height,toJSON(){}});const stop=injectComposerGlass(f.document);
+ try{await f.tick();await f.paint();height=124;composer.removeAttribute('data-promptbox-compact');composer.style.transition='height 240ms ease-out';composer.style.height='124px';await f.tick();assert.equal(composer.style.height,'','phone expansion must not pin the native final layout');assert.doesNotMatch(composer.style.transition,/height 360ms/);assert.equal(f.document.querySelector('[data-bb-chat-ui-expand-switch],[data-bb-chat-ui-expand-experiment]'),null);assert.ok(composer.hasAttribute('data-bb-chat-ui-phone-expand'));}finally{stop();f.cleanup()}
+});
