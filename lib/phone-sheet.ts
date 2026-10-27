@@ -272,8 +272,19 @@ export function attachSheet(el: HTMLElement, options: SheetOptions): SheetContro
 
   const inGrab = (y: number) => y >= top - 4 && y - top < geometry().padTop;
 
+  // The containing block can move with the page (for example an inline-vis iframe scroll).
+  // One read per gesture re-derives its origin and the visible top from the current box.
+  function reorigin() {
+    const box = el.getBoundingClientRect();
+    const read = (name: string) => Number.parseFloat(el.style.getPropertyValue(`--bb-chat-ui-sheet-${name}`)) || 0;
+    originY = box.top - read("t") - read("y");
+    originX = box.left - read("x");
+    top = box.top;
+  }
+
   function begin(x: number, y: number, target: EventTarget | null): boolean {
     if (closing) return false;
+    reorigin();
     const grab = inGrab(y);
     if (!grab && target instanceof view.Element && target.closest("input, textarea, select, [contenteditable='true'], .cm-editor")) return false;
     el.removeAttribute(ANIM);

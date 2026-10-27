@@ -92,9 +92,15 @@ function fixture(device: "phone" | "desktop" = "phone") {
 }
 
 // JSDOM has no layout: give the sheet a natural height and a containing-block origin of (16, 738).
-function stubLayout(el: HTMLElement, natural: number) {
+// While measuring, the sheet sits at the origin; otherwise its box follows the CSS variables.
+function stubLayout(el: HTMLElement, natural: number, shift = () => 0) {
   Object.defineProperty(el, "offsetHeight", { configurable: true, get: () => natural });
-  el.getBoundingClientRect = () => ({ x: 16, y: 738, left: 16, top: 738, right: 374, bottom: 828, width: 358, height: 90, toJSON() {} }) as DOMRect;
+  const css = (name: string) => Number.parseFloat(el.style.getPropertyValue(`--bb-chat-ui-sheet-${name}`)) || 0;
+  el.getBoundingClientRect = () => {
+    const measuring = el.hasAttribute("data-bb-chat-ui-sheet-measure");
+    const top = 738 - shift() + (measuring ? 0 : css("t") + css("y")), left = 16 + (measuring ? 0 : css("x"));
+    return { x: left, y: top, left, top, right: left + 358, bottom: top + 90, width: 358, height: 90, toJSON() {} } as DOMRect;
+  };
 }
 
 function sheetOptions(extra: Partial<Parameters<typeof attachSheet>[1]> = {}) {
@@ -144,6 +150,21 @@ test("dragging the grab strip snaps to expanded, back to collapsed, then closes 
 });
 
 // 사용자 확정(2026-10-27): 짧은 카드도 위로 끌면 사진 2처럼 화면 양옆에 붙는 펼친 단계가 된다.
+// The containing block can move with the page (inline-vis iframe scroll); each gesture re-reads it.
+test("a gesture re-reads the containing block origin after the page moves", () => {
+  const f = fixture();
+  let shift = 0;
+  stubLayout(f.card, 900, () => shift);
+  const s = sheetOptions({ bounds: () => ({ ...bounds, top: bounds.top - shift, bottom: bounds.bottom - shift }) });
+  const sheet = attachSheet(f.card, s.options);
+  try {
+    shift = 300;
+    pointer(f.w, f.card, "pointerdown", 430 - shift); pointer(f.w, f.w, "pointermove", 300 - shift); pointer(f.w, f.w, "pointermove", 130 - shift); pointer(f.w, f.w, "pointerup", 130 - shift);
+    assert.equal(sheet.stage, "expanded");
+    assert.equal(f.card.getBoundingClientRect().top, 56 - shift);
+  } finally { sheet.destroy(); f.dom.window.close(); }
+});
+
 test("a short card also expands when dragged up", () => {
   const f = fixture(); stubLayout(f.card, 300);
   const s = sheetOptions();
