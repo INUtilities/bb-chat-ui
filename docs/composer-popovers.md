@@ -379,3 +379,33 @@ fallback을 둔다. reference 변수는 device=phone이면 viewport와 무관하
 | 세로 / 가로 margin | −2px / 3px | −2px / 4px |
 
 왼쪽 padding은 `--bb-chat-ui-pill-reference-pad-left`, 삭제 원은 `--bb-chat-ui-pill-reference-remove`로 선택한다. 원 안의 × 도형은 desktop 10→8px·phone 12→9px로 축소하며 원 16px·18px와 phone 24px 투명 터치 영역은 유지한다. 높이 22px에서 세로 margin 0은 desktop 입력 줄(22px)을 1.17px 늘려 −2px로 보정했다. 입력 줄 22px·보낸 줄 24px의 pill 유무 높이 차이는 0을 유지한다. phone 24px pill도 입력 27px·보낸 줄 24px에서 높이 차이 0을 유지하도록 세로 margin −2px를 쓴다.
+
+## phone 옵션 메뉴 하단 시트
+
+phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송 옵션·PR 머지 방식 등
+**컴포저 옵션 메뉴만** iOS식 떠 있는 하단 시트로 꾸민다. 정보 pill 상세 카드·전체 정보 목록·
+인용 원문은 기존 팝오버 위치·높이·스크롤·등장 모션을 유지한다.
+
+`lib/phone-sheet.ts`의 `injectPhoneSheet`는 phone일 때만 옵션 drawer stylesheet를 설치한다.
+`bb--composer`가 소유한 `data-persistent-drawer-content`와 명시적인 PR·모델 메뉴 표식만 대상으로 한다.
+다른 플러그인 drawer와 desktop에는 적용하지 않는다. 정보 카드 DOM을 관찰하거나 시트 controller를
+자동으로 연결하지 않는다. 기기 변경·플러그인 해제 때 stylesheet를 제거한다.
+
+| 항목 | 모양 |
+|---|---|
+| 바깥 여백 | 좌우·아래 8px |
+| 모서리 | 네 모서리 30px |
+| 손잡이 | 위 24px 줄, 40×4px, 위 간격 8px |
+| 표면 | 기존 카드와 같은 frost 한 겹, 뒤 배경은 투명 |
+| 높이·선택·스크롤·끌기·닫기 | BB drawer의 native 동작 유지 |
+
+- 값은 참고 사진(iPhone 3x)의 실측과 사용자 확인을 기준으로 한다.
+- BB가 키보드 때 inline `bottom`을 쓰므로 `translate`로 아래 여백을 만든다. safe-area padding은
+  `--bb-safe-area-bottom`(없으면 `env()`)에서 아래 여백을 제외한 만큼 남긴다.
+- 옵션 메뉴에 별도의 펼친 단계·위로 끌기·단계 햅틱을 추가하지 않는다. BB drawer의 선택과
+  아래로 끌어 닫기·밖 누르기·Esc 경로를 유지한다. 닫히기 시작할 때 8px 튐이 남는다.
+- phone 모델 drawer는 trigger에 `aria-controls`가 없으므로 라벨이 `Model`인 열린 drawer를 찾아
+  표식과 스크롤 제목 frost만 붙인다.
+- 독립 접힘·펼침 시트는 `attachSheet`, `phoneSheetCss`와 회귀 테스트를 디자인 레퍼런스로 보존한다.
+  제품의 정보 팝오버에는 연결하지 않는다. 재사용 규격과 적용 범위는
+  [떠 있는 옵션 시트 레퍼런스](design-references/floating-option-sheet.md)에 기록한다.

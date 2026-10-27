@@ -7,6 +7,9 @@ export const MODEL_SCROLL_MARK = "data-bb-chat-ui-model-scrolled";
 const TRIGGER = 'button[aria-haspopup="dialog"][aria-label^="Provider, model and reasoning"][aria-controls]';
 const DIALOG = '[data-bb-portaled-overlay][role="dialog"]';
 const MORE = 'button[aria-haspopup="menu"][aria-expanded="true"]';
+// phone opens the picker in a BB drawer; its trigger has no aria-controls, so the drawer is found by its label.
+const PHONE_TRIGGER = 'button[aria-haspopup="dialog"][aria-label^="Provider, model and reasoning"]:not([aria-controls])';
+const PHONE_DRAWER = '[data-persistent-drawer-content][data-state="open"][role="dialog"]';
 
 // Native Codex uses a listbox; providers without search use an overflow-y-auto list.
 function trackModelScroll(card: HTMLElement): () => void {
@@ -39,7 +42,7 @@ function trackModelScroll(card: HTMLElement): () => void {
 // Track composer-owned model portals independently of optional provider controls.
 export function injectComposerModelMenus(document: Document): () => void {
   const view = document.defaultView;
-  const cards = new Map<HTMLElement, { previous: string | null; stop: () => void; trigger: Element }>();
+  const cards = new Map<HTMLElement, { previous: string | null; stop: () => void; trigger: Element; phone?: boolean }>();
   const submenus = new Map<HTMLElement, { previous: string | null; trigger: Element }>();
   const seen = new WeakSet<Element>();
   const owners = new WeakMap<HTMLElement, Element>();
@@ -100,12 +103,22 @@ export function injectComposerModelMenus(document: Document): () => void {
       // Release size motion before restoring the native effort controls.
       cards.set(card, { previous, trigger, stop: () => { stopScroll(); stopSize(); stopEffort(); } });
     }
+    // The phone drawer has its own fixed height and controls: mark it for glass and track scroll frost only.
+    const phoneTrigger = Array.from(document.querySelectorAll(PHONE_TRIGGER)).find(trigger => trigger.getAttribute("aria-expanded") === "true");
+    if (phoneTrigger) {
+      for (const card of Array.from(document.querySelectorAll<HTMLElement>(PHONE_DRAWER))) {
+        if (cards.has(card) || document.getElementById(card.getAttribute("aria-labelledby") ?? "")?.textContent?.trim() !== "Model") continue;
+        const previous = card.getAttribute(MODEL_MENU_MARK);
+        card.setAttribute(MODEL_MENU_MARK, "");
+        cards.set(card, { previous, trigger: phoneTrigger, stop: trackModelScroll(card), phone: true });
+      }
+    }
     discoverSubmenus();
   }
 
   function releaseClosedMenus(): void {
     for (const [card, record] of cards) {
-      if (!card.isConnected || !record.trigger.isConnected || record.trigger.getAttribute("aria-controls") !== card.id || record.trigger.getAttribute("aria-expanded") === "false" || card.getAttribute("data-state") === "closed") release(card, record);
+      if (!card.isConnected || !record.trigger.isConnected || (!record.phone && record.trigger.getAttribute("aria-controls") !== card.id) || record.trigger.getAttribute("aria-expanded") === "false" || card.getAttribute("data-state") === "closed") release(card, record);
     }
   }
 
@@ -113,7 +126,7 @@ export function injectComposerModelMenus(document: Document): () => void {
   function changed(records: MutationRecord[]): void {
     if (disposed) return;
     for (const record of records) {
-      if (record.type === "attributes" && ((record.target as Element).matches(TRIGGER) || (record.target as Element).closest(`[${MODEL_MENU_MARK}]`))) {
+      if (record.type === "attributes" && ((record.target as Element).matches(`${TRIGGER},${PHONE_TRIGGER},${PHONE_DRAWER}`) || (record.target as Element).closest(`[${MODEL_MENU_MARK}]`))) {
         discover();
         return;
       }

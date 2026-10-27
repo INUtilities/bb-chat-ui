@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { resolvedStyle } from "./test-style.ts";
 import { COMPOSER_MENU_GLASS_STYLE_ID, injectComposerMenuGlass } from "./composer-menu-glass.ts";
 import { cardStyle } from "./info-card.ts";
+import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SCROLL_MARK } from "./composer-model-menu.ts";
 
 test("the shared row radius can be reused without replacing native menu row geometry", () => {
   const f = fixture('<div data-bb-portaled-overlay role="menu" aria-label="Prompt actions"><button role="menuitem" style="min-height:36px;padding:6px 12px">Attach</button></div>');
@@ -372,4 +373,27 @@ test("dispose removes new markers and preserves a pre-existing marker value", ()
     assert.equal(card.getAttribute(MARKER), "existing-owner");
     assert.equal(f.document.getElementById(COMPOSER_MENU_GLASS_STYLE_ID), null);
   } finally { stop(); f.restore(); }
+});
+
+// QA-02: the phone model picker is a BB drawer whose trigger has no aria-controls.
+test("the phone model drawer is found by its label and tracked for scroll frost", async () => {
+  const dom = new JSDOM(`<html data-bb-chat-ui-root-device="phone"><body>
+    <button aria-haspopup="dialog" aria-expanded="true" aria-label="Provider, model and reasoning (⇧ ⌘ M)">6.1-Sol</button>
+    <div id="drawer" data-bb-portaled-overlay data-bb-plugin="bb--composer" data-persistent-drawer-content data-state="open" role="dialog" aria-labelledby="t">
+      <div data-persistent-drawer-handle></div><h2 id="t" class="sr-only">Model</h2>
+      <div class="flex"><div id="list" class="overflow-y-auto"><div class="sticky">Model</div><button>6.1-Sol</button></div></div>
+    </div>
+    <div id="plus" data-persistent-drawer-content data-state="open" role="dialog" aria-labelledby="p"><h2 id="p">Prompt actions</h2></div>
+  </body></html>`, { pretendToBeVisual: true });
+  const d = dom.window.document, drawer = d.getElementById("drawer")!, list = d.getElementById("list")!;
+  const stop = injectComposerModelMenus(d);
+  try {
+    assert.equal(drawer.hasAttribute(MODEL_MENU_MARK), true);
+    assert.equal(d.getElementById("plus")!.hasAttribute(MODEL_MENU_MARK), false);
+    list.scrollTop = 40; list.dispatchEvent(new dom.window.Event("scroll"));
+    assert.equal(list.hasAttribute(MODEL_SCROLL_MARK), true);
+    drawer.setAttribute("data-state", "closed");
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(drawer.hasAttribute(MODEL_MENU_MARK), false);
+  } finally { stop(); dom.window.close(); }
 });

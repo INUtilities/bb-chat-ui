@@ -23,6 +23,7 @@ import { injectWorkspaceDiffPill } from "./lib/workspace-diff-pill";
 import { WorkspaceDiffBridge } from "./lib/workspace-diff-bridge";
 import { ComposerInfoBridge } from "./lib/composer-info-bridge";
 import { injectComposerInfo } from "./lib/composer-info";
+import { injectPhoneSheet } from "./lib/phone-sheet";
 import "./lib/motion.css";
 import { infoSettingsNotice } from "./lib/composer-info-settings";
 
@@ -35,6 +36,8 @@ function ComposerBridges() {
 export default definePluginApp((app) => {
   app.contentScripts.register({ id:"pill-styles", mount:() => injectPillStyles(document) });
   app.contentScripts.register({ id:"quote-preview", mount:() => injectQuotePreview(document) });
+  // phone의 +·모델·전송·PR 머지 옵션 drawer만 떠 있는 모양으로 꾸민다.
+  app.contentScripts.register({ id:"phone-sheet", mount:() => injectPhoneSheet(document) });
   // Lucide 0.300.0 icons/activity.svg (ISC), inherited Feather geometry; see THIRD_PARTY_NOTICES.md.
   app.experimental_icons.register({
     name:"bb-chat-ui-status",
