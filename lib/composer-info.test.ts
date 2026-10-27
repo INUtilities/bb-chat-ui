@@ -1589,6 +1589,50 @@ test("desktop hover previews wait for intent, bridge the popover gap, and pin on
   } finally { stop(); f.dom.window.close(); }
 });
 
+// Model the native disclosure's collapse-button focus without treating it as a user pin.
+test("queue hover previews dismiss after native collapse focus while user actions still pin", async t => {
+  for (const timing of ["synchronous", "effect"]) await t.test(timing, async () => {
+    const f = fixture();
+    f.document.body.insertAdjacentHTML('beforeend', '<span hidden data-bb-chat-ui-device="desktop"></span>');
+    const card = f.document.querySelector<HTMLElement>('section[aria-label="Queued messages"]')!;
+    const native = card.querySelector<HTMLButtonElement>('header button')!;
+    const collapse = f.document.createElement('button');
+    collapse.setAttribute('aria-label', 'Collapse queued messages');
+    card.append(collapse);
+    // Reproduce both immediate focus and the host's deferred disclosure effect.
+    native.addEventListener('click', () => {
+      if (native.getAttribute('aria-expanded') !== 'true') return;
+      if (timing === 'effect') f.dom.window.setTimeout(() => collapse.focus(), 0);
+      else collapse.focus();
+    });
+    // Let native effects and the existing hover intent timers settle.
+    const wait = (ms: number) => new Promise(resolve => f.dom.window.setTimeout(resolve, ms));
+    const stop = injectComposerInfo(f.document);
+    const pill = f.document.querySelector<HTMLElement>('[data-bb-chat-ui-info-trigger="queue"]')!;
+    try {
+      pointer(f, 'pointerover', pill); await wait(230);
+      assert.equal(pill.getAttribute('aria-expanded'), 'true');
+      assert.equal(f.document.activeElement, collapse, 'native opening moves focus to its collapse control');
+      pointer(f, 'pointerout', pill, f.document.body); await wait(190);
+      assert.equal(pill.getAttribute('aria-expanded'), 'false', 'native focus must not pin a mouse-only preview');
+      assert.equal(card.hasAttribute('data-bb-chat-ui-info-open'), false);
+
+      pointer(f, 'pointerover', pill); await wait(230);
+      pointer(f, 'pointerout', pill, card);
+      pointer(f, 'pointerover', card, pill);
+      card.querySelector<HTMLButtonElement>('#queue button')!.focus();
+      pointer(f, 'pointerout', card, f.document.body); await wait(190);
+      assert.equal(pill.getAttribute('aria-expanded'), 'true', 'focus on a real queue action still pins its preview');
+      pill.click();
+
+      pointer(f, 'pointerover', pill); await wait(230);
+      pill.click();
+      pointer(f, 'pointerout', pill, f.document.body); await wait(190);
+      assert.equal(pill.getAttribute('aria-expanded'), 'true', 'clicking the pill still pins its preview');
+    } finally { stop(); f.dom.window.close(); }
+  });
+});
+
 test("hover previews exclude phone, tablet, and touch input while clicks keep working", async () => {
   for (const [device,pointerType] of [['phone','mouse'],['tablet','mouse'],['desktop','touch']]) {
     const f=fixture();
