@@ -461,3 +461,21 @@ desktop·비활성 버튼·닫힌 시트에는 적용하지 않는다.
 native가 Handoff 손잡이에 넣는 솔리드 배경은 투명하게 덮고 높이·끌기 영역은 유지한다.
 확인 화면이 열려 있는 동안만 뒤 컴포저의 inert를 유지하고, 닫기·제거·해제 시 복구한다.
 실제 Handoff 실행은 native 컴포저가 소유한다.
+
+## 컴포저 옵션 줄의 접기·펼치기
+
+native compact 전환은 `+`·모델 선택 줄을 React에서 제거한다. 높이·모서리의
+360ms 전환과 별개로 첫 프레임에 사라지므로 CSS transition만으로 퇴장을 만들 수 없다.
+
+- 등장에는 실제 옵션 줄을 사용해 기존 버튼·클릭 핸들러를 보존한다.
+- 퇴장에는 그 줄의 시각적 복제본만 native 왼쪽 14px·아래 8px 위치에 잠시 남긴다.
+  `inert`·`aria-hidden`·pointer-events:none을 적용하고 중복 ID를 제거한다.
+  원래 React DOM이나 주변 동작 버튼을 되살리지 않는다.
+- 두 방향 모두 높이 전환의 같은 시계·360ms·kit `EASE.out`을 사용한다.
+  opacity와 translateY만 움직이고 높이는 기존 native/glass 전환이 소유한다.
+- native container query의 중요한 display 선언은 복제본의 expanded-only 속성 제거와
+  inline display로 피한다. desktop·phone에 같은 동작을 적용하며 기존 CSS 문자열은 유지한다.
+- 빠른 반전은 현재 모션 진행률에서 이어 간다. voice 전환·동작 줄이기·해제에서는
+  임시 복제본과 모션을 즉시 정리한다. 원래 버튼의 inline 스타일은 고치지 않는다.
+- 입력 내용 변경은 모션을 예약하거나 좌표를 읽지 않는다. compact·voice·옵션 줄 교체와
+  CSS로 제어되는 follow-up expanded 상태가 실제로 바뀔 때만 표시 상태를 읽는다.

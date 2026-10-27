@@ -1,6 +1,7 @@
 import { PHONE_NARROW, NARROW_VIEWPORT, ROOMY_VIEWPORT, isDesktopChrome, hasSmallHitTarget } from "./device-chrome.ts";
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
 import { COMPOSER_HANDOFF_RESIZING, injectComposerHandoff } from "./composer-handoff.ts";
+import { injectComposerToolbar } from "./composer-toolbar.ts";
 
 const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
 // JS-set markers replace :has() where the rule subject is generic (measured: those make every
@@ -886,7 +887,12 @@ export function injectComposerGlass(document: Document): () => void {
       attributes: true,
       attributeFilter: ["data-promptbox-compact", "style"],
     });
+    const stopToolbar = injectComposerToolbar(composer, {
+      durationMs: COMPOSER_HEIGHT_MS,
+      startedAt: () => motion?.startedAt ?? radiusMotion?.startedAt ?? null,
+    });
     radiusWatches.set(composer, () => {
+      stopToolbar();
       stopHandoff();
       changes.disconnect();
       clearRadius();
