@@ -32,7 +32,7 @@ function mountGauge(group: HTMLElement): Gauge | null {
   const document = group.ownerDocument;
   const view = document.defaultView;
   let state = readEffort(group);
-  if (!view || state.buttons.length < 2 || state.index < 0) return null;
+  if (!view || state.buttons.length < 1 || state.index < 0) return null;
   let previousSource = group.getAttribute(SOURCE);
   let nativeHeading = group.previousElementSibling?.textContent?.trim() === "Reasoning" ? group.previousElementSibling : null;
   let previousHeading = nativeHeading?.getAttribute(HEADING) ?? null;
@@ -58,6 +58,9 @@ function mountGauge(group: HTMLElement): Gauge | null {
     if (output.textContent !== text) output.textContent = text;
     input.disabled = group.getAttribute("aria-disabled") === "true" || state.buttons.every(button => button.disabled || button.getAttribute("aria-disabled") === "true");
     box.toggleAttribute("data-disabled", input.disabled);
+    const single = state.buttons.length === 1;
+    if (input.getAttribute('aria-readonly') !== String(single)) input.setAttribute('aria-readonly', String(single));
+    track.style.cursor = single ? 'default' : '';
     const selectedClass = ["border", "foreground"].join("-");
     const card = group.closest('[data-bb-chat-ui-model-menu]');
     const provider = Array.from(card?.querySelectorAll<HTMLButtonElement>('button[title]') ?? []).find(button => button.classList.contains(selectedClass) || button.getAttribute('aria-selected') === 'true')?.title ?? '';
@@ -129,7 +132,7 @@ function mountGauge(group: HTMLElement): Gauge | null {
 
   // Start primary dragging and retain the native range's keyboard focus.
   function down(event: PointerEvent): void {
-    if (input.disabled || pointer !== null || !event.isPrimary || event.button !== 0) return;
+    if (state.buttons.length < 2 || input.disabled || pointer !== null || !event.isPrimary || event.button !== 0) return;
     pointer = event.pointerId;
     box.setAttribute("data-dragging", "");
     input.focus({ preventScroll: true });
@@ -149,7 +152,7 @@ function mountGauge(group: HTMLElement): Gauge | null {
     if (active !== null && track.hasPointerCapture?.(active)) track.releasePointerCapture(active);
     box.removeAttribute("data-dragging");
     const next = readEffort(group);
-    if (next.index >= 0 && next.buttons.length > 1) render(next);
+    if (next.index >= 0 && next.buttons.length > 0) render(next);
   }
 
   // Ignore another pointer's release while an effort drag is active.
@@ -160,7 +163,7 @@ function mountGauge(group: HTMLElement): Gauge | null {
   // Follow provider state and replaced native options while preserving the active drag.
   function sync(nextGroup = group): boolean {
     const next = readEffort(nextGroup);
-    if (next.index < 0 || next.buttons.length < 2) return false;
+    if (next.index < 0 || next.buttons.length < 1) return false;
     if (nextGroup !== group) {
       settle();
       restoreAttribute(group, SOURCE, previousSource);

@@ -409,15 +409,17 @@ test("a reasoning group without a checked option stays native", () => {
   } finally { stop(); f.restore(); }
 });
 
-// Avoid adding a redundant adjustment control for a provider with one effort level.
-test("a single-option reasoning group stays native", () => {
-  const f = fixture({ labels: ["High"], selected: 0 });
-  const original = f.group().outerHTML;
-  const stop = injectComposerMenuGlass(f.document);
-  try {
-    assert.equal(f.card.querySelector(RANGE), null);
-    assert.equal(f.group().outerHTML, original);
-  } finally { stop(); f.restore(); }
+// A single native step uses the same ruler without inventing an adjustment.
+for(const phone of [false,true])test(`a single-option provider keeps a centered one-step gauge (${phone?'phone':'desktop'})`,async()=>{
+ const f=fixture({phone,labels:['High'],selected:0}),clock=animationClock(f),original=f.group().outerHTML,stop=injectComposerMenuGlass(f.document);
+ try{
+ const range=f.range(),gauge=range.closest('[data-bb-chat-ui-effort]'),pin=f.card.querySelector<HTMLElement>('[data-effort-pin]')!;
+ assert.equal(range.min,'0');assert.equal(range.max,'0');assert.equal(range.value,'0');assert.equal(range.getAttribute('aria-valuetext'),'High');assert.equal(range.getAttribute('aria-readonly'),'true');assert.equal(pin.style.transform,'translateX(50%)');assert.equal(f.card.querySelectorAll('[data-effort-tick][data-major]').length,1);assert.equal(f.card.querySelector<HTMLElement>('[data-effort-label]')!.style.left,'50%');
+ range.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'End',bubbles:true}));range.dispatchEvent(new f.dom.window.Event('input',{bubbles:true}));assert.deepEqual(f.clicks,[]);
+ f.group().innerHTML=radioMarkup(LABELS,2);await f.settle();assert.equal(f.range(),range);assert.equal(f.range().closest('[data-bb-chat-ui-effort]'),gauge);assert.equal(pin.style.transform,'translateX(50%)');assert.ok(clock.pending.size>0);clock.finish();assert.equal(pin.style.transform,`translateX(${2/3*100}%)`);assert.equal(range.getAttribute('aria-readonly'),'false');
+ f.group().innerHTML=radioMarkup(['High'],0);await f.settle();assert.equal(f.range(),range);clock.finish();assert.equal(pin.style.transform,'translateX(50%)');assert.equal(f.card.querySelectorAll('[data-effort-label]').length,1);assert.deepEqual(f.clicks,[]);
+ stop();assert.equal(f.group().outerHTML,original);assert.equal(f.card.querySelector('[data-effort-pin]'),null);
+ }finally{stop();f.restore()}
 });
 
 // Release enhancement listeners and markers while preserving the host's original nodes and attributes.
