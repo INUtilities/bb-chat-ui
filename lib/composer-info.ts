@@ -1846,7 +1846,10 @@ export function injectComposerInfo(document: Document): () => void {
       view!.clearTimeout(hoverCloseTimer);
       hoverCloseTimer = view!.setTimeout(() => { if (hoverPreview) close(); }, 150);
     };
+    // Keep native disclosure focus on the hidden queue collapse control from pinning a preview.
     const pinPreview = (event: Event) => {
+      if (event.type === "focusin" && active === "queue" && event.target instanceof view!.Element &&
+        event.target.closest('button[aria-label="Collapse queued messages"]')) return;
       if (hoverPreview && (menu ?? activeNode)?.contains(event.target as Node)) { cancelHover(); hoverPreview = false; }
     };
     stack.addEventListener("pointerover", onHoverOver);

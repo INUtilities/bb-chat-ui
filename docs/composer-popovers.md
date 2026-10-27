@@ -388,6 +388,13 @@ fallback을 둔다. reference 변수는 device=phone이면 viewport와 무관하
   native 햅틱·입력·전송 동작은 유지한다. 컴포저 분리·플러그인 해제 시
   모서리 inline 스타일·종료 listener와 기존 높이 timer를 정리한다.
 
+## 대기 큐 hover 미리보기
+
+desktop에서 hover로 연 대기 큐는 포인터가 필과 카드에서 벗어나면 기존 150ms 지연 후 닫는다.
+native 큐가 열릴 때 자동으로 포커스를 보내는 숨겨진 `Collapse queued messages` 버튼은
+사용자 조작으로 간주하지 않으며 미리보기를 고정하지 않는다. 필·카드의 직접 클릭과
+본문 액션으로의 키보드 포커스는 기존처럼 카드를 고정한다. phone·touch의 클릭 동작은 유지한다.
+
 ## 조절판 확정 reference 값
 
 | 문장 속 reference | desktop | phone |
