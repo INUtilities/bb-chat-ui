@@ -1,6 +1,6 @@
 import { cardStyle } from "./info-card.ts";
 import { EASE } from "./motion.ts";
-import { postHaptic, readHapticBridge } from "./send-haptic.ts";
+import { acceptJumpPulse, postHaptic, readHapticBridge } from "./send-haptic.ts";
 
 /**
  * phone의 컴포저 옵션 drawer를 떠 있는 하단 시트로 꾸민다.
@@ -451,8 +451,19 @@ export function injectPhoneSheet(document: Document): () => void {
   let style: HTMLStyleElement | null = null;
   let frame = 0;
   let disposed = false;
+  let lastHandleAt: number | null = null;
 
   const phone = () => root.getAttribute("data-bb-chat-ui-root-device") === "phone";
+  const onHandlePress = (event: PointerEvent) => {
+    if (!phone() || event.button !== 0 || !(event.target instanceof view.Element)) return;
+    const handle = event.target.closest("[data-persistent-drawer-handle]");
+    if (!handle?.parentElement?.matches(PHONE_DRAWERS)) return;
+    const next = acceptJumpPulse(lastHandleAt, view.performance.now());
+    if (next === null) return;
+    lastHandleAt = next;
+    postHaptic(readHapticBridge(view), "impact-light");
+  };
+  document.addEventListener("pointerdown", onHandlePress, true);
   function sync() {
     frame = 0;
     if (disposed) return;
@@ -477,6 +488,7 @@ export function injectPhoneSheet(document: Document): () => void {
     disposed = true;
     if (frame) view.cancelAnimationFrame(frame);
     rootObserver.disconnect();
+    document.removeEventListener("pointerdown", onHandlePress, true);
     style?.remove();
   };
 }

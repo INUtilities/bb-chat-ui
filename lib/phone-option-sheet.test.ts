@@ -76,6 +76,37 @@ test("phone model provider tabs are transparent on the drawer's single frost fac
   } finally { f.dom.window.close(); }
 });
 
+test("option drawer handles pulse once per press with phone-only 400ms throttling", async () => {
+  const f = fixture();
+  const pulses: unknown[] = [];
+  let now = 1000;
+  Object.defineProperty(f.w.performance, "now", { value: () => now });
+  (f.w as any).bb = { native: { capabilities: ["haptic"], post: (message: unknown) => pulses.push(message) } };
+  const handles = ["plus", "model", "send", "merge", "other"].map(id => {
+    const handle = f.d.createElement("div");
+    handle.setAttribute("data-persistent-drawer-handle", "");
+    f.d.getElementById(id)!.prepend(handle);
+    return handle;
+  });
+  const stop = injectPhoneSheet(f.d);
+  const press = (el: Element) => el.dispatchEvent(new f.w.MouseEvent("pointerdown", { bubbles: true, button: 0 }));
+  try {
+    await flush(f.w);
+    for (const handle of handles.slice(0, 4)) { press(handle); now += 400; }
+    assert.deepEqual(pulses, Array(4).fill({ type: "haptic", kind: "impact-light" }));
+    press(handles[0]); press(handles[0]);
+    assert.equal(pulses.length, 5);
+    now += 400; press(handles[4]);
+    f.d.documentElement.setAttribute("data-bb-chat-ui-root-device", "desktop");
+    press(handles[0]);
+    assert.equal(pulses.length, 5);
+    stop();
+    f.d.documentElement.setAttribute("data-bb-chat-ui-root-device", "phone");
+    now += 400; press(handles[0]);
+    assert.equal(pulses.length, 5);
+  } finally { stop(); f.dom.window.close(); }
+});
+
 test("device changes and disposal restore option drawer styling without touching native actions", async () => {
   const f = fixture();
   const before = f.d.body.innerHTML;
