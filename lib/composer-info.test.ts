@@ -5148,6 +5148,7 @@ test("a loading Diff with no result fades away, staying inert and cancelling whe
   }
 });
 
+// A new queued message detaches from the composer and is received by the visible queue surface.
 test("every queued addition sends a droplet, including equal-count replacement and catalog-only queues", async () => {
   const f = fixture();
   const settings = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
@@ -5169,8 +5170,9 @@ test("every queued addition sends a droplet, including equal-count replacement a
   assert.equal(flights().length,0,'existing queue content is not a new send');
   add('c'); count.textContent='3'; await f.tick();
   assert.equal(flights().length,1);
-  assert.equal(flights()[0].options.duration,460,'the drop flies for the kit sticky duration');
-  assert.equal(records.find(record => record.options.duration===360)?.node,f.document.querySelector('[data-promptbox-submit-action]'),'the send button is the visible source');
+  assert.equal(flights()[0].options.duration,1000,'the selected uninterrupted droplet covers separation through absorption');
+  assert.ok(flights()[0].node.closest('[data-queue-liquid]')?.querySelector('[data-liquid-edge="source"]'),'the composer surface supplies the departure');
+  assert.equal(records.some(record=>record.node===f.document.querySelector('[data-promptbox-submit-action]')),false,'the send button does not detach or squash');
   assert.match(composerInfoCss,/body > \.bbk-drop \{[^}]*z-index:54/);
   assert.match(composerInfoCss,/--bbk-drop-face:oklch\(from var\(--bb-chat-ui-glass-base, var\(--background\)\) min\(1, calc\(l \+ 0\.075\)\) c h \/ 0\.68\)/);
   assert.match(composerInfoCss,/\.dark body > \.bbk-drop, body\.dark > \.bbk-drop \{[^}]*--bbk-drop-face:oklch\(from var\(--bb-chat-ui-glass-base, var\(--background\)\) min\(1, calc\(l \+ 0\.075\)\) c h \/ 0\.76\)/);
@@ -5185,32 +5187,53 @@ test("every queued addition sends a droplet, including equal-count replacement a
   assert.equal(flights().length,3,'a new message is detected even when the count stays the same');
   const finish = flights()[2].animation.onfinish as (() => void) | null; finish?.();
   assert.equal(flights()[2].node.isConnected,false);
-  const finishedSource = records.find(record => record.options.duration===360)!;
-  const finishedLand = records.find(record => record.options.duration===380)!;
-  finishedSource.animation.onfinish?.(new f.dom.window.Event('finish') as unknown as AnimationPlaybackEvent);
-  finishedLand.animation.onfinish?.(new f.dom.window.Event('finish') as unknown as AnimationPlaybackEvent);
-  assert.equal(finishedLand.node,f.document.querySelector('[data-bb-chat-ui-info-trigger="queue"]'),'the receiving pill lands when the drop arrives');
+  const finishedMotion = flights()[2];
   settings.setAttribute('data-bb-chat-ui-info-settings','{"showQueue":"목록에만 표시"}'); await f.tick();
   add('e'); count.textContent='4'; await f.tick();
   assert.equal(flights().length,4);
+  assert.ok(flights()[3].node.closest('[data-queue-liquid]')?.querySelector('[data-liquid-edge="target"]'),'the visible stack circle also receives a liquid surface');
   const finishOrb = flights()[3].animation.onfinish as (() => void) | null; finishOrb?.();
-  assert.equal(records.filter(record => record.options.duration===380).at(-1)?.node,f.document.querySelector('[data-bb-chat-ui-info-stack-kind="queue"]'),'without a queue pill its visible stack circle absorbs the droplet');
   settings.setAttribute('data-bb-chat-ui-info-thread','other-thread'); await f.tick();
   assert.equal(flights().length,4,'thread changes reset the baseline');
   assert.ok(flights().filter(record => record.node.isConnected).length===0,'scope changes remove flying droplets');
   assert.ok(flights().slice(0,2).every(record=>record.cancelled));
-  assert.equal(finishedSource.cancelled,false,'a finished send squash is no longer tracked');
-  assert.equal(finishedLand.cancelled,false,'a finished landing is no longer tracked');
+  assert.equal(finishedMotion.cancelled,false,'a finished liquid motion is no longer tracked');
   add('f'); count.textContent='5'; await f.tick(); assert.equal(flights().length,5);
   count.textContent='6'; await f.tick(); assert.equal(flights().length,6,'a collapsed list can update its count before rendering the new row');
   add('late-row'); await f.tick(); assert.equal(flights().length,6,'later detail rendering does not repeat the send');
   stop(); assert.equal(f.document.querySelector('.bbk-drop'),null);
   assert.equal(flights().at(-1)?.cancelled,true);
-  assert.equal(finishedSource.cancelled,false);
-  assert.equal(finishedLand.cancelled,false);
+  assert.equal(finishedMotion.cancelled,false);
   f.dom.window.close();
 });
 
+// A new queue pill stays at rest until contact instead of bouncing in during its first absorption.
+test("the first queued message receives a droplet without a competing entrance", async () => {
+  const f=fixture(),queue=f.document.querySelector('section[aria-label="Queued messages"]')!,parent=queue.parentElement!;
+  queue.remove();
+  f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings','{"showQueue":"상단 표시"}');
+  const records:ReturnType<ReturnType<typeof stubAnimations>>[]=[];
+  const animate=stubAnimations(f.dom.window);
+  // Record the first pill entrance separately from its incoming liquid shape.
+  f.dom.window.HTMLElement.prototype.animate=function(frames,options){const record=animate.call(this,frames,options);records.push(record);return record.animation;};
+  const stop=injectComposerInfo(f.document);
+  try {
+    await f.tick();
+    assert.equal(f.document.querySelector('[data-bb-chat-ui-info-trigger="queue"]'),null);
+    queue.querySelector('header button')!.innerHTML='<span data-queued-messages-count>1</span>';
+    queue.querySelector('#queue')!.insertAdjacentHTML('beforeend','<div data-queued-message-id="first"></div>');
+    parent.append(queue);await f.tick();
+    const pill=f.document.querySelector('[data-bb-chat-ui-info-trigger="queue"]')!;
+    assert.ok(pill);
+    assert.equal(records.filter(record=>record.node.classList.contains('bbk-drop')).length,1);
+    const reactions=records.filter(record=>record.node===pill&&record.frames.some(frame=>frame.transform));
+    assert.equal(reactions.length,1,'first-message absorption has one receiving response without an entrance bounce');
+    assert.equal(reactions[0].options.duration,380);
+    assert.ok(Number(reactions[0].options.delay)>=0);
+  } finally {stop();f.dom.window.close();}
+});
+
+// The origin remains the input surface even when a send button exists or the composer needs a textarea fallback.
 test("queue droplets use fallback input coordinates without animating the composer", async () => {
   for (const fallback of ['composer','textarea']) {
     const f=fixture();
@@ -5232,13 +5255,13 @@ test("queue droplets use fallback input coordinates without animating the compos
         counter.textContent=String(count); await f.tick();
         const flights=records.filter(record=>record.node.classList.contains('bbk-drop'));
         assert.equal(flights.length,count-2,'each addition sends exactly one droplet');
-        assert.equal(records.filter(record=>record.options.duration===360).length,0,'the input source never squashes');
+        const liquid=flights.at(-1)!.node.closest('[data-queue-liquid]')!;
+        assert.equal(liquid.querySelector('[data-liquid-edge="source"]')?.getAttribute('data-edge-x'),'64','an outside target clamps the departure to the composer edge');
         assert.equal(records.filter(record=>record.node===origin).length,0,'no animation touches the fallback composer');
-        assert.equal(flights.at(-1)!.node.style.left,'133px','the drop starts at the unchanged input centre');
-        assert.equal(flights.at(-1)!.node.style.top,'133px');
+        assert.equal(liquid.querySelector('[data-liquid-edge="source"]')?.getAttribute('data-edge-y'),'100');
+        assert.ok(liquid.querySelector('[data-liquid-edge="target"]'),'the same mask connects to the receiving surface');
         assert.equal(f.document.querySelector('[data-bb-chat-ui-info-trigger="queue"]')?.textContent,String(count),'counter is immediate');
         flights.at(-1)!.animation.onfinish?.(new f.dom.window.Event('finish') as unknown as AnimationPlaybackEvent);
-        assert.equal(records.filter(record=>record.options.duration===380).length,count-2,'queue absorption stays animated');
         assert.equal(f.document.querySelector('.bbk-drop'),null,'finished droplets leave no DOM');
       }
     } finally { stop(); f.dom.window.close(); }
@@ -5322,6 +5345,7 @@ test("ordinary disappearing pills keep an inert shrinking slot and clear it when
   stop();f.dom.window.close();
 });
 
+// Row and count updates share a flight while its overlay stays outside composer clipping.
 test("queued arrivals survive row-first and count-first rendering without missing or repeating flights", async () => {
   const f=fixture(); f.document.querySelector('[data-bb-chat-ui-info-settings]')!.setAttribute('data-bb-chat-ui-info-settings','{"showQueue":"상단 표시"}');
   const queue=f.document.querySelector('section[aria-label="Queued messages"]')!;
@@ -5337,8 +5361,8 @@ test("queued arrivals survive row-first and count-first rendering without missin
   count.textContent='4'; await f.tick(); assert.equal(drops.length,2);
   add('d'); await f.tick(); assert.equal(drops.length,2,'the later row does not repeat the count-first arrival');
   b.remove(); add('e'); count.textContent='3'; await f.tick(); assert.equal(drops.length,3,'an arrival concurrent with dispatch still flies');
-  assert.equal(drops.at(-1)?.style.position,'fixed','flight escapes composer clipping and stacking');
-  assert.equal(drops.at(-1)?.parentNode,f.document.body);
+  assert.equal((drops.at(-1)?.closest('[data-queue-liquid]') as HTMLElement)?.style.position,'fixed','flight escapes composer clipping and stacking');
+  assert.equal(drops.at(-1)?.closest('[data-queue-liquid]')?.parentNode,f.document.body);
   stop();assert.equal(f.document.querySelector('.bbk-drop'),null);f.dom.window.close();
 });
 
