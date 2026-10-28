@@ -4,6 +4,7 @@ const GROUP = '[role="radiogroup"][aria-label="Reasoning"]';
 const SOURCE = "data-bb-chat-ui-effort-source";
 const HEADING = "data-bb-chat-ui-effort-heading";
 const GAUGE = "data-bb-chat-ui-effort";
+const EFFORT_ORDER = ["none", "minimal", "low", "medium", "high", "extra high", "max", "ultra"];
 
 type EffortState = { buttons: HTMLButtonElement[]; index: number };
 type Gauge = { sync(group?: HTMLElement): boolean; stop(): void };
@@ -11,6 +12,10 @@ type Gauge = { sync(group?: HTMLElement): boolean; stop(): void };
 // Read the provider's real options and selected state without changing its settings.
 function readEffort(group: HTMLElement): EffortState {
   const buttons = Array.from(group.querySelectorAll<HTMLButtonElement>('button[role="radio"]'));
+  // Providers may supply descending steps. Keep the display ascending while
+  // retaining native button identities; custom names keep their supplied order.
+  const rank = (button: HTMLButtonElement) => EFFORT_ORDER.indexOf(label(button).toLowerCase());
+  if (buttons.every(button => rank(button) >= 0)) buttons.sort((a, b) => rank(a) - rank(b));
   let index = -1;
   for (let i = 0; i < buttons.length; i++) if (buttons[i].getAttribute("aria-checked") === "true") index = i;
   return { buttons, index };

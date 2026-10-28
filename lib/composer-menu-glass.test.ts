@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { resolvedStyle } from "./test-style.ts";
 import { COMPOSER_MENU_GLASS_STYLE_ID, injectComposerMenuGlass } from "./composer-menu-glass.ts";
 import { cardStyle } from "./info-card.ts";
+import { phoneDrawerCss } from "./phone-sheet.ts";
 import { injectComposerModelMenus, MODEL_MENU_MARK, MODEL_SCROLL_MARK } from "./composer-model-menu.ts";
 
 test("the shared row radius can be reused without replacing native menu row geometry", () => {
@@ -15,6 +16,38 @@ test("the shared row radius can be reused without replacing native menu row geom
     assert.equal(resolvedStyle(item).borderRadius, '10px');
     const s = resolvedStyle(item);
     assert.equal(s.padding, '6px 12px'); assert.equal(s.minHeight, '36px');
+  } finally { stop(); f.restore(); }
+});
+
+for (const phone of [false, true]) test(`plugin-wrapped prompt actions share native hover corners (${phone ? 'phone' : 'desktop'})`, () => {
+  const tag = phone ? 'button' : 'div';
+  const items = `<${tag} role="menuitem" class="item">Attach files</${tag}><div data-bb-plugin-root data-bb-plugin="automations" class="contents"><div role="menuitem" class="item">Automation</div></div><div data-bb-plugin-root data-bb-plugin="bb-guide" class="contents"><button role="menuitem" class="item">Plugin</button></div>`;
+  const menu = phone
+    ? `<div data-persistent-drawer-content data-bb-plugin="bb--composer"><div aria-label="Prompt actions">${items}</div></div>`
+    : `<div data-bb-portaled-overlay role="menu" aria-label="Prompt actions">${items}</div>`;
+  const f = fixture(menu + '<div role="menu" aria-label="Other"><div role="menuitem" class="item">Other</div></div>');
+  f.document.documentElement.setAttribute('data-bb-chat-ui-root-device', phone ? 'phone' : 'desktop');
+  const host = f.document.createElement('style');
+  host.textContent = '.item { border-radius:4px; padding:5px 8px; }';
+  f.document.head.append(host);
+  const stop = injectComposerMenuGlass(f.document);
+  if (phone) {
+    const sheet = f.document.createElement('style');
+    sheet.textContent = phoneDrawerCss();
+    f.document.head.append(sheet);
+    // The DOM-only resolver substitutes root tokens; mirror the verified drawer
+    // override because JSDOM does not inherit custom properties into its rows.
+    const drawer = f.document.querySelector('[data-persistent-drawer-content]')!;
+    const radius = f.dom.window.getComputedStyle(drawer).getPropertyValue('--bb-chat-ui-card-menu-radius').trim();
+    assert.equal(radius, '10px');
+    f.document.documentElement.style.setProperty('--bb-chat-ui-card-menu-radius', radius);
+  }
+  try {
+    for (const row of f.document.querySelectorAll('[aria-label="Prompt actions"] [role="menuitem"]')) {
+      assert.equal(resolvedStyle(row).borderRadius, '10px', row.textContent!);
+      assert.equal(resolvedStyle(row).padding, '5px 8px', 'native row padding stays intact');
+    }
+    assert.equal(resolvedStyle(f.document.querySelector('[aria-label="Other"] .item')!).borderRadius, '4px');
   } finally { stop(); f.restore(); }
 });
 

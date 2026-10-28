@@ -5,7 +5,7 @@ import { EASE } from "./motion.ts";
 const ACTIONS = '[data-bb-portaled-overlay][role="menu"][aria-label="Prompt actions"]';
 const PHONE_ACTIONS = '[data-persistent-drawer-content] > div[aria-label="Prompt actions"]';
 const ACTION_CONTENTS = `${ACTIONS}, ${PHONE_ACTIONS}`;
-const ACTION_ITEMS = `${ACTIONS} > :is(div,button)[role="menuitem"], ${PHONE_ACTIONS} > button[role="menuitem"]`;
+const ACTION_ITEMS = `:is(${ACTION_CONTENTS}) [role="menuitem"]`;
 const MODELS = `[data-bb-portaled-overlay][role="dialog"][${MODEL_MENU_MARK}]`;
 const SUBMODELS = `[data-bb-portaled-overlay][role="dialog"][${MODEL_SUBMENU_MARK}]`;
 const CARDS = `:is(${ACTIONS}, ${MODELS}, ${SUBMODELS})`;

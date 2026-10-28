@@ -147,6 +147,70 @@ function animationClock(f: ReturnType<typeof fixture>, reduced = false) {
   return { pending, advance, finish };
 }
 
+for (const phone of [false, true]) test(`descending Grok options display low to high and retain native click targets (${phone ? 'phone' : 'desktop'})`, async () => {
+  const f = fixture({ phone, labels: ['Extra High', 'High', 'Medium', 'Low'], selected: 2 });
+  const native = f.radios();
+  animationClock(f, true);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const range = f.range();
+    assert.equal(range.value, '1', 'Medium is the second ascending step');
+    assert.equal(range.getAttribute('aria-valuetext'), 'Medium');
+    const labels = [...f.card.querySelectorAll<HTMLElement>('[data-effort-label]')].sort((a, b) => parseFloat(a.style.left) - parseFloat(b.style.left));
+    assert.deepEqual(labels.map(n => n.textContent), ['Low', 'Medium', 'High', 'Extra High']);
+    assert.deepEqual(f.clicks, [], 'ordering the display does not change the selected setting');
+    for (const [key, text] of [['ArrowRight', 'High'], ['Home', 'Low'], ['End', 'Extra High']]) {
+      range.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      await f.settle();
+      assert.equal(range.getAttribute('aria-valuetext'), text);
+    }
+    range.value = '1';
+    range.dispatchEvent(new f.dom.window.Event('input', { bubbles: true }));
+    await f.settle();
+    assert.deepEqual(f.clicks, [1, 3, 0, 2]);
+    assert.deepEqual(f.radios(), native, 'native nodes stay in the provider order');
+    stop();
+    assert.deepEqual(f.radios(), native, 'disposal restores the original controls');
+  } finally { stop(); f.restore(); }
+});
+
+test('descending effort drag and keyboard skip the corresponding disabled native option', async () => {
+  const f = fixture({ labels: ['Extra High', 'High', 'Medium', 'Low'], selected: 3, disabled: [1] });
+  animationClock(f, true);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const track = f.card.querySelector<HTMLElement>('[data-effort-track]')!;
+    track.getBoundingClientRect = () => ({ left: 10, width: 288 } as DOMRect);
+    track.dispatchEvent(new f.dom.window.PointerEvent('pointerdown', { bubbles: true, isPrimary: true, button: 0, pointerId: 7, clientX: 194 }));
+    assert.equal(f.range().getAttribute('aria-valuetext'), 'Extra High', 'drag past disabled High reaches Extra High');
+    f.dom.window.dispatchEvent(new f.dom.window.PointerEvent('pointerup', { pointerId: 7 }));
+    f.range().dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    await f.settle();
+    assert.equal(f.range().getAttribute('aria-valuetext'), 'Medium');
+    assert.deepEqual(f.clicks, [0, 2]);
+  } finally { stop(); f.restore(); }
+});
+
+test('provider replacement normalizes known effort labels without reordering custom names', async () => {
+  const f = fixture();
+  animationClock(f, true);
+  const stop = injectComposerMenuGlass(f.document);
+  try {
+    const range = f.range();
+    f.group().innerHTML = radioMarkup(['Extra High', 'High', 'Medium', 'Low'], 1);
+    await f.settle();
+    assert.equal(f.range(), range);
+    assert.equal(range.value, '2');
+    assert.equal(range.getAttribute('aria-valuetext'), 'High');
+    f.group().innerHTML = radioMarkup(['Maximum', 'Standard', 'Minimal'], 1);
+    await f.settle();
+    range.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }));
+    await f.settle();
+    assert.equal(range.getAttribute('aria-valuetext'), 'Maximum', 'unknown names retain the provider order');
+    assert.deepEqual(f.clicks, [0]);
+  } finally { stop(); f.restore(); }
+});
+
 // Keep the scale fixed and carry interrupted pin motion smoothly to the final native step.
 test("the compact waveform keeps tick positions fixed and settles interrupted pin motion", () => {
   const f = fixture();
