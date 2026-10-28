@@ -600,10 +600,14 @@ test('queue editor hides the settings footer while attachment keeps its original
     const editor=f.queue.querySelector<HTMLElement>('[data-queued-message-inline-editor]')!;
     editor.innerHTML='<div data-inline-message-editor-frame><div>Editing<button aria-label="Stop editing queued message"></button></div><div data-follow-up-composer class="relative"><form data-promptbox><div data-promptbox-layout><div data-promptbox-main><div data-promptbox-input-region><div data-promptbox-editor-scroll><div contenteditable="true">Draft</div></div></div><div data-promptbox-expanded-only></div><div data-promptbox-action-row><div data-promptbox-expanded-only data-promptbox-standard-actions><button type="button" aria-label="Prompt actions" style="margin-left:-6px">+</button><button data-model disabled>Model</button></div><div data-promptbox-standard-actions><button data-voice>Voice</button><div data-promptbox-submit-group><button data-promptbox-submit-action>Save</button></div></div></div></div></div></form><div data-follow-up-composer-footer class="mt-1"><div></div><div><button data-permission disabled>Approve for me</button><button data-auto>Auto</button></div></div></div></div>';
     const composer=editor.querySelector<HTMLElement>('[data-follow-up-composer]')!,footer=composer.querySelector('[data-follow-up-composer-footer]')!,attach=composer.querySelector<HTMLButtonElement>('[aria-label="Prompt actions"]')!;
+    const form=composer.querySelector('form')!;
+    const box=f.document.createElement('div');box.setAttribute('data-composer-box','');
+    const scope=f.document.createElement('div');scope.setAttribute('data-bb-plugin-root','');scope.setAttribute('data-bb-plugin','bb--composer');scope.className='contents';
+    form.before(box);box.append(scope);scope.append(form);
     const originalParent=attach.parentElement;let clicks=0;attach.addEventListener('click',()=>clicks++);
     await f.tick();const css=(e:Element)=>resolvedStyle(e);
     assert.equal(composer.hasAttribute('data-bb-chat-ui-queue-editor-toolbar'),true);
-    assert.equal(css(composer).display,'grid');assert.equal(css(composer.querySelector('form')!).display,'grid');
+    assert.equal(css(composer).display,'flex');assert.equal(css(form).display,'grid');
     assert.equal(css(composer).containerType,'inline-size');assert.equal(css(composer.querySelector('form')!).containerType,'normal');
     assert.equal(css(footer).display,'none');
     assert.equal(css(attach).marginLeft,'0px');assert.equal(css(attach).flexShrink,'0');assert.equal(css(attach).minWidth,'32px');
@@ -614,6 +618,7 @@ test('queue editor hides the settings footer while attachment keeps its original
     assert.equal(css(attach).display,'inline-flex','desktop hides only queue ellipsis, never Prompt actions');
     attach.click();assert.equal(clicks,2,'desktop attachment clicks still reach the original handler');
     assert.equal(attach.parentElement,originalParent,'native toolbar nodes stay in React-owned parents');
+    assert.equal(form.parentElement,scope,'the native SDK wrapper keeps the original form');
     assert.equal(composer.querySelector<HTMLButtonElement>('[data-permission]')!.disabled,true,'read-only permission stays read-only');
     stopInfo();assert.equal(composer.hasAttribute('data-bb-chat-ui-queue-editor-toolbar'),false);
     assert.equal(attach.parentElement,originalParent);

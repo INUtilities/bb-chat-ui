@@ -239,6 +239,8 @@ Child Thread 등 목록 안의 이름은 desktop 12px/14px·phone 13px/16px다.
   클릭 영역은 desktop 20px, phone large hit 32px·small hit 24px다.
 - 대기 메시지의 드래그 핸들은 아이콘 액션의 의도된 예외다. 원래 크기·모서리와
   드래그 동작을 유지하며 전송·편집·삭제 버튼의 원형 규격을 적용하지 않는다.
+- 대기 메시지 편집 form은 자체 grid 열·행을 갖는다. `data-composer-box`와 SDK wrapper를
+  사이에 두고 바깥 toolbar의 subgrid를 상속하지 않으며, 본문만 스크롤하고 저장·취소는 카드 안에 유지한다.
 - 닫기·해제하면 Parent·PR의 layout 표식과 추가 표시를 제거하고 원래 native DOM을 복원한다.
 
 ## 비활성 정보와 접힌 스택

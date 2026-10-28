@@ -389,12 +389,12 @@ ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-promptbox-action-r
   backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
 }
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] :is([data-promptbox-action-row],[data-follow-up-composer-footer]) button:is(:hover,:focus-visible) { background:color-mix(in oklab,var(--foreground) 6%,transparent) !important; }
-/* Preserve the native editor layout while hiding settings that cannot be changed here. */
+/* The native SDK may wrap the form, so its grid must not inherit from the toolbar. */
 ${OPEN_QUEUE}[data-bb-chat-ui-queue-editing="true"] [data-bb-chat-ui-queue-editor-toolbar] {
-  display:grid !important; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:minmax(0,1fr) minmax(12px,auto) auto; column-gap:4px; container-type:inline-size;
+  display:flex !important; flex-direction:column; container-type:inline-size;
 }
 ${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox] {
-  display:grid !important; grid-column:1 / -1; grid-row:1 / 4; grid-template-columns:subgrid; grid-template-rows:subgrid; container-type:normal !important;
+  display:grid !important; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:minmax(0,1fr) minmax(12px,auto) auto; column-gap:4px; container-type:normal !important;
 }
 ${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-main] { display:contents !important; }
 ${OPEN_QUEUE} [data-bb-chat-ui-queue-editor-toolbar] [data-promptbox-input-region] { grid-column:1 / -1; grid-row:1; }

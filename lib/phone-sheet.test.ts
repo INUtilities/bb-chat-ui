@@ -16,12 +16,12 @@ import {
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
 // 카드·인용은 기존 기준을 유지한다. 메뉴는 plugin wrapper 항목의 공통 모서리 수정(2026-10-28)을 반영한다.
-// The phone sheet remains separate, so the desktop card, quote, queue and type CSS stay byte-identical.
+// Queue는 SDK wrapper를 사이에 둔 편집 form의 자체 grid 수정 기준을 반영한다.
 test("desktop card, menu and quote CSS stay byte-identical", () => {
   assert.equal(sha(composerInfoCss), "e937a5b1a6fb7100ae5ff0b6d92a114dd9e654a0ca022714e8158810f8714419");
   assert.equal(sha(quotePreviewCss), "71f4f433df57b51d308983e6fa392465a60e4edcc03633d68f33483652252af6");
   assert.equal(sha(composerMenuGlassCss), "eb18fa958d725987aa3771b491418430b5d9e4ef678704258b64239e2dc5ccc9");
-  assert.equal(sha(queuedMessagesCss), "7eae067033078e814331a8658a53c04fa86364c464e8dd9c081edcb708754b8c");
+  assert.equal(sha(queuedMessagesCss), "55646dbd272cff7f0a53d83096929f1ea130bb8762b304b4a91812912dff2576");
   assert.equal(sha(infoCardCss()), "8c9e1d7134c5cff3b1c27635e919b338f58c5960f224a8ef13c443cb8228d3cc");
 });
 
