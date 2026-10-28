@@ -1,8 +1,11 @@
+import { addedMutationRoots } from './mutation-roots.ts';
+
 const MARK='data-bb-chat-ui-composer-viewport';
 const EDITOR='[data-promptbox-editor-scroll]';
 const MAX='--bb-chat-ui-editor-max-height';
 const MENU='--bb-chat-ui-mention-max-height';
 
+// Calculate editor and mention space within the visible pane.
 export function composerViewportLimits(input:{paneTop:number;paneBottom:number;viewportTop:number;viewportHeight:number;overhead:number}) {
   const height=Math.max(0,Math.min(input.paneBottom,input.viewportTop+input.viewportHeight)-Math.max(input.paneTop,input.viewportTop));
   const room=Math.max(0,height-input.overhead);
@@ -25,19 +28,33 @@ export const composerViewportCss=`
 [${MARK}] [class~="@container/mention-menu"] > .overflow-y-auto { min-height:0; overscroll-behavior:contain; }
 `;
 
+// Bind platform-independent viewport sizing and contained composer scrolling.
 export function injectComposerViewport(document:Document):()=>void {
   const view=document.defaultView;
   if(!view)return ()=>{};
   const style=document.createElement('style');style.textContent=composerViewportCss;document.head.append(style);
-  const bindings=new Map<HTMLElement,()=>void>();
-  let frame=0,stopped=false;
+  const bindings=new Map<HTMLElement,{footer:Element;pane:Element|null;editor:HTMLElement;stop:()=>void}>();
+  // Resolve the layout owner so moving an existing composer can rebind its observers.
+  const paneOf=(composer:Element)=>composer.closest('[data-page-scroll-viewport], .thread-scrollbar')??composer.closest('[data-thread-window]');
+  let frame=0,stopped=false,refreshAll=true;
+  const dirtyFooters=new Set<Element>();
+  // Write a size only when its rounded value changes; all reads run first.
   const set=(node:HTMLElement,key:string,value:number)=>{
     const next=`${Math.floor(value)}px`;
     if(node.style.getPropertyValue(key)!==next)node.style.setProperty(key,next);
   };
-  const schedule=()=>{if(!stopped&&!frame)frame=view.requestAnimationFrame(()=>{frame=0;sync();});};
+  // Coalesce local footer changes while viewport events invalidate every pane.
+  const schedule=(footer?:Element)=>{
+    if(stopped)return;
+    if(footer)dirtyFooters.add(footer);else refreshAll=true;
+    if(!frame)frame=view.requestAnimationFrame(()=>{frame=0;sync();});
+  };
+  // Reserve full refreshes for window and visual viewport changes.
+  const onViewport=()=>schedule();
+  // Watch the owning pane without remeasuring independent composers.
   const bind=(composer:HTMLElement)=>{
-    const sizes=typeof view.ResizeObserver==='function'?new view.ResizeObserver(schedule):null;
+    const footer=composer.closest('[data-scroll-footer]')!,pane=paneOf(composer);
+    const sizes=typeof view.ResizeObserver==='function'?new view.ResizeObserver(()=>schedule(footer)):null;
     const editor=composer.querySelector<HTMLElement>(EDITOR)!;
     const scroller=(target:EventTarget|null,dx:number,dy:number)=>{
       for(let n=target instanceof view.Element?target:null;n&&composer.contains(n);n=n.parentElement){
@@ -74,42 +91,66 @@ export function injectComposerViewport(document:Document):()=>void {
     composer.addEventListener('touchstart',start,{passive:true});
     composer.addEventListener('touchmove',move,{passive:false});
     composer.addEventListener('touchend',end);composer.addEventListener('touchcancel',end);
-    const pane=composer.closest('[data-page-scroll-viewport], .thread-scrollbar')??composer.closest('[data-thread-window]');
-    sizes?.observe(composer.closest('[data-scroll-footer]')!);if(pane)sizes?.observe(pane);
+    sizes?.observe(footer);if(pane)sizes?.observe(pane);
     composer.setAttribute(MARK,'');
-    return ()=>{
+    return {footer,pane,editor,stop:()=>{
       sizes?.disconnect();
       composer.removeAttribute(MARK);composer.style.removeProperty(MAX);composer.style.removeProperty(MENU);
       composer.removeEventListener('wheel',wheel);composer.removeEventListener('touchstart',start);composer.removeEventListener('touchmove',move);composer.removeEventListener('touchend',end);composer.removeEventListener('touchcancel',end);
-    };
+    }};
   };
+  // Measure affected composers together before applying any viewport CSS values.
   const sync=()=>{
+    const all=refreshAll,dirty=new Set(dirtyFooters);refreshAll=false;dirtyFooters.clear();
+    const updates:{composer:HTMLElement;editor:number;menu:number}[]=[];
+    const dirtyPanes=new Set(Array.from(dirty,paneOf).filter(Boolean));
     const current=new Set(Array.from(document.querySelectorAll<HTMLElement>('[data-scroll-footer] .chat-prompt-box [data-promptbox]')));
-    for(const [node,stop]of bindings)if(!current.has(node)||!node.isConnected){stop();bindings.delete(node);}
+    for(const [node,binding]of bindings)if(!current.has(node)||!node.isConnected){binding.stop();bindings.delete(node);}
+    const measure:HTMLElement[]=[];
     for(const composer of current){
       const editor=composer.querySelector<HTMLElement>(EDITOR);
       if(!editor||composer.closest('[data-queued-message-inline-editor]'))continue;
-      if(!bindings.has(composer))bindings.set(composer,bind(composer));
-      const pane=composer.closest('[data-page-scroll-viewport], .thread-scrollbar')??composer.closest('[data-thread-window]');
+      const footer=composer.closest('[data-scroll-footer]')!,pane=paneOf(composer),binding=bindings.get(composer);
+      const fresh=!binding||binding.footer!==footer||binding.pane!==pane||binding.editor!==editor;
+      if(fresh){binding?.stop();bindings.set(composer,bind(composer));}
+      if(all||fresh||dirty.has(footer)||(pane&&dirtyPanes.has(pane)))measure.push(composer);
+    }
+    for(const composer of measure){
+      const {footer,pane,editor}=bindings.get(composer)!;
       const rect=pane?.getBoundingClientRect();
       const viewport=view.visualViewport;
       const top=viewport?.offsetTop??0,height=viewport?.height??view.innerHeight;
-      const footer=composer.closest('[data-scroll-footer]')!;
       const overhead=Math.max(0,footer.getBoundingClientRect().height-editor.getBoundingClientRect().height);
       const limits=composerViewportLimits({paneTop:rect?.top??top,paneBottom:rect?.bottom??top+height,viewportTop:top,viewportHeight:height,overhead});
-      set(composer,MAX,limits.editor);
-      set(composer,MENU,Math.max(0,composer.getBoundingClientRect().top-Math.max(rect?.top??top,top)-8));
+      updates.push({composer,editor:limits.editor,menu:Math.max(0,composer.getBoundingClientRect().top-Math.max(rect?.top??top,top)-8)});
     }
+    for(const {composer,editor,menu} of updates){set(composer,MAX,editor);set(composer,MENU,menu);}
   };
+  // Route existing footer changes locally and still discover nested new composers.
   const mutations=new view.MutationObserver(records=>{
-    if(records.some(r=>(r.target instanceof view.Element&&r.target.closest('[data-scroll-footer]'))||[...Array.from(r.addedNodes),...Array.from(r.removedNodes)].some(n=>n instanceof view.Element&&(n.matches('[data-scroll-footer], [data-promptbox]')||n.querySelector('[data-scroll-footer], [data-promptbox]')))))schedule();
+    let discover=false;
+    for(const record of records){
+      const footer=record.target instanceof view.Element?record.target.closest('[data-scroll-footer]'):null;
+      if(footer)schedule(footer);else discover=true;
+    }
+    if(discover){
+      for(const root of addedMutationRoots(records)) for(const node of [root,...Array.from(root.querySelectorAll<HTMLElement>('[data-promptbox]'))]){
+        if(!(node instanceof view.HTMLElement)||!node.matches('[data-scroll-footer] .chat-prompt-box [data-promptbox]'))continue;
+        const binding=bindings.get(node),footer=node.closest('[data-scroll-footer]')!;
+        // Moving between panes also invalidates the remaining composers in the old pane.
+        if(binding&&binding.pane!==paneOf(node))schedule();
+        else schedule(footer);
+      }
+      for(const [node,binding]of bindings)if(!node.isConnected||!node.matches('[data-scroll-footer] .chat-prompt-box [data-promptbox]')){binding.stop();bindings.delete(node);schedule();}
+    }
+    for(const [node,binding] of bindings)if(!node.isConnected){binding.stop();bindings.delete(node);}
   });
   mutations.observe(document.body,{childList:true,subtree:true});
-  view.addEventListener('resize',schedule);view.visualViewport?.addEventListener('resize',schedule);view.visualViewport?.addEventListener('scroll',schedule);
+  view.addEventListener('resize',onViewport);view.visualViewport?.addEventListener('resize',onViewport);view.visualViewport?.addEventListener('scroll',onViewport);
   sync();
   return ()=>{
     stopped=true;view.cancelAnimationFrame(frame);mutations.disconnect();
-    view.removeEventListener('resize',schedule);view.visualViewport?.removeEventListener('resize',schedule);view.visualViewport?.removeEventListener('scroll',schedule);
-    for(const stop of bindings.values())stop();bindings.clear();style.remove();
+    view.removeEventListener('resize',onViewport);view.visualViewport?.removeEventListener('resize',onViewport);view.visualViewport?.removeEventListener('scroll',onViewport);dirtyFooters.clear();
+    for(const binding of bindings.values())binding.stop();bindings.clear();style.remove();
   };
 }

@@ -3,6 +3,7 @@ import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass
 import { COMPOSER_HANDOFF_RESIZING, injectComposerHandoff } from "./composer-handoff.ts";
 import { injectPhoneExpansionVisual } from "./composer-expand-visual.ts";
 import { injectComposerToolbar } from "./composer-toolbar.ts";
+import { addedMutationRoots } from "./mutation-roots.ts";
 
 const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
 // JS-set markers replace :has() where the rule subject is generic (measured: those make every
@@ -632,8 +633,9 @@ export function injectComposerGlass(document: Document): () => void {
   style.textContent = composerGlassCss;
   document.head.append(style);
 
-  let observed: Element | null = null;
-  let observer: ResizeObserver | null = null;
+  const resizeWatches = new Map<HTMLElement, ResizeObserver>();
+  const dirtyFooters = new Set<HTMLElement>();
+  let fullSync = true;
   const stackWatches = new Map<HTMLElement, { stack:Element; observer:MutationObserver }>();
   const radiusWatches = new Map<HTMLElement, () => void>();
   const idleHeights = new WeakMap<HTMLElement, number>();
@@ -923,7 +925,8 @@ export function injectComposerGlass(document: Document): () => void {
   // Layout reads inside mutation callbacks force a full style+layout per React commit.
   // Coalesce every trigger into one frame-aligned sync instead.
   let syncFrame = 0;
-  const scheduleSync = () => {
+  const scheduleSync = (footer?: HTMLElement) => {
+    if (footer) dirtyFooters.add(footer); else fullSync = true;
     const view = document.defaultView;
     if (syncFrame || !view) return;
     syncFrame = view.requestAnimationFrame(() => { syncFrame = 0; sync(); });
@@ -951,6 +954,8 @@ export function injectComposerGlass(document: Document): () => void {
     }
   };
   const sync = () => {
+    const all = fullSync, dirty = new Set(dirtyFooters);
+    fullSync = false; dirtyFooters.clear();
     releaseDetachedComposers();
     const footers = document.querySelectorAll(FOOTER);
     const currentFooters = new Set(Array.from(footers).filter((node): node is HTMLElement => node instanceof HTMLElement));
@@ -961,34 +966,32 @@ export function injectComposerGlass(document: Document): () => void {
       currentFooters.add(footerNode);
       if (!footerNode.hasAttribute(GLASS_MARK)) footerNode.setAttribute(GLASS_MARK, "");
       // Read before writes; the fade belongs to its leaf, not the whole composer subtree.
-      const fade = readFade(footerNode);
+      const measure = all || dirty.has(footerNode) || !glassFooters.has(footerNode);
+      const fade = measure ? readFade(footerNode) : null;
       const composers = footerNode.querySelectorAll(COMPOSER);
       for (let composerIndex = 0; composerIndex < composers.length; composerIndex += 1) {
         const composer = composers.item(composerIndex);
         if (!(composer instanceof HTMLElement)) continue;
         bindComposerRadius(composer);
-        if (!animating.has(composer)) {
+        if (measure && !animating.has(composer)) {
           const height = composer.getBoundingClientRect().height;
           if (height > 0) idleHeights.set(composer, height);
         }
       }
-      alignComposerControls(footerNode);
+      if (measure) alignComposerControls(footerNode);
       if (fade) applyFadeHeight(fade.target, fade.height);
     }
     for (const node of glassFooters) if (!currentFooters.has(node)) node.removeAttribute(GLASS_MARK);
     glassFooters.clear();
     for (const node of currentFooters) glassFooters.add(node);
     bindStacks(currentFooters);
-    const footer = document.querySelector(FOOTER);
-    if (footer === observed || typeof ResizeObserver === "undefined") return;
-    observer?.disconnect();
-    observer = null;
-    observed = footer;
-    if (footer instanceof HTMLElement) {
-      observer = new ResizeObserver(() => {
-        scheduleSync();
-      });
-      observer.observe(footer);
+    for (const [footer, watch] of resizeWatches) if (!currentFooters.has(footer)) {
+      watch.disconnect(); resizeWatches.delete(footer);
+    }
+    if (typeof ResizeObserver !== "undefined") for (const footer of currentFooters) {
+      if (resizeWatches.has(footer)) continue;
+      const watch = new ResizeObserver(() => scheduleSync(footer));
+      watch.observe(footer); resizeWatches.set(footer, watch);
     }
   };
 
@@ -1005,7 +1008,7 @@ export function injectComposerGlass(document: Document): () => void {
       if (old?.stack === stack) continue;
       old?.observer.disconnect(); stackWatches.delete(footer);
       if (!stack || typeof MutationObserver === "undefined") continue;
-      const observer = new MutationObserver(scheduleSync);
+      const observer = new MutationObserver(() => scheduleSync(footer));
       observer.observe(footer, {
         childList: true, subtree: true, attributes: true,
         attributeFilter: ["class", "role", "id", "data-queued-messages-mode"],
@@ -1020,26 +1023,32 @@ export function injectComposerGlass(document: Document): () => void {
       if (records.some(record => record.removedNodes.length > 0)) {
         releaseDetachedComposers();
         releaseDetachedMarkers();
-        if (observed && (!observed.isConnected || !observed.matches(FOOTER))) { observer?.disconnect(); observer = null; observed = null; }
+        for (const [footer, watch] of resizeWatches) if (!footer.isConnected || !footer.matches(FOOTER)) { watch.disconnect(); resizeWatches.delete(footer); }
         releaseDetachedStacks();
         for (const node of glassFooters) if (!node.isConnected || !node.matches(FOOTER)) { node.removeAttribute(GLASS_MARK); glassFooters.delete(node); }
         if (!document.querySelector(FOOTER)) {
           if (syncFrame) document.defaultView?.cancelAnimationFrame(syncFrame);
-          syncFrame = 0;
+          syncFrame = 0; dirtyFooters.clear();
           return;
         }
       }
-      // Discover once; bind motion now without forcing deferred geometry work.
-      let addedComposer = false;
-      const discovery = `${COMPOSER}, [data-scroll-footer], .chat-prompt-box`;
-      for (const record of records) for (const node of Array.from(record.addedNodes)) {
-        if (!(node instanceof HTMLElement)) continue;
-        const matches = [...(node.matches(discovery) ? [node] : []), ...Array.from(node.querySelectorAll<HTMLElement>(discovery))];
-        if (matches.length) addedComposer = true;
-        for (const candidate of matches) if (candidate.matches(COMPOSER) && candidate.closest(FOOTER)) bindComposerRadius(candidate);
+      // Search added subtrees; sibling batches share a root without scanning every row.
+      const discovered = new Set<HTMLElement>();
+      const roots = new Set(addedMutationRoots(records));
+      for (const record of records) {
+        const footer = record.target instanceof HTMLElement ? record.target.closest(FOOTER) : null;
+        if (footer) roots.add(footer);
       }
-      if (observed instanceof HTMLElement && observed.isConnected && stackWatches.has(observed) && !addedComposer) return;
-      scheduleSync();
+      const discovery = `${COMPOSER}, [data-scroll-footer], .chat-prompt-box`;
+      for (const root of roots) for (const candidate of [root, ...Array.from(root.querySelectorAll(discovery))]) {
+        const footer = candidate.closest<HTMLElement>(FOOTER);
+        if (!footer) continue;
+        if (candidate instanceof HTMLElement && candidate.matches(COMPOSER) && !radiusWatches.has(candidate)) {
+          bindComposerRadius(candidate); discovered.add(footer);
+        }
+        if (!glassFooters.has(footer) || stackWatches.get(footer)?.stack !== footer.querySelector(STACK)) discovered.add(footer);
+      }
+      for (const footer of discovered) scheduleSync(footer);
     });
     mutations.observe(document.body, { childList: true, subtree: true });
   }
@@ -1054,7 +1063,8 @@ export function injectComposerGlass(document: Document): () => void {
     mutations?.disconnect();
     for (const watch of stackWatches.values()) watch.observer.disconnect();
     stackWatches.clear();
-    observer?.disconnect();
+    for (const watch of resizeWatches.values()) watch.disconnect();
+    resizeWatches.clear(); dirtyFooters.clear();
     for (const stop of radiusWatches.values()) stop();
     radiusWatches.clear();
     style.remove();

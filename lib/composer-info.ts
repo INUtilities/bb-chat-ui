@@ -1,4 +1,5 @@
 import { composerInfoReflow } from "./composer-info-reflow.ts";
+import { addedMutationRoots } from "./mutation-roots.ts";
 import { pillSlot, pillStyle } from "./pill.ts";
 import { composerDataChanged, readInfoData, readDiffData } from "./composer-data.ts";
 import { exposedInfo, infoKinds, listedInfo, type InfoKind } from "./composer-info-settings.ts";
@@ -2025,8 +2026,10 @@ export function injectComposerInfo(document: Document): () => void {
       }
     };
     let resizeWidth: number | undefined;
+    // Refit width changes while keeping open-card scroll edges aligned on height changes.
     const resize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(entries => {
       const width = entries?.find(entry => entry.target === stack)?.contentRect.width;
+      if (width !== undefined && width === resizeWidth) { updateScrollHints(); return; }
       if (width === undefined || width !== resizeWidth) measuredWidths = new WeakMap();
       resizeWidth = width;
       fit();
@@ -2187,7 +2190,15 @@ export function injectComposerInfo(document: Document): () => void {
     secretObserver.observe(stack, { childList:true, subtree:true, attributes:true, attributeFilter:["data-expanded", "hidden"] });
     let suspended = false;
     let fitSignature = "";
-    const currentFitSignature = () => JSON.stringify([signature, threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(),
+    // Fit only changed pill content, membership, artwork, or layout inputs, not detail revisions.
+    const currentFitSignature = () => JSON.stringify([threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(),
+      listed, showInactive, items.filter(item => item.key !== "diff" || readDiff()?.presentation?.visible !== false).map(item => item.key),
+      [...buttons].map(([key, button]) => [key, buttonContent.get(button)]),
+      // Match the artwork fallback used when rendering catalog-only folded icons.
+      listed.map(key => {
+        const item = items.find(item => item.key === key);
+        return (emptyIcon(key) ?? item?.trigger?.querySelector("svg,[data-icon-root]") ?? item?.node.querySelector("svg,[data-icon-root]"))?.outerHTML;
+      }),
       ...["device", "viewport", "hit-target"].map(key => document.documentElement.getAttribute(`data-bb-chat-ui-root-${key}`))]);
     const sync = () => {
       pruneDisconnected();
@@ -2659,13 +2670,19 @@ export function injectComposerInfo(document: Document): () => void {
   };
   // The body only tells us when composer shells (or the host jump button) mount or unmount.
   // Inline composers can also mount inside transcript rows; other transcript changes stay ignored.
-  const shellIn = (node: Node) => node instanceof view.Element &&
-    (node.matches("[data-promptbox-shell]") || !!node.querySelector("[data-promptbox-shell]"));
+  // Search additions locally, sharing one root for sibling rows in the same delivery.
   const observer = new view.MutationObserver(records => {
+    let timelineDiscovery: boolean | undefined;
     if (records.some(record => {
       if (record.attributeName === "data-bb-chat-ui-device") return true;
       const target = record.target instanceof view.Element ? record.target : record.target.parentElement;
-      if (target?.closest("[data-timeline-items]")) return Array.from(record.addedNodes).some(shellIn) || Array.from(record.removedNodes).some(shellIn);
+      if (target?.closest("[data-timeline-items]")) {
+        timelineDiscovery ??= Array.from(watchedShells).some(shell => !shell.isConnected) ||
+          addedMutationRoots(records).some(root =>
+            (root.matches("[data-promptbox-shell]") && !watchedShells.has(root)) ||
+            Array.from(root.querySelectorAll("[data-promptbox-shell]")).some(shell => !watchedShells.has(shell)));
+        return timelineDiscovery;
+      }
       return Array.from(record.addedNodes).some(discoversInfo) || Array.from(record.removedNodes).some(discoversInfo);
     })) {
       watchShells(); discover = true; schedule();

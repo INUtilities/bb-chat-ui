@@ -6713,3 +6713,202 @@ test("jump fit morphs a folded pill and its icon together without animating layo
     stop();assert.equal(f.document.querySelector('[data-bb-chat-ui-info-reflow-layer]'),null,'unload cancels all temporary visuals');
   } finally {stop();f.dom.window.close();}
 });
+
+test('small timeline additions do not scan all connected information shells',async()=>{
+ const f=fixture(),stop=injectComposerInfo(f.document);
+ const timeline=f.document.createElement('main');timeline.setAttribute('data-timeline-items','');f.document.body.append(timeline);await f.tick();
+ const query=f.document.querySelectorAll.bind(f.document);let scans=0;
+ f.document.querySelectorAll=((selector:string)=>{if(selector==='[data-promptbox-shell]')scans++;return query(selector);}) as typeof f.document.querySelectorAll;
+ try{
+  const row=f.document.createElement('article');row.innerHTML='<p>One streamed message</p>';
+  timeline.append(row);await f.tick();
+  assert.equal(scans,0,'one ordinary row does not require discovering every existing shell');
+ }finally{stop();f.dom.window.close();}
+});
+
+test('timeline message batches do not search each row for information shells',async()=>{
+ const f=fixture(),stop=injectComposerInfo(f.document);
+ const timeline=f.document.createElement('main');timeline.setAttribute('data-timeline-items','');f.document.body.append(timeline);await f.tick();
+ const prototype=f.dom.window.Element.prototype,query=prototype.querySelector;let scans=0;
+ // Count discovery queries on ordinary transcript rows only.
+ prototype.querySelector=function(selector:string){if(this.hasAttribute('data-perf-row')&&selector==='[data-promptbox-shell]')scans++;return query.call(this,selector);};
+ try{
+  const rows=Array.from({length:80},()=>{const row=f.document.createElement('article');row.setAttribute('data-perf-row','');row.innerHTML='<p>Message</p>';return row;});
+  timeline.append(...rows);await f.tick();assert.equal(scans,0,'a message-only batch does not search every row');
+ }finally{prototype.querySelector=query;stop();f.dom.window.close();}
+});
+
+
+test("detail-only Diff revisions skip pill geometry while open details and visual inputs stay live", async () => {
+  const f = fixture(), stack = f.document.querySelector<HTMLElement>('[data-promptbox-shell] > .grid')!;
+  const source = stack.querySelector('[data-bb-chat-ui-info-settings]')!;
+  const diffSource = f.document.createElement('span');
+  diffSource.hidden = true; diffSource.setAttribute('data-bb-chat-ui-head-diff', '');
+  source.parentElement!.append(diffSource);
+  source.insertAdjacentHTML('beforeend', '<span data-bb-chat-ui-info-icon="goal"><svg><path d="M1 1h2" /></svg></span>');
+  const info = readInfoData(source)!.value;
+  const children = [{ id:'child', title:'Review', providerId:'codex', state:'run' as const }];
+  publishInfoData(source, { ...info, children });
+  const snapshot = { insertions:7, deletions:2, files:1, branch:'feature/ui',
+    presentation:{ mode:'working' as const, visible:true, branch:'feature/ui', branchLabel:null, label:'+7 −2 · 1 file' },
+    detail:{ branch:'feature/ui', basis:'HEAD', baseRef:'origin/main', files:[{ path:'lib/direct.ts', status:'M', insertions:7, deletions:2 }], commits:[] } };
+  publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:snapshot });
+  let rectangles = 0, widths = 0, offsets = 0;
+  // Count the information row's layout reads separately from open-card geometry.
+  stack.getBoundingClientRect = () => { rectangles++; return new f.dom.window.DOMRect(0, 300, 900, 32); };
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', { configurable:true,
+    // Give pills stable widths while recording repeated width measurements.
+    get() { if (this.hasAttribute('data-bb-chat-ui-info-trigger')) widths++; return 60; },
+  });
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetLeft', { configurable:true,
+    // Record only information pills and the folded icon stack.
+    get() { if (this.hasAttribute('data-bb-chat-ui-info-trigger') || this.hasAttribute('data-bb-chat-ui-info-stack-icons')) offsets++; return 0; },
+  });
+  const stop = injectComposerInfo(f.document);
+  try {
+    await f.tick(); await f.tick();
+    f.click('[data-bb-chat-ui-info-trigger="diff"]'); await f.tick(); await f.tick();
+    const pill = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-trigger="diff"]')!;
+    const previous = [pill.innerHTML, pill.title, pill.getAttribute('aria-label'), pill.hidden];
+    const revision = readDiffData(diffSource)!.revision;
+    rectangles = widths = offsets = 0;
+    const detailOnly = { ...snapshot, detail:{ ...snapshot.detail, files:[{ ...snapshot.detail.files[0], path:'lib/updated.ts' }] } };
+    publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:detailOnly });
+    await f.tick(); await f.tick();
+    assert.ok(readDiffData(diffSource)!.revision > revision, 'the SDK detail change really advances its data revision');
+    assert.match(stack.querySelector('[data-bb-chat-ui-info-menu]')!.textContent!, /lib\/updated.ts/);
+    assert.deepEqual([pill.innerHTML, pill.title, pill.getAttribute('aria-label'), pill.hidden], previous);
+    assert.deepEqual({ rectangles, widths, offsets }, { rectangles:0, widths:0, offsets:0 }, 'unchanged pills do not read row geometry to refresh open Diff details');
+
+    publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:{ ...detailOnly, insertions:70,
+      presentation:{ ...snapshot.presentation, label:'+70 −2 · 1 file' } } });
+    await f.tick();
+    assert.match(pill.textContent!, /\+70/);
+    assert.ok(rectangles > 0 && widths > 0 && offsets > 0, 'a changed visible Diff label still fits');
+    rectangles = widths = offsets = 0;
+    source.querySelector('[data-bb-chat-ui-info-icon="goal"] path')!.setAttribute('d', 'M1 1h20');
+    await f.tick();
+    assert.equal(stack.querySelector('[data-bb-chat-ui-info-trigger="goal"] path')!.getAttribute('d'), 'M1 1h20');
+    assert.ok(rectangles > 0 && widths > 0, 'changed pill artwork still invalidates its measured width');
+    rectangles = widths = offsets = 0;
+    publishInfoData(source, { ...info, children:[{ ...children[0], state:'done' }] });
+    await f.tick();
+    assert.equal(stack.querySelector('[data-bb-chat-ui-info-avatar][data-child="child"]')!.getAttribute('data-state'), 'done');
+    assert.ok(rectangles > 0 && widths > 0, 'changed child pill state still fits its updated content');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+// Catalog-only availability and native artwork still determine folded stack content.
+
+test("catalog-only Diff visibility refreshes folded icons and counts while native artwork stays live", async () => {
+  const f = fixture(), stack = f.document.querySelector<HTMLElement>('[data-promptbox-shell] > .grid')!;
+  const source = stack.querySelector('[data-bb-chat-ui-info-settings]')!;
+  const settings = { ...Object.fromEntries(infoKinds.map(kind => [kind.setting, '끄기'])),
+    showDiff:'목록에만 표시', showChildren:'목록에만 표시', showTodos:'목록에만 표시', showQueue:'목록에만 표시',
+    showGoal:'상단 표시', showInactiveInfo:false };
+  publishInfoData(source, { ...readInfoData(source)!.value, settings });
+  const childTrigger = stack.querySelector('#thread-prompt-banner-child-threads-toggle')!;
+  childTrigger.insertAdjacentHTML('beforeend', '<svg><path d="M1 1h2" /></svg>');
+  const diffSource = f.document.createElement('span');
+  diffSource.hidden = true; diffSource.setAttribute('data-bb-chat-ui-head-diff', '');
+  source.parentElement!.append(diffSource);
+  const snapshot = { insertions:7, deletions:2, files:1, branch:'feature/ui',
+    presentation:{ mode:'working' as const, visible:true, branch:'feature/ui', branchLabel:null, label:'+7 −2 · 1 file' },
+    detail:{ branch:'feature/ui', basis:'HEAD', baseRef:'origin/main', files:[{ path:'lib/direct.ts', status:'M', insertions:7, deletions:2 }], commits:[] } };
+  publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:snapshot });
+  // Leave room for the Goal pill so Diff visibility cannot hide the entire information row.
+  stack.getBoundingClientRect = () => new f.dom.window.DOMRect(0, 0, 900, 32);
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', { configurable:true,
+    // Keep every exposed pill within the wide fixture row.
+    get() { return 60; },
+  });
+  const stop = injectComposerInfo(f.document);
+  try {
+    await f.tick(); await f.tick();
+    const bar = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-bar]')!;
+    const more = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-all]')!;
+    const count = stack.querySelector('[data-bb-chat-ui-info-count]')!;
+    // Observe the public folded-icon order rather than internal fitting state.
+    const icons = () => [...stack.querySelectorAll('[data-bb-chat-ui-info-stack-kind]')].map(node => node.getAttribute('data-bb-chat-ui-info-stack-kind'));
+    assert.equal(stack.querySelector('[data-bb-chat-ui-info-trigger="diff"]'), null, 'Diff stays catalog-only');
+    assert.equal(bar.hidden, false); assert.equal(stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-trigger="goal"]')!.hidden, false);
+    assert.deepEqual(icons(), ['diff', 'children', 'todos']);
+    assert.equal(more.hidden, false); assert.equal(count.textContent, '+1');
+    publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:{ ...snapshot,
+      presentation:{ ...snapshot.presentation, visible:false } } });
+    await f.tick(); await f.tick();
+    assert.equal(bar.hidden, false, 'Goal keeps the same row visible');
+    assert.deepEqual(icons(), ['children', 'todos', 'queue'], 'a hidden Diff leaves the folded active set');
+    assert.equal(more.hidden, true); assert.equal(count.textContent, '+0');
+    publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:snapshot });
+    await f.tick(); await f.tick();
+    assert.deepEqual(icons(), ['diff', 'children', 'todos']);
+    assert.equal(more.hidden, false); assert.equal(count.textContent, '+1');
+    childTrigger.querySelector('path')!.setAttribute('d', 'M1 1h20');
+    publishDiffData(diffSource, { threadId:'fixture', state:'ready', summary:{ ...snapshot,
+      detail:{ ...snapshot.detail, files:[{ ...snapshot.detail.files[0], path:'lib/updated.ts' }] } } });
+    await f.tick(); await f.tick();
+    assert.equal(stack.querySelector('[data-bb-chat-ui-info-stack-kind="children"] path')!.getAttribute('d'), 'M1 1h20', 'a catalog-only native icon refreshes through the same artwork fallback as fit');
+  } finally { stop(); f.dom.window.close(); }
+});
+
+// Height changes must keep card hints aligned without refitting an unchanged row.
+
+test("height-only info resize skips pill geometry while open-card hints and width changes stay live", async () => {
+  const f = fixture(), stack = f.document.querySelector<HTMLElement>('[data-promptbox-shell] > .grid')!;
+  const observers: RecordingResizeObserver[] = [];
+  class RecordingResizeObserver {
+    targets = new Set<Element>();
+    callback: ResizeObserverCallback;
+    // Keep callbacks available for explicit content-box resize deliveries.
+    constructor(callback:ResizeObserverCallback) { this.callback = callback; observers.push(this); }
+    // Record the exact element owned by each ResizeObserver.
+    observe(target:Element) { this.targets.add(target); }
+    // Remove one observation when card ownership changes.
+    unobserve(target:Element) { this.targets.delete(target); }
+    // Drop all observations when the fixture unmounts.
+    disconnect() { this.targets.clear(); }
+  }
+  f.dom.window.ResizeObserver = RecordingResizeObserver as unknown as typeof ResizeObserver;
+  let width = 900, rectangles = 0, widths = 0, offsets = 0, cardReads = 0, menuTop = 100;
+  // Simulate actual row width changes and count only the row's geometry.
+  stack.getBoundingClientRect = () => { rectangles++; return new f.dom.window.DOMRect(0, 300, width, 32); };
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', { configurable:true,
+    // Give each pill a nonzero intrinsic width for folding assertions.
+    get() { if (this.hasAttribute('data-bb-chat-ui-info-trigger')) widths++; return 60; },
+  });
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetLeft', { configurable:true,
+    // Separate pill placement reads from permitted card positioning reads.
+    get() { if (this.hasAttribute('data-bb-chat-ui-info-trigger') || this.hasAttribute('data-bb-chat-ui-info-stack-icons')) offsets++; return 0; },
+  });
+  const stop = injectComposerInfo(f.document);
+  try {
+    await f.tick(); await f.tick();
+    f.click('[data-bb-chat-ui-info-trigger="diff"]'); await f.tick(); await f.tick();
+    const menu = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-menu]')!;
+    const bar = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-bar]')!;
+    menu.style.overflowY = 'auto';
+    Object.defineProperty(menu, 'clientHeight', { configurable:true, value:100 });
+    Object.defineProperty(menu, 'scrollHeight', { configurable:true, value:300 });
+    // A height change moves the open card without changing its content-box size.
+    menu.getBoundingClientRect = () => { cardReads++; return new f.dom.window.DOMRect(0, menuTop, 600, 100); };
+    // Scroll hints are positioned relative to the row, independently of pill fitting.
+    bar.getBoundingClientRect = () => { cardReads++; return new f.dom.window.DOMRect(0, 300, 900, 32); };
+    const resize = observers.find(observer => observer.targets.has(stack));
+    assert.ok(resize);
+    // Deliver only the row observation so a card-size callback cannot hide a missed update.
+    const deliver = (height:number) => resize.callback([{ target:stack, contentRect:new f.dom.window.DOMRect(0, 0, width, height) } as ResizeObserverEntry], resize as unknown as ResizeObserver);
+    deliver(32);
+    menu.dispatchEvent(new f.dom.window.Event('scroll', { bubbles:true }));
+    const below = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-scroll-hint="bottom"]')!;
+    assert.equal(below.hidden, false); assert.equal(below.style.top, '-124px');
+    rectangles = widths = offsets = cardReads = 0;
+    menuTop = 60; deliver(96);
+    assert.deepEqual({ rectangles, widths, offsets }, { rectangles:0, widths:0, offsets:0 }, 'height-only notifications do not refit pills');
+    assert.ok(cardReads > 0, 'the open card still measures its scroll edges');
+    assert.equal(below.style.top, '-164px', 'the hint follows the card position even when its own size is unchanged');
+    width = 120; deliver(96);
+    assert.ok(rectangles > 0 && widths > 0, 'an actual row width change still invalidates pill geometry');
+    assert.ok([...stack.querySelectorAll<HTMLElement>('[data-bb-chat-ui-info-trigger]')].some(button => button.hidden), 'the narrower row folds overflowing pills');
+  } finally { stop(); f.dom.window.close(); }
+});

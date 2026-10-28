@@ -3,6 +3,97 @@ import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {composerViewportLimits,injectComposerViewport} from './composer-viewport.ts';
 
+// Keep independent panes measurable without changing an unrelated composer's geometry.
+test('ordinary timeline additions do not rescan viewport composers',async()=>{
+ const dom=new JSDOM('<main><div data-timeline-items></div><div data-scroll-footer><div class="chat-prompt-box"><form data-promptbox><div data-promptbox-editor-scroll></div></form></div></div></main>',{pretendToBeVisual:true});
+ const d=dom.window.document,stop=injectComposerViewport(d),query=d.querySelectorAll.bind(d);let scans=0;
+ d.querySelectorAll=((selector:string)=>{if(selector.includes('data-promptbox'))scans++;return query(selector);}) as typeof d.querySelectorAll;
+ try{
+  const row=d.createElement('article');row.innerHTML='<p>One streamed message</p>';
+  d.querySelector('[data-timeline-items]')!.append(row);await Promise.resolve();
+  assert.equal(scans,0,'a timeline row cannot trigger document-wide viewport discovery');
+ }finally{stop();dom.window.close();}
+});
+
+test('footer mutations only measure the affected composer and batch reads before writes',async()=>{
+  const dom=new JSDOM('<main></main>',{pretendToBeVisual:true});
+  const d=dom.window.document,events:string[]=[];
+  // Create two independent panes with observable geometry reads.
+  const pane=(name:string)=>{
+    const node=d.createElement('div');node.innerHTML='<div data-page-scroll-viewport><div data-scroll-footer><div class="chat-prompt-box"><form data-promptbox><div data-promptbox-editor-scroll></div></form></div></div></div>';
+    d.querySelector('main')!.append(node);
+    for(const el of node.querySelectorAll<HTMLElement>('*'))el.getBoundingClientRect=()=>{events.push(name+':read');return {top:100,bottom:700,height:100} as DOMRect;};
+    const composer=node.querySelector<HTMLElement>('[data-promptbox]')!,footer=node.querySelector('[data-scroll-footer]')!;
+    const set=composer.style.setProperty.bind(composer.style);
+    // Record viewport CSS writes so read/write ordering remains explicit.
+    composer.style.setProperty=(...args)=>{events.push(name+':write');set(...args);};
+    return {node,composer,footer};
+  };
+  const a=pane('a'),b=pane('b');
+  const stop=injectComposerViewport(d);
+  // Drain observer delivery and one frame without relying on wall-clock thresholds.
+  const paint=async()=>{await Promise.resolve();await new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>resolve()));};
+  try{
+    assert.ok(events.findIndex(e=>e.endsWith(':write'))>events.findLastIndex(e=>e.endsWith(':read')),'all viewport geometry reads precede CSS writes');
+    await paint();events.length=0;
+    a.footer.append(d.createElement('span'));await paint();
+    assert.ok(events.includes('a:read'),'changed footer is measured');
+    assert.equal(events.some(e=>e.startsWith('b:')),false,'an independent pane must not be measured');
+    events.length=0;dom.window.dispatchEvent(new dom.window.Event('resize'));await paint();
+    assert.ok(events.includes('a:read')&&events.includes('b:read'),'window resize updates every pane');
+    a.node.remove();await paint();
+    assert.equal(a.composer.hasAttribute('data-bb-chat-ui-composer-viewport'),false,'detached composers release bindings');
+    const nested=pane('new');await paint();
+    assert.equal(nested.composer.hasAttribute('data-bb-chat-ui-composer-viewport'),true,'new nested composers are still discovered');
+  }finally{stop();dom.window.close();}
+});
+
+// Recompute viewport limits when an existing footer moves to another pane.
+test('removing a footer refreshes the remaining composer in the same pane',async()=>{
+ const dom=new JSDOM('<div data-page-scroll-viewport><div data-scroll-footer><div class="chat-prompt-box"><form data-promptbox><div data-promptbox-editor-scroll></div></form></div></div></div>',{pretendToBeVisual:true});
+ const d=dom.window.document,pane=d.querySelector('[data-page-scroll-viewport]')!,first=d.querySelector('[data-scroll-footer]')!,peer=first.cloneNode(true) as HTMLElement;
+ pane.append(peer);const composer=peer.querySelector<HTMLElement>('[data-promptbox]')!;
+ pane.getBoundingClientRect=()=>({top:0,bottom:700} as DOMRect);
+ composer.getBoundingClientRect=()=>({top:first.isConnected?600:150} as DOMRect);
+ const stop=injectComposerViewport(d);
+ try{
+  const before=parseFloat(composer.style.getPropertyValue('--bb-chat-ui-mention-max-height'));
+  first.remove();await Promise.resolve();await new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>resolve()));
+  assert.ok(parseFloat(composer.style.getPropertyValue('--bb-chat-ui-mention-max-height'))<before,'a peer position change is refreshed even without a resize delivery');
+ }finally{stop();dom.window.close();}
+});
+
+test('moving an existing footer updates its pane and resize subscription',async()=>{
+ const dom=new JSDOM('<div data-page-scroll-viewport id="a"><div data-scroll-footer><div class="chat-prompt-box"><form data-promptbox><div data-promptbox-editor-scroll></div></form></div></div></div><div data-page-scroll-viewport id="b"></div>',{pretendToBeVisual:true});
+ const d=dom.window.document,a=d.querySelector('#a')!,b=d.querySelector('#b')!,footer=d.querySelector('[data-scroll-footer]')!,composer=d.querySelector<HTMLElement>('[data-promptbox]')!;
+ const peer=footer.cloneNode(true) as HTMLElement;a.append(peer);const peerComposer=peer.querySelector<HTMLElement>('[data-promptbox]')!;
+ // The remaining composer moves when its sibling leaves the pane.
+ peerComposer.getBoundingClientRect=()=>({top:footer.parentElement===a?600:150} as DOMRect);
+ a.getBoundingClientRect=()=>({top:0,bottom:700} as DOMRect);b.getBoundingClientRect=()=>({top:0,bottom:350} as DOMRect);
+ footer.getBoundingClientRect=()=>({height:200} as DOMRect);d.querySelector('[data-promptbox-editor-scroll]')!.getBoundingClientRect=()=>({height:100} as DOMRect);
+ const observers:{targets:Set<Element>;active:boolean}[]=[];
+ class Sizes{
+  targets=new Set<Element>();active=true;
+  // Record the owning pane of each live viewport subscription.
+  constructor(){observers.push(this);}
+  // Observe the current footer and pane.
+  observe(node:Element){this.targets.add(node);}
+  // Release subscriptions when the owner changes or unmounts.
+  disconnect(){this.active=false;}
+ }
+ Object.defineProperty(dom.window,'ResizeObserver',{value:Sizes});
+ const stop=injectComposerViewport(d);
+ try{
+  const initial=parseFloat(composer.style.getPropertyValue('--bb-chat-ui-editor-max-height'));
+  const peerMenu=parseFloat(peerComposer.style.getPropertyValue('--bb-chat-ui-mention-max-height'));
+  b.append(footer);await Promise.resolve();await new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>resolve()));
+  assert.ok(parseFloat(composer.style.getPropertyValue('--bb-chat-ui-editor-max-height'))<initial,'moved footer uses the new pane budget');
+  assert.ok(parseFloat(peerComposer.style.getPropertyValue('--bb-chat-ui-mention-max-height'))<peerMenu,'the previous pane also refreshes after the move');
+  assert.ok(observers.some(o=>o.active&&o.targets.has(b)),'resize follows the new pane');
+  assert.equal(observers[0].active,false,'the moved composer releases its previous pane subscription');
+ }finally{stop();dom.window.close();}
+});
+
 test('editor budget follows split pane and visual viewport while reserving mention space',()=>{
   const base={paneTop:48,paneBottom:900,viewportTop:0,viewportHeight:900,overhead:120};
   const desktop=composerViewportLimits(base);
