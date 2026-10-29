@@ -38,3 +38,10 @@ Glass는 새 컴포저의 모션 관찰을 다음 측정 프레임 전에 연결
 npm test
 npm run typecheck
 ```
+
+## Diff 데이터 조회
+
+- BB 0.48부터 제공되는 `bb--git`의 `workspaceStatus`와 `files` RPC를 사용한다. 이전 `sdk.environments.status`·`diffFiles`는 호출하지 않는다.
+- `workspaceStatus`에 비교 ref를 직접 전달해 PR 대상과 `origin`의 미푸시 커밋 수를 각각 읽는다. 환경에 저장된 비교 브랜치는 바꾸지 않는다.
+- 파일 통계는 `uncommitted` 대상과 `ignoreWhitespace: false`로 읽어 HEAD 이후 변경과 공백 변경을 포함한다. 사용 필드는 RPC 경계에서 검증한다.
+- 기존 보이는 화면의 5초 갱신·focus 갱신, PR 30초 캐시, 이전 결과 유지·환경 변경 시 오래된 결과 무시는 유지한다.

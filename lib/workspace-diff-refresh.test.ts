@@ -35,8 +35,18 @@ function fixture(initialStatus?:() => Promise<StatusResponse>, initialEnvironmen
   } }));
   const sdk = {
     threads:{ get:() => loadThread() },
-    environments:{ diffFiles:async () => {fileReads++;return {outcome:'available',files:fileLines?[{path:'draft.ts',additions:fileLines,deletions:0}]:[],truncated:false};}, get:async () => ({ mergeBaseBranch:'main' }), status:(args:Parameters<typeof loadStatus>[0]) => {statusReads++;return loadStatus(args);} },
-    plugins:{callRpc:async(args:any)=>{prReads++;assert.equal(args.pluginId,'bb--github-pr-status');assert.equal(args.method,'pullRequests');return {[args.input.keys[0]]:await loadPr()};}},
+    environments:{ get:async () => ({ mergeBaseBranch:'main' }) },
+    plugins:{callRpc:async(args:any)=>{
+      if(args.pluginId==='bb--git'){
+        if(args.method==='workspaceStatus'){
+          statusReads++;return args.outputSchema.parse(await loadStatus(args.input));
+        }
+        assert.equal(args.method,'files');
+        assert.deepEqual(args.input,{environmentId,target:{type:'uncommitted'},ignoreWhitespace:false});
+        fileReads++;return args.outputSchema.parse({outcome:'available',files:fileLines?[{path:'draft.ts',additions:fileLines,deletions:0}]:[],truncated:false});
+      }
+      prReads++;assert.equal(args.pluginId,'bb--github-pr-status');assert.equal(args.method,'pullRequests');return {[args.input.keys[0]]:await loadPr()};
+    }},
     subscribe:(args:{ event:string; callback:(event:{ id:string; changes:string[] }) => void }) => { handlers.set(args.event,args.callback); return () => { handlers.delete(args.event); }; },
   };
   const running = startWorkspaceDiffRefresh(sdk, 'thread', summary => output.push(summary));
@@ -49,7 +59,7 @@ function fixture(initialStatus?:() => Promise<StatusResponse>, initialEnvironmen
   };
 }
 
-test('message streaming does not reset or refetch a stable main Diff', async t => {
+test('Git RPC-only hosts publish a stable main Diff without refetching on message streaming', async t => {
   const f = fixture(); await initialResult(t);
   assert.deepEqual(f.labels(), ['↑3']);
   assert.equal(typeof f.output[0], 'object', 'the renderer receives an SDK snapshot, not a JSON string');
@@ -62,7 +72,7 @@ test('message streaming does not reset or refetch a stable main Diff', async t =
 
 test('environment refresh retains the previous display until a complete result arrives', async t => {
   const f = fixture(); await initialResult(t);
-  const gate = deferred<Awaited<ReturnType<typeof f.sdk.environments.status>>>();
+  const gate = deferred<StatusResponse>();
   f.setStatus(() => gate.promise);
   f.emit('environment:changed','env_main',['workspace-changed']); await tick();
   assert.deepEqual(f.labels(), ['↑3']);
@@ -92,7 +102,7 @@ test('temporary status failure retains the last good display and detachment clea
 
 test('in-flight results are discarded when the thread changes environments', async t => {
   const f = fixture(); await initialResult(t);
-  const gate = deferred<Awaited<ReturnType<typeof f.sdk.environments.status>>>();
+  const gate = deferred<StatusResponse>();
   let first = true;
   const workspace = (id:string) => ({ outcome:'available',workspace:{ branch:{ currentBranch:id === 'env_main' ? 'main' : 'feature/chat',defaultBranch:'main' }, checkout:{ headSha:'head' },workingTree:{ insertions:0,deletions:0,files:[] },mergeBase:{ insertions:0,deletions:0,files:[],commits:[],baseRef:'base',aheadCount:8,mergeBaseBranch:'refs/remotes/origin/main' } } });
   f.setStatus(async args => { if (first) { first=false; return gate.promise; } const w=workspace(args.environmentId); w.workspace.mergeBase.mergeBaseBranch=args.mergeBaseBranch ?? 'main'; return w; });

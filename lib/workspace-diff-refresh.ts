@@ -1,4 +1,5 @@
 import type { useSdk } from "@get-bb/plugin-sdk/app";
+import { readGitWorkspaceStatus, readGitFiles } from "./git-rpc.ts";
 import { readWorkspaceDiff, type WorkspaceDiffSnapshot } from "./workspace-diff-data.ts";
 import { readPullRequest, type PullRequestResult } from "./pull-request-rpc.ts";
 
@@ -50,8 +51,8 @@ export function startWorkspaceDiffRefresh(sdk:Sdk, threadId:string, publish:(sum
       }
       if (!environmentId) return;
       const result = await readWorkspaceDiff({
-        status:args => sdk.environments.status(args),
-        diffFiles:args => sdk.environments.diffFiles(args),
+        status:args => readGitWorkspaceStatus(sdk,args),
+        diffFiles:args => readGitFiles(sdk,args),
         pullRequest:async args => {
           const cached = prCache?.environmentId === args.environmentId ? prCache : null;
           if (!prDirty && cached && Date.now() < cached.expiresAt) return cached.value;

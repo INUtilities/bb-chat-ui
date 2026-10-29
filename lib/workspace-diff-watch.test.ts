@@ -13,10 +13,14 @@ function fixture(){
     threads:{get:async({signal}:{signal:AbortSignal})=>{calls.push('thread');signals.push(signal);return {environmentId:'env'};}},
     environments:{
       get:async()=>{calls.push('environment');return {mergeBaseBranch:'main'};},
-      status:async()=>{calls.push('status');return {outcome:'not_applicable',reason:'non_git_environment'};},
-      diffFiles:async()=>{calls.push('files');return {outcome:'not_applicable'};},
     },
-    plugins:{callRpc:async()=>{calls.push('pr');return {env:{outcome:'absent'}};}},
+    plugins:{callRpc:async(args:any)=>{
+      if(args.pluginId==='bb--git'){
+        calls.push(args.method==='workspaceStatus'?'status':'files');
+        return args.outputSchema.parse({outcome:'not_applicable',reason:'non_git_environment'});
+      }
+      calls.push('pr');return {env:{outcome:'absent'}};
+    }},
     subscribe:({event,callback}:{event:string;callback:Function})=>{handlers.set(event,callback);return()=>{handlers.delete(event);};},
   };
   const view={document:{visibilityState:'visible'},
