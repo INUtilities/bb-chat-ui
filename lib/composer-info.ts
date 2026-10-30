@@ -42,7 +42,9 @@ const LEGACY_ROW = `:is([class~="bg-background/70"], [class~="bg-destructive/5"]
 const WORKFLOW_LIST_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] :is(div[class~="min-h-7"], button[class~="min-h-7"], button[aria-expanded], div[class~="items-center"][class~="gap-1.5"])`;
 const WORKFLOW_PHASES = `${DETAIL}[${OPEN}="workflow"] [data-detail-scroll-area] > div[class~="flex-col"][class~="gap-1.5"]`;
 const WORKFLOW_PHASE_ROW = `${WORKFLOW_PHASES} > div > button[aria-expanded], ${WORKFLOW_PHASES} > div[class~="items-center"]`;
-const WORKFLOW_AGENT_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"] [class~="min-h-7"]:has(> span[class~="truncate"])`;
+const WORKFLOW_AGENT_MARK = `${MARK}-workflow-agent-row`;
+// Keep the former class + :has(span.class) specificity without a relational invalidation set.
+const WORKFLOW_AGENT_ROW = `${DETAIL}[${OPEN}="workflow"] section[role="region"]:is(section) [${WORKFLOW_AGENT_MARK}][${WORKFLOW_AGENT_MARK}]`;
 const LIST_ROW = `${DETAIL}[${OPEN}="todos"] ul > li[class], ${WORKFLOW_LIST_ROW}, ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"]`;
 const BACKGROUND_SINGLE_ROW = `${DETAIL}[${OPEN}="background"] [aria-label^="Background command:"][class]:not([${cardSlot.head}])`;
 const LIST_DETAIL = `${DETAIL}[aria-label]:is([${OPEN}="todos"], [${OPEN}="workflow"], [${OPEN}="background"], [${OPEN}="children"])`;
@@ -247,8 +249,8 @@ ${WORKFLOW_PHASES} > div[class~="items-center"]:has(> [data-icon="CircleCheck"])
 ${WORKFLOW_PHASES} > div > button[aria-expanded] + div[class~="flex-col"] { margin-left:var(--bb-chat-ui-card-workflow-center) !important; padding-left:var(--bb-chat-ui-card-workflow-dotbox); border-left:0; }
 ${WORKFLOW_AGENT_ROW} { display:grid; grid-template-columns:14px minmax(0,1fr); column-gap:var(--bb-chat-ui-card-gap); row-gap:2px; }
 ${WORKFLOW_AGENT_ROW} > svg[data-icon-root] { grid-column:1; grid-row:1; align-self:center; }
-${WORKFLOW_AGENT_ROW} > span[class~="truncate"] { grid-column:2; grid-row:1; font-weight:400; }
-${WORKFLOW_AGENT_ROW} > span[class~="ml-auto"] { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
+${WORKFLOW_AGENT_ROW} > span.truncate { grid-column:2; grid-row:1; font-weight:400; }
+${WORKFLOW_AGENT_ROW} > span.ml-auto { grid-column:2; grid-row:2; justify-self:start; max-width:100%; width:100%; margin-left:0; }
 ${DETAIL} :is([${MARK}-close-heading], [${MARK}-close-heading] button[aria-expanded]):is(:hover, :focus-visible) { background-color:transparent !important; }
 ${DETAIL}[${OPEN}="background"] #thread-background-commands-card-body > div > div > div[class~="px-3"] { width:calc(100% + 2 * var(--bb-chat-ui-card-row-pad)); margin:0 calc(-1 * var(--bb-chat-ui-card-row-pad)); }
 [${MARK}-activity-panel] { display:flex; flex-direction:column; gap:2px; margin:0; padding:0 8px 0 20px; color:var(--subtle-foreground); ${cardStyle.prose} }
@@ -397,7 +399,14 @@ ${STACK}[${MARK}-request] [${UNIT}][${UNIT}], [${MARK}-request] [${MARK}-menu] {
 [${MARK}-body-fade="above"] { mask-image:linear-gradient(to bottom,black 0px,black 8px,transparent 24px); -webkit-mask-image:linear-gradient(to bottom,black 0px,black 8px,transparent 24px); }
 [${MARK}-body-fade="below"] { mask-image:linear-gradient(to top,black 0px,black 8px,transparent 24px); -webkit-mask-image:linear-gradient(to top,black 0px,black 8px,transparent 24px); }
 [data-promptbox-shell]:has(> [${MARK}-request]) [data-follow-up-composer-anchor] { display:none !important; }
-[data-scroll-footer]:has([${MARK}-request]) button[aria-label="Scroll to latest event"] { display:none !important; }
+/* Keep request removal synchronous; the display rule itself need not contain :has(). */
+@supports (display:revert-rule) {
+  [data-scroll-footer]:has([${MARK}-request]) { --bb-chat-ui-request-jump-display:none; }
+  [data-scroll-footer][data-scroll-footer] button[aria-label="Scroll to latest event"] { display:var(--bb-chat-ui-request-jump-display,revert-rule) !important; }
+}
+@supports not (display:revert-rule) {
+  [data-scroll-footer]:has([${MARK}-request]) button[aria-label="Scroll to latest event"] { display:none !important; }
+}
 [${MARK}-stack] [${MARK}-supplements] { display:contents; }
 [${MARK}-kind] { ${cardStyle.text} }
 [${MARK}-kind] p { white-space:pre-wrap; margin:6px 0; }
@@ -788,7 +797,51 @@ export function injectComposerInfo(document: Document): () => void {
       }
       for(const button of bulkActions.keys())if(!current.has(button))restoreBulkAction(button);
     };
+    let workflowRowsRoot: HTMLElement | null = null;
+    let workflowRowsObserver: MutationObserver | null = null;
+    const workflowRows = new Map<Element, string | null>();
+    const releaseWorkflowRow = (row: Element) => {
+      const saved = workflowRows.get(row);
+      if (saved === undefined) return;
+      if (row.getAttribute(WORKFLOW_AGENT_MARK) !== saved) {
+        if (saved === null) row.removeAttribute(WORKFLOW_AGENT_MARK);
+        else row.setAttribute(WORKFLOW_AGENT_MARK, saved);
+      }
+      workflowRows.delete(row);
+    };
+    const syncWorkflowRows = () => {
+      const root = workflowRowsRoot;
+      if (!root?.isConnected) { watchWorkflowRows(null); return; }
+      const current = new Set<Element>();
+      // Include a previous owner's attributes so they cannot classify a stale native row.
+      for (const row of Array.from(root.querySelectorAll(`[${WORKFLOW_AGENT_MARK}]`)))
+        if (!workflowRows.has(row)) workflowRows.set(row, row.getAttribute(WORKFLOW_AGENT_MARK));
+      for (const row of Array.from(root.querySelectorAll('section[role="region"] .min-h-7'))) {
+        if (!Array.from(row.children).some(child => child.matches('span.truncate'))) continue;
+        current.add(row);
+        if (!workflowRows.has(row)) workflowRows.set(row, row.getAttribute(WORKFLOW_AGENT_MARK));
+        if (row.getAttribute(WORKFLOW_AGENT_MARK) !== "") row.setAttribute(WORKFLOW_AGENT_MARK, "");
+      }
+      for (const row of workflowRows.keys()) if (!current.has(row)) {
+        if (!root.contains(row)) releaseWorkflowRow(row);
+        else if (row.hasAttribute(WORKFLOW_AGENT_MARK)) row.removeAttribute(WORKFLOW_AGENT_MARK);
+      }
+    };
+    const watchWorkflowRows = (root: HTMLElement | null) => {
+      if (workflowRowsRoot !== root) {
+        workflowRowsObserver?.disconnect(); workflowRowsObserver = null;
+        for (const row of workflowRows.keys()) releaseWorkflowRow(row);
+        workflowRowsRoot = root;
+        if (root) {
+          // A local microtask update runs before paint, including class-only native updates.
+          workflowRowsObserver = new view!.MutationObserver(syncWorkflowRows);
+          workflowRowsObserver.observe(root, { subtree:true, childList:true, attributes:true, attributeFilter:["class", "role"] });
+        }
+      }
+      if (root) syncWorkflowRows();
+    };
     const syncNativeControls = () => {
+      watchWorkflowRows(active === "workflow" && activeNode?.isConnected && activeNode.hasAttribute(OPEN) ? activeNode : null);
       const currentRows = new Set<HTMLElement>();
       for (const row of Array.from(stack.querySelectorAll<HTMLElement>(WORKFLOW_COLLAPSE))) {
         row.setAttribute(`${MARK}-collapse`, ""); currentRows.add(row);
@@ -1813,6 +1866,8 @@ export function injectComposerInfo(document: Document): () => void {
       }
       active = key;
       activeNode = item.node;
+      // Classify the native rows while still hidden, before opening or reading body geometry.
+      watchWorkflowRows(key === "workflow" ? item.node : null);
       // The value names the family, so a shared host card shows only that family.
       item.node.setAttribute(OPEN, key);
       if (key === "parent") parentArm = item.trigger;

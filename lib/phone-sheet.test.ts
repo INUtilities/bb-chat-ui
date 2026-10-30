@@ -15,14 +15,42 @@ import {
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
-// 카드·인용은 기존 기준을 유지한다. 메뉴는 plugin wrapper 항목의 공통 모서리 수정(2026-10-28)을 반영한다.
+// 요청 숨김 규칙 외의 CSS를 기존 hash와 계속 비교한다. 실제 cascade는 native browser 회귀에서 확인한다.
+const requestSignalCss = `/* Keep request removal synchronous; the display rule itself need not contain :has(). */
+@supports (display:revert-rule) {
+  [data-scroll-footer]:has([data-bb-chat-ui-info-request]) { --bb-chat-ui-request-jump-display:none; }
+  [data-scroll-footer][data-scroll-footer] button[aria-label="Scroll to latest event"] { display:var(--bb-chat-ui-request-jump-display,revert-rule) !important; }
+}
+@supports not (display:revert-rule) {
+  [data-scroll-footer]:has([data-bb-chat-ui-info-request]) button[aria-label="Scroll to latest event"] { display:none !important; }
+}`;
+const legacyRequestCss = `[data-scroll-footer]:has([data-bb-chat-ui-info-request]) button[aria-label="Scroll to latest event"] { display:none !important; }`;
+const withoutRequestSignal = () => {
+  assert.equal(composerInfoCss.split(requestSignalCss).length - 1, 1);
+  return composerInfoCss.replace(requestSignalCss, legacyRequestCss);
+};
+
+// 카드는 Workflow selector 최적화 기준을 반영하며 아래 역변환 검사로 나머지 바이트를 보존한다. 인용은 기존 기준을 유지한다. 메뉴는 plugin wrapper 항목의 공통 모서리 수정(2026-10-28)을 반영한다.
 // Queue는 SDK wrapper를 사이에 둔 편집 form의 자체 grid 수정 기준을 반영한다.
 test("desktop card, menu and quote CSS stay byte-identical", () => {
-  assert.equal(sha(composerInfoCss), "e937a5b1a6fb7100ae5ff0b6d92a114dd9e654a0ca022714e8158810f8714419");
+  assert.equal(sha(withoutRequestSignal()), "319a8ed9d6e0f555707d3e067def85f7ed72f8c76596e3865580e87bdccba253");
   assert.equal(sha(quotePreviewCss), "71f4f433df57b51d308983e6fa392465a60e4edcc03633d68f33483652252af6");
   assert.equal(sha(composerMenuGlassCss), "eb18fa958d725987aa3771b491418430b5d9e4ef678704258b64239e2dc5ccc9");
   assert.equal(sha(queuedMessagesCss), "55646dbd272cff7f0a53d83096929f1ea130bb8762b304b4a91812912dff2576");
   assert.equal(sha(infoCardCss()), "8c9e1d7134c5cff3b1c27635e919b338f58c5960f224a8ef13c443cb8228d3cc");
+});
+
+
+// Workflow의 네 selector와 두 class 표기 외에는 모든 CSS 바이트를 보존한다.
+test("Workflow selector optimization keeps all other card CSS bytes", () => {
+  const detail = '[data-promptbox-shell] > .grid[data-bb-chat-ui-info-stack] [data-bb-chat-ui-info-unit][data-bb-chat-ui-info-open]:not([hidden])';
+  const oldRow = `${detail}[data-bb-chat-ui-info-open="workflow"] section[role="region"] [class~="min-h-7"]:has(> span[class~="truncate"])`;
+  const markedRow = `${detail}[data-bb-chat-ui-info-open="workflow"] section[role="region"]:is(section) [data-bb-chat-ui-info-workflow-agent-row][data-bb-chat-ui-info-workflow-agent-row]`;
+  assert.equal(composerInfoCss.split(markedRow).length - 1, 4);
+  const restored = withoutRequestSignal().replaceAll(markedRow, oldRow)
+    .replace(`${oldRow} > span.truncate`, `${oldRow} > span[class~="truncate"]`)
+    .replace(`${oldRow} > span.ml-auto`, `${oldRow} > span[class~="ml-auto"]`);
+  assert.equal(sha(restored), "e937a5b1a6fb7100ae5ff0b6d92a114dd9e654a0ca022714e8158810f8714419");
 });
 
 function selectors(css: string): string[] {

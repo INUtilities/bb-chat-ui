@@ -6912,3 +6912,49 @@ test("height-only info resize skips pill geometry while open-card hints and widt
     assert.ok([...stack.querySelectorAll<HTMLElement>('[data-bb-chat-ui-info-trigger]')].some(button => button.hidden), 'the narrower row folds overflowing pills');
   } finally { stop(); f.dom.window.close(); }
 });
+
+
+test("Workflow agent rows preserve direct-child layout before paint and native callbacks", async () => {
+  const f=fixture(),stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const host=f.document.createElement('style');host.textContent='.flex { display:flex; } .font-medium { font-weight:500; }';f.document.head.append(host);
+  const workflow=f.document.createElement('section');workflow.setAttribute('aria-label','Workflow');
+  workflow.innerHTML='<button id="wf-row-toggle" aria-label="Workflow: row probe" aria-expanded="false" aria-controls="wf-row-body">Row probe</button><section role="region" id="wf-row-body" hidden><div id="wf-agent" class="flex min-h-7"><svg data-icon-root></svg><span id="wf-agent-label" class="truncate font-medium">Agent</span><span id="wf-agent-meta" class="ml-auto">Model</span></div><button id="wf-action" class="flex min-h-7">Inspect agent</button><div id="wf-nested" class="flex min-h-7"><div><span class="truncate">Nested title</span></div></div><div id="wf-missing-row-class" class="flex"><span class="truncate">No row class</span></div></section>';
+  stack.append(workflow);const toggle=workflow.querySelector<HTMLButtonElement>('#wf-row-toggle')!,region=workflow.querySelector<HTMLElement>('#wf-row-body')!,row=workflow.querySelector<HTMLElement>('#wf-agent')!,label=workflow.querySelector<HTMLElement>('#wf-agent-label')!;
+  toggle.addEventListener('click',()=>{const open=toggle.getAttribute('aria-expanded')!=='true';toggle.setAttribute('aria-expanded',String(open));region.hidden=!open;});
+  let calls=0;workflow.querySelector('#wf-action')!.addEventListener('click',()=>calls++);
+  const nativeRow=row.outerHTML,stop=injectComposerInfo(f.document);const display=()=>resolvedStyle(row).display;
+  try {
+    assert.equal(display(),'flex');f.click('[data-bb-chat-ui-info-trigger="workflow"]');
+    assert.equal(display(),'grid','opening synchronously classifies native agent rows');
+    assert.equal(resolvedStyle(label).gridColumn,'2');assert.equal(resolvedStyle(label).gridRow,'1');assert.equal(resolvedStyle(label).fontWeight,'400');
+    assert.equal(resolvedStyle(workflow.querySelector('#wf-agent-meta')!).gridRow,'2');
+    for(const id of ['wf-action','wf-nested','wf-missing-row-class'])assert.equal(resolvedStyle(workflow.querySelector('#'+id)!).display,'flex',id+' retains its native row');
+    label.className='font-medium';await Promise.resolve();assert.equal(display(),'flex','a direct label class removal updates before the next animation frame');
+    const second=f.document.createElement('span');second.className='truncate';row.append(second);await Promise.resolve();assert.equal(display(),'grid');
+    second.remove();await Promise.resolve();assert.equal(display(),'flex');
+    label.className='truncate font-medium';await Promise.resolve();assert.equal(display(),'grid');
+    row.className='flex';await Promise.resolve();assert.equal(display(),'flex');
+    row.className='flex min-h-7';await Promise.resolve();assert.equal(display(),'grid');
+    region.setAttribute('role','group');await Promise.resolve();assert.equal(display(),'flex');
+    region.setAttribute('role','region');await Promise.resolve();assert.equal(display(),'grid');
+    workflow.querySelector<HTMLButtonElement>('#wf-action')!.click();assert.equal(calls,1);assert.equal(label.parentElement,row);
+    f.click('[aria-label="Workflow 닫기"]');assert.equal(display(),'flex');assert.equal(row.outerHTML,nativeRow,'closing restores the native row attributes');
+  } finally {stop();f.dom.window.close();}
+});
+
+test("Workflow agent rows release moved nodes and ignore mutations outside the open card", async () => {
+  const f=fixture(),stack=f.document.querySelector('[data-promptbox-shell] > .grid')!;
+  const host=f.document.createElement('style');host.textContent='.flex { display:flex; }';f.document.head.append(host);
+  const workflow=f.document.createElement('section');workflow.setAttribute('aria-label','Workflow');workflow.innerHTML='<button id="wf-move-toggle" aria-label="Workflow: lifecycle" aria-expanded="false" aria-controls="wf-move-body">Lifecycle</button><section id="wf-move-body" role="region" hidden><div id="wf-move-row" class="flex min-h-7"><span class="truncate">Agent</span><span class="ml-auto">Model</span></div></section>';
+  stack.append(workflow);const toggle=workflow.querySelector<HTMLButtonElement>('#wf-move-toggle')!,region=workflow.querySelector<HTMLElement>('#wf-move-body')!,row=workflow.querySelector<HTMLElement>('#wf-move-row')!,nativeRow=row.outerHTML;
+  toggle.addEventListener('click',()=>{const open=toggle.getAttribute('aria-expanded')!=='true';toggle.setAttribute('aria-expanded',String(open));region.hidden=!open;});
+  const outside=f.document.createElement('div');f.document.body.append(outside);const stop=injectComposerInfo(f.document);
+  try {
+    f.click('[data-bb-chat-ui-info-trigger="workflow"]');await f.tick();assert.equal(resolvedStyle(row).display,'grid');
+    const records:MutationRecord[]=[];const watch=new f.dom.window.MutationObserver(rs=>records.push(...rs));watch.observe(row,{subtree:true,attributes:true});
+    outside.className='unrelated';await f.tick();assert.equal(records.length,0,'outside mutations add no native row writes');watch.disconnect();
+    outside.append(row);await Promise.resolve();assert.equal(row.outerHTML,nativeRow,'moving outside the card releases all owned attributes');assert.equal(resolvedStyle(row).display,'flex');
+    region.append(row);await Promise.resolve();assert.equal(resolvedStyle(row).display,'grid');
+    workflow.remove();await f.tick();assert.equal(row.outerHTML,nativeRow,'detaching a card cleans its native rows');
+  } finally {stop();assert.equal(row.outerHTML,nativeRow);f.dom.window.close();}
+});
