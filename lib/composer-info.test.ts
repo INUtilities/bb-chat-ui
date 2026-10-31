@@ -6958,3 +6958,34 @@ test("Workflow agent rows release moved nodes and ignore mutations outside the o
     workflow.remove();await f.tick();assert.equal(row.outerHTML,nativeRow,'detaching a card cleans its native rows');
   } finally {stop();assert.equal(row.outerHTML,nativeRow);f.dom.window.close();}
 });
+
+
+test("a Latest-only bar has no fixed row height and anchors its control above the composer", async () => {
+  for (const device of ["desktop", "phone"]) {
+    const f = fixture(), stack = f.document.querySelector('[data-promptbox-shell] > .grid')!;
+    const source = f.document.querySelector('[data-bb-chat-ui-info-settings]')!;
+    f.document.documentElement.setAttribute('data-bb-chat-ui-root-device', device);
+    source.setAttribute('data-bb-chat-ui-info-settings', '{}');
+    for (const child of Array.from(stack.children)) if (!child.contains(source)) child.remove();
+    const native = f.document.createElement('button');
+    native.setAttribute('aria-label', 'Scroll to latest event'); native.className = 'invisible';
+    stack.closest('[data-scroll-footer]')!.append(native);
+    let clicks = 0; native.addEventListener('click', () => clicks++);
+    const stop = injectComposerInfo(f.document);
+    try {
+      const bar = stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-bar]')!;
+      const jump = bar.querySelector<HTMLButtonElement>('[data-bb-chat-ui-info-jump]')!;
+      assert.equal(bar.hidden, true, 'empty information keeps no blank row');
+      native.classList.remove('invisible'); await f.tick();
+      assert.equal(bar.hidden, false, 'the control remains reachable');
+      assert.equal(resolvedStyle(bar).height, 'auto', 'only real in-flow pills may add a row');
+      assert.equal(resolvedStyle(bar).maxHeight, '32px', 'the taller Child Thread hit box must not enlarge the row');
+      assert.equal(resolvedStyle(jump).position, 'absolute');
+      assert.equal(resolvedStyle(jump).bottom, '0px', 'a zero-height row places Latest above the composer');
+      assert.equal(resolvedStyle(jump).height, '32px');
+      jump.click(); assert.equal(clicks, 1, 'the existing native scroll action remains');
+      native.classList.add('invisible'); await f.tick();
+      assert.equal(bar.hidden, true, 'hiding Latest restores the empty state');
+    } finally { stop(); f.dom.window.close(); }
+  }
+});

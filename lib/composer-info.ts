@@ -95,7 +95,7 @@ ${infoCardCss(CARD_ROOT, "[data-promptbox-shell]")}
 /* Native replacements must not paint full cards while the next frame classifies them. */
 ${GUARDED_STACK} > ${PENDING_CARD}, ${GUARDED_STACK} [${WRAP}] > ${PENDING_CARD} { display:none !important; }
 [${MARK}-stack]:not(:has([${SOURCE}])) [${MARK}-bar] { visibility:hidden !important; pointer-events:none !important; }
-[${MARK}-bar] { position:relative; display:flex; align-items:center; gap:8px; height:32px; min-width:0; padding-right:0; }
+[${MARK}-bar] { position:relative; display:flex; align-items:center; gap:8px; height:auto; max-height:32px; min-width:0; padding-right:0; }
 [${MARK}-bar][hidden] { display:none; }
 [${MARK}-all][hidden] { display:none; }
 [${MARK}-bar][${MARK}-archived] { padding-right:0; }
@@ -298,7 +298,7 @@ body > .bbk-drop { z-index:54; --bbk-drop-face:${LIGHT_GLASS_FACE}; --bbk-drop-e
 [${MARK}-jump] { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:5px; padding:0; border:0; border-radius:999px; font-size:12px !important; line-height:18px; white-space:nowrap; color:var(--foreground); cursor:pointer; }
 [${MARK}-jump] svg { width:16px; height:16px; flex-shrink:0; transition:scale 420ms cubic-bezier(.22,1,.36,1); }
 [${MARK}-jump][${MARK}-jump-off] { visibility:hidden; opacity:0; pointer-events:none; }
-[${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump] { position:absolute; right:0; top:0; z-index:2; width:32px; height:32px; transition:opacity 280ms ease-out, translate 460ms cubic-bezier(.22,1,.36,1), scale 460ms cubic-bezier(.22,1,.36,1), visibility 0s; }
+[${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump] { position:absolute; right:0; bottom:0; z-index:2; width:32px; height:32px; transition:opacity 280ms ease-out, translate 460ms cubic-bezier(.22,1,.36,1), scale 460ms cubic-bezier(.22,1,.36,1), visibility 0s; }
 [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump][${MARK}-jump-off] { translate:0 10px; scale:.92; transition:opacity 220ms ease-in, translate 340ms cubic-bezier(.4,0,.2,1), scale 340ms cubic-bezier(.4,0,.2,1), visibility 0s 340ms; }
 [${MARK}-bar][${MARK}-layout="dock"] [${MARK}-jump-label] { display:none; }
 [${MARK}-jump]:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }

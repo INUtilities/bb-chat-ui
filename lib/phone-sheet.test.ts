@@ -15,6 +15,20 @@ import {
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
+// Latest 높이 수정 두 곳만 역변환해 기존 CSS 기준과 나머지 바이트를 계속 비교한다.
+const withoutLatestLayout = () => {
+  const bar = '[data-bb-chat-ui-info-bar] { position:relative; display:flex; align-items:center; gap:8px; height:auto; max-height:32px;';
+  const jump = '[data-bb-chat-ui-info-bar][data-bb-chat-ui-info-layout="dock"] > [data-bb-chat-ui-info-jump] { position:absolute; right:0; bottom:0;';
+  assert.equal(composerInfoCss.split(bar).length - 1, 1);
+  assert.equal(composerInfoCss.split(jump).length - 1, 1);
+  return composerInfoCss.replace(bar, bar.replace('height:auto; max-height:32px;', 'height:32px;'))
+    .replace(jump, jump.replace('bottom:0;', 'top:0;'));
+};
+
+test("Latest layout stabilization keeps all other CSS bytes and selectors", () => {
+  assert.equal(sha(withoutLatestLayout()), "ad6710f789a9df175ae7d37e7badf489c1e10d842f61b63d8a65f871f9030c92");
+});
+
 // 요청 숨김 규칙 외의 CSS를 기존 hash와 계속 비교한다. 실제 cascade는 native browser 회귀에서 확인한다.
 const requestSignalCss = `/* Keep request removal synchronous; the display rule itself need not contain :has(). */
 @supports (display:revert-rule) {
@@ -26,8 +40,9 @@ const requestSignalCss = `/* Keep request removal synchronous; the display rule 
 }`;
 const legacyRequestCss = `[data-scroll-footer]:has([data-bb-chat-ui-info-request]) button[aria-label="Scroll to latest event"] { display:none !important; }`;
 const withoutRequestSignal = () => {
-  assert.equal(composerInfoCss.split(requestSignalCss).length - 1, 1);
-  return composerInfoCss.replace(requestSignalCss, legacyRequestCss);
+  const css = withoutLatestLayout();
+  assert.equal(css.split(requestSignalCss).length - 1, 1);
+  return css.replace(requestSignalCss, legacyRequestCss);
 };
 
 // 카드는 Workflow selector 최적화 기준을 반영하며 아래 역변환 검사로 나머지 바이트를 보존한다. 인용은 기존 기준을 유지한다. 메뉴는 plugin wrapper 항목의 공통 모서리 수정(2026-10-28)을 반영한다.
