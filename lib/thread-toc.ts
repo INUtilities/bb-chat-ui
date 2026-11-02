@@ -1,4 +1,5 @@
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
+import { TOC_REPLY_MARK, clearTocReplies, paintTocReply } from "./thread-toc-preview.ts";
 
 const STYLE_ID = "bb-chat-ui-thread-toc";
 const RAIL_MARK = "data-bb-chat-ui-toc-rail";
@@ -28,15 +29,47 @@ ${glassSurfaceScopeCss}
 }
 [id^="thread-toc-panel-"] li button {
   background-color: transparent !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  min-height: calc(6rem - 8px);
+}
+[id^="thread-toc-panel-"] li button > span:first-child {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
 }
 [id^="thread-toc-panel-"] .max-h-64 {
   max-height: 48rem !important;
 }
 [id^="thread-toc-panel-"] .line-clamp-2 {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+[id^="thread-toc-panel-"] [${TOC_REPLY_MARK}] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
   -webkit-line-clamp: 6;
   line-clamp: 6;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 18px;
 }
 [id^="thread-toc-panel-"] > .rounded-lg {
+  min-height: 6rem;
   transform-origin: right center;
   transition: transform 140ms ease-out;
   background: ${LIGHT_GLASS_FACE} !important;
@@ -94,6 +127,7 @@ export function listIndexForTick(
   return Math.min(listCount - 1, Math.max(0, index));
 }
 
+// native 목차의 표시·이동을 보완하고 소유 스타일과 응답을 해제한다.
 export function injectThreadToc(document: Document): () => void {
   const style = document.createElement("style");
   style.id = STYLE_ID;
@@ -138,6 +172,7 @@ export function injectThreadToc(document: Document): () => void {
   };
 }
 
+// 목차 눈금의 포인터·이동 동작을 한 번만 연결한다.
 function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => void>) {
   if (button.hasAttribute(RAIL_MARK)) return;
   button.setAttribute(RAIL_MARK, "");
@@ -168,6 +203,7 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
     clearTickWidths(button);
     for (const tick of tickElements(button)) tick.removeAttribute(SELECTED_MARK);
     if (root instanceof HTMLElement) {
+      clearTocReplies(root);
       hoveredTickByRoot.delete(root);
       pendingNavigationByRoot.delete(root);
     }
@@ -175,6 +211,7 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
   if (root instanceof HTMLElement) bindRootLeave(root, cleanups);
 }
 
+// 목차를 떠나거나 분리하면 미리보기와 눈금 상태를 지운다.
 function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>) {
   if (root.hasAttribute(ROOT_MARK)) return;
   root.setAttribute(ROOT_MARK, "");
@@ -182,6 +219,7 @@ function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>
     const next = event.relatedTarget;
     if (next instanceof Node && root.contains(next)) return;
     releaseTocFocus(root);
+    clearTocReplies(root);
     clearTickWidths(root);
     for (const tick of tickElements(root)) tick.removeAttribute(SELECTED_MARK);
     for (const item of Array.from(root.querySelectorAll(`[${CURRENT_MARK}]`))) {
@@ -191,6 +229,7 @@ function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>
   };
   root.addEventListener("mouseleave", onLeave, true);
   cleanups.set(root, () => {
+    clearTocReplies(root);
     root.removeEventListener("mouseleave", onLeave, true);
     root.removeAttribute(ROOT_MARK);
     clearTickWidths(root);
@@ -201,6 +240,7 @@ function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>
   });
 }
 
+// 선택한 native 사용자 항목에 응답을 붙이고 기존 이동 동작을 유지한다.
 function syncHoveredMessage(root: HTMLElement) {
   const tickIndex = pendingNavigationByRoot.get(root) ?? hoveredTickByRoot.get(root);
   if (tickIndex !== undefined) markSelectedTick(root, tickIndex);
@@ -216,6 +256,8 @@ function syncHoveredMessage(root: HTMLElement) {
     if (index === listIndex) item.setAttribute(CURRENT_MARK, "");
     else item.removeAttribute(CURRENT_MARK);
   }
+  const current = items[listIndex];
+  if (current instanceof HTMLElement) paintTocReply(root, current);
   const scroller = panel.querySelector(".overflow-y-auto");
   if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
   const tick = ticks[tickIndex];

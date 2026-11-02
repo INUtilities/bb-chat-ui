@@ -91,17 +91,14 @@ ${pillStyle.removePhone}
 }
 
 [data-promptbox-compact-content][${HAS_MENTION}] .ProseMirror {
-  display: flex !important;
-  align-items: center !important;
+  display: block !important;
   height: 100%;
   max-height: none !important;
   overflow: hidden !important;
 }
 [data-promptbox-compact-content][${HAS_MENTION}] .ProseMirror > * {
-  display: flex !important;
-  align-items: center !important;
-  height: 100%;
-  flex-shrink: 0;
+  display: inline !important;
+  height: auto;
   min-width: 0;
   margin: 0 !important;
 }

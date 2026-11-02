@@ -71,3 +71,42 @@ test('sidebar and message changes skip TOC scans while nested new rails are stil
     assert.equal(f.count(root),1);
   } finally {stop();f.cleanup();}
 });
+
+// 동일 문구의 사용자 메시지도 native ID와 대화 순서로 응답을 연결한다.
+test('TOC preview reuses native row IDs and keeps replies inside their user turn',async()=>{
+  const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
+  rail.insertAdjacentHTML('beforeend','<span class="rounded-full"></span>');
+  root.insertAdjacentHTML('beforeend','<div id="thread-toc-panel-pairs"><div class="rounded-lg"><div class="max-h-64"><ul><li><button><span class="line-clamp-2">같은 질문</span></button></li><li><button><span class="line-clamp-2">같은 질문</span></button></li></ul></div></div></div>');
+  const rows:Array<Record<string,unknown>>=[
+    {kind:'conversation',id:'u1',role:'user',text:'같은 질문'},
+    {kind:'conversation',id:'a1',role:'assistant',text:'첫 번째 진행 안내'},
+    {kind:'conversation',id:'a2',role:'assistant',text:'첫 번째 최종 응답'},
+    {kind:'conversation',id:'u2',role:'user',text:'같은 질문'},
+    {kind:'conversation',id:'u3',role:'user',text:'다음 질문'},
+    {kind:'conversation',id:'a3',role:'assistant',text:'다음 질문의 응답'},
+  ];
+  for(const row of rows)row.threadId='thread-test';
+  const props={},owner={memoizedProps:{threadId:'thread-test',timelineRows:rows}};
+  Object.assign(root,{'__reactProps$test':props,'__reactFiber$test':{memoizedProps:props,return:owner}});
+  const items=[...root.querySelectorAll('li')];
+  for(const [index,item] of items.entries()){
+    const itemProps={};Object.assign(item,{'__reactProps$test':itemProps,'__reactFiber$test':{key:index===0?'u1':'u2',memoizedProps:itemProps}});
+  }
+  const ticks=[...rail.querySelectorAll('span')];
+  for(const [index,tick] of ticks.entries())tick.getBoundingClientRect=()=>({top:index*20,height:3}) as DOMRect;
+  const stop=injectThreadToc(f.document);
+  try{
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
+    assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'첫 번째 최종 응답');
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:20}));await f.tick();
+    assert.equal(items[1].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'표시할 응답이 없습니다.');
+    assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]'),null);
+    rows.splice(1,0,{kind:'turn',id:'unloaded',children:null});
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
+    assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
+    rows.splice(1,1);owner.memoizedProps.threadId='another-thread';
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
+    assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
+    stop();assert.equal(root.querySelector('[data-bb-chat-ui-toc-reply]'),null);
+  }finally{stop();f.cleanup();}
+});

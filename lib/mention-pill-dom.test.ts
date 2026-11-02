@@ -24,6 +24,20 @@ test('compact mention markers follow resource changes, removal and reattachment'
   stop();assert.equal(f.wrapper.hasAttribute('data-bb-chat-ui-has-mention'),false);
  }finally{stop();f.cleanup();}
 });
+
+// 인용 앞뒤의 문장을 별도 flex 열로 나누지 않고 같은 글줄에 배치한다.
+test('compact quote paragraphs keep normal inline text flow',async()=>{
+ const f=fixture();
+ const quote=f.add({kind:'plugin',itemId:'quote:flow',icon:'Quote'});
+ const paragraph=f.doc.createElement('p');paragraph.append('앞 문장 ',quote,' 뒤 문장이 다음 줄까지 이어집니다.');f.editor.append(paragraph);
+ const stop=injectMentionPills(f.doc);
+ try{
+  await f.tick();
+  assert.equal(f.dom.window.getComputedStyle(f.editor).display,'block');
+  assert.equal(f.dom.window.getComputedStyle(paragraph).display,'inline');
+  assert.equal(f.dom.window.getComputedStyle(quote).display,'inline-flex');
+ }finally{stop();f.cleanup();}
+});
 test('repainting mention labels does not rewrite unchanged presentation attributes',async()=>{
  const f=fixture(),p=f.add({kind:'path',label:'file.ts'}),stop=injectMentionPills(f.doc);
  const records:MutationRecord[]=[];const observer=new f.dom.window.MutationObserver(r=>records.push(...r));

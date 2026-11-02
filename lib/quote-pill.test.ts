@@ -152,6 +152,7 @@ test("ignores pointers outside a quote", () => {
   );
 });
 
+// 인용 필은 유지하되 문장을 담은 문단은 일반 줄 배치로 표시한다.
 test("paints the pill without watching or rewriting the quote node", () => {
   const css = quotePillCss();
   assert.match(css, /white-space:\s*nowrap/);
@@ -165,11 +166,11 @@ test("paints the pill without watching or rewriting the quote node", () => {
   assert.doesNotMatch(mentionSelector, /:not\(\[data-promptbox-compact-content\]\)/);
   assert.match(
     css,
-    /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;/,
+    /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror\s*\{[^}]*display:\s*block !important;/,
   );
   assert.match(
     css,
-    /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror > \*\s*\{[^}]*display:\s*flex !important;[^}]*align-items:\s*center !important;[^}]*height:\s*100%;/,
+    /\[data-promptbox-compact-content\]\[data-bb-chat-ui-has-quote-mention\] \.ProseMirror > \*\s*\{[^}]*display:\s*inline !important;[^}]*height:\s*auto;/,
   );
   assert.match(css, /html\[data-bb-chat-ui-root-device="phone"\]/);
   assert.doesNotMatch(css, /max-height:\s*20px/);

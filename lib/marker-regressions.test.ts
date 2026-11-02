@@ -33,7 +33,8 @@ function setup(html: string) {
 
 const PILL = '<span class="prompt-mention-pill" data-prompt-mention="" data-prompt-mention-resource=\'{"kind":"path","label":"a.ts"}\'><span class="truncate">a.ts</span></span>';
 
-test("compact editor that already holds a pill gets the compact mention layout", async () => {
+// 접힌 상태 전환 뒤에도 필 주위 문장은 일반 글줄을 사용한다.
+test("compact editor that already holds a pill gets normal text flow", async () => {
   const f = setup(`<div data-promptbox-editor-content><div class="ProseMirror" contenteditable="true"><p>${PILL}</p></div></div>`);
   const stop = injectMentionPills(f.document);
   try {
@@ -42,10 +43,13 @@ test("compact editor that already holds a pill gets the compact mention layout",
     wrapper.setAttribute("data-promptbox-compact-content", "");
     await f.settle();
     const editor = f.document.querySelector(".ProseMirror")!;
-    assert.equal(f.dom.window.getComputedStyle(editor).display, "flex", "compact mention line is applied after the editor turns compact");
+    const paragraph = editor.querySelector("p")!;
+    assert.equal(f.dom.window.getComputedStyle(editor).display, "block");
+    assert.equal(f.dom.window.getComputedStyle(paragraph).display, "inline", "compact paragraphs flow around the pill without flex columns");
+    assert.equal(f.dom.window.getComputedStyle(editor.querySelector(".prompt-mention-pill")!).display, "inline-flex");
     wrapper.removeAttribute("data-promptbox-compact-content");
     await f.settle();
-    assert.notEqual(f.dom.window.getComputedStyle(editor).display, "flex", "leaving compact mode drops the layout");
+    assert.equal(f.dom.window.getComputedStyle(paragraph).display, "block", "expanded paragraphs return to native layout");
   } finally { stop(); f.restore(); }
 });
 
@@ -83,7 +87,8 @@ test("every glass footer keeps live markers, not only the first", async () => {
 });
 
 
-test("compact multiline paragraphs retain their width beside file and quote mentions", async () => {
+// 여러 문단의 원문과 명시적 줄바꿈은 접힘 전환 중에도 보존한다.
+test("compact multiline drafts preserve text and native expanded paragraphs", async () => {
   for (const resource of [{ kind: "path", label: "file.ts" }, { kind: "plugin", itemId: "quote:multiline", label: "인용" }]) {
     const pill = `<span class="prompt-mention-pill" data-prompt-mention data-prompt-mention-resource='${JSON.stringify(resource)}'><span class="truncate">${resource.label}</span></span>`;
     const f = setup(`<div data-promptbox-editor-scroll><div data-promptbox-editor-content><div class="ProseMirror" contenteditable="true"><p>${pill} 첫째 줄 AAAA</p><p>둘째 줄 BBBB</p><p>셋째 줄 CCCC<br>넷째 줄 DDDD</p></div></div></div>`);
@@ -95,14 +100,16 @@ test("compact multiline paragraphs retain their width beside file and quote ment
       const text = paragraphs.map(node => node.textContent);
       wrapper.setAttribute("data-promptbox-compact-content", "");
       await f.settle();
+      assert.equal(f.dom.window.getComputedStyle(editor).display, "block");
       for (const paragraph of paragraphs) {
-        assert.equal(f.dom.window.getComputedStyle(paragraph).flexShrink, "0", "a paragraph must not narrow while its text overflows into the next one");
+        assert.equal(f.dom.window.getComputedStyle(paragraph).display, "inline", "compact paragraphs share normal text flow instead of separate flex columns");
       }
+      assert.equal(f.dom.window.getComputedStyle(editor.querySelector(".prompt-mention-pill")!).display, "inline-flex");
       assert.deepEqual(paragraphs.map(node => node.textContent), text, "the original multiline draft is preserved");
       assert.equal(editor.querySelectorAll("br").length, 1);
       wrapper.removeAttribute("data-promptbox-compact-content");
       await f.settle();
-      for (const paragraph of paragraphs) assert.notEqual(f.dom.window.getComputedStyle(paragraph).flexShrink, "0", "expanded paragraphs keep native layout");
+      for (const paragraph of paragraphs) assert.equal(f.dom.window.getComputedStyle(paragraph).display, "block", "expanded paragraphs keep native layout");
     } finally { stopQuote(); stopMention(); f.restore(); }
   }
 });

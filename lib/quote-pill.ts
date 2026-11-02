@@ -89,6 +89,7 @@ export type QuoteKeyAction =
   | "skip-after";
 export type QuotePointerAction = "ignore" | "block" | "remove";
 
+// 인용 필의 표시는 유지하고 주위 문장은 일반 inline 흐름으로 배치한다.
 export function quotePillCss(): string {
   return `
 ${USER_QUOTE},
@@ -169,16 +170,14 @@ ${referencePhoneVariableStyle}
 ${REFERENCE_PHONE} ${PENDING_COMPOSER_QUOTE} { ${pillStyle.removeReservePhone} }
 
 ${COMPACT_QUOTE_MENTION_LINE} {
-  display: flex !important;
-  align-items: center !important;
+  display: block !important;
   height: 100%;
   max-height: none !important;
   overflow: hidden !important;
 }
 ${COMPACT_QUOTE_MENTION_LINE} > * {
-  display: flex !important;
-  align-items: center !important;
-  height: 100%;
+  display: inline !important;
+  height: auto;
   min-width: 0;
   margin: 0 !important;
 }
