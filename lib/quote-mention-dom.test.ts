@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { injectQuoteMentions } from "./quote-mention.ts";
 
+// 인용 표시와 해제를 검사할 독립 문서를 만든다.
 function fixture() {
   const dom = new JSDOM('<body><aside></aside><main></main></body>');
   const { document } = dom.window;
@@ -120,20 +121,160 @@ test("resource replacement and host editable resets update only the affected quo
   } finally { stop(); f.cleanup(); }
 });
 
-test("code quotes still receive a Diff icon when its native source arrives later", async () => {
+test("all quote kinds use their own glyph without a native Diff source", async () => {
   const f = fixture();
-  const quote = f.quote("FileDiff");
+  const quotes = [f.quote("Quote"), f.quote("MessageSquare"), f.quote("FileDiff")];
   const stop = injectQuoteMentions(f.document);
   try {
     await f.tick();
-    assert.equal(quote.querySelector("[data-bb-chat-ui-code-icon]"), null);
-    const toggle = f.document.createElement("button");
-    toggle.id = "thread-prompt-banner-git-toggle";
-    f.document.body.append(toggle);
+    const masks = quotes.map(quote => {
+      const glyph = quote.querySelector<HTMLElement>("[data-bb-chat-ui-quote-glyph]");
+      assert.ok(glyph, "each quote has an icon before any host Diff control exists");
+      assert.match(glyph.style.mask, /data:image\/svg\+xml/);
+      assert.equal(quote.querySelector<HTMLElement>("[data-icon-root]")?.style.display, "none");
+      return glyph.style.mask;
+    });
+    assert.equal(new Set(masks).size, 3, "generic, whole-message and Diff glyphs stay distinct");
+    assert.deepEqual(quotes.map(quote => quote.getAttribute("data-bb-chat-ui-quote-icon")),
+      ["selection", "whole", "code"]);
+  } finally { stop(); f.cleanup(); }
+});
+
+test("missing host icons and SDK resources still show the shared quote asset", async () => {
+  const f = fixture();
+  const generic = f.quote();
+  generic.setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "plugin", itemId: "quote:old", icon: null }));
+  generic.replaceChildren(f.document.createTextNode("old quote"));
+  const sdk = f.quote();
+  sdk.setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "plugin", pluginId: "bb-chat-ui", provider: "quote", id: "sdk", icon: "MessageSquare" }));
+  const stop = injectQuoteMentions(f.document);
+  try {
     await f.tick();
-    toggle.innerHTML = '<span data-icon="FileDiff">Diff</span>';
+    assert.ok(generic.querySelector("[data-bb-chat-ui-quote-glyph]"));
+    assert.equal(generic.getAttribute("data-bb-chat-ui-quote-icon"), "selection");
+    assert.equal(sdk.getAttribute("data-bb-chat-ui-quote-icon"), "whole");
+    generic.insertAdjacentHTML("beforeend", '<span data-icon-root data-icon="Late"></span>');
     await f.tick();
-    assert.equal(quote.querySelector("[data-bb-chat-ui-code-icon]")?.textContent, "Diff");
+    assert.equal(generic.querySelectorAll("[data-bb-chat-ui-quote-glyph]").length, 1);
+    assert.equal(generic.querySelector<HTMLElement>("[data-icon-root]")?.style.display, "none");
+  } finally { stop(); f.cleanup(); }
+});
+
+// 새 코드 인용과 이전 변경 내용 인용에 같은 자산을 표시한다.
+test("new Code and saved FileDiff quotes share one code icon", async () => {
+  const f = fixture();
+  const quotes = [f.quote("Code"), f.quote("FileDiff")];
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    const glyphs = quotes.map(node => node.querySelector<HTMLElement>("[data-bb-chat-ui-quote-glyph]")!);
+    assert.equal(quotes[0].getAttribute("data-bb-chat-ui-quote-icon"), "code");
+    assert.equal(quotes[1].getAttribute("data-bb-chat-ui-quote-icon"), "code");
+    assert.equal(glyphs[0].style.mask, glyphs[1].style.mask);
+  } finally { stop(); f.cleanup(); }
+});
+
+// 실제 파일 멘션만 장식하고 인용 편집·열기 동작은 적용하지 않는다.
+test("native file mentions get a shared glyph without becoming quotes", async () => {
+  const f = fixture();
+  const file = f.quote();
+  file.setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "path", entryKind: "file", source: "workspace", path: "example.ts", label: "example.ts" }));
+  file.contentEditable = "true";
+  const others = [
+    { kind: "path", entryKind: "directory", label: "example.ts" },
+    { kind: "attachment", path: "example.ts", label: "example.ts" },
+    { kind: "plugin", itemId: "file:example.ts", label: "example.ts" },
+  ].map(resource => {
+    const node = f.quote();
+    node.setAttribute("data-prompt-mention-resource", JSON.stringify(resource));
+    return node;
+  });
+  const code = f.quote("Code");
+  let clicks = 0;
+  file.addEventListener("click", () => { clicks++; });
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    const glyph = file.querySelector<HTMLElement>("[data-bb-chat-ui-quote-glyph]");
+    assert.ok(glyph);
+    assert.equal(file.getAttribute("data-bb-chat-ui-quote-icon"), "file");
+    assert.notEqual(glyph.style.mask, code.querySelector<HTMLElement>("[data-bb-chat-ui-quote-glyph]")!.style.mask);
+    assert.equal(file.contentEditable, "true");
+    assert.equal(file.hasAttribute("role"), false);
+    assert.equal(file.hasAttribute("tabindex"), false);
+    file.click();
+    assert.equal(clicks, 1, "native file opening remains available");
+    for (const node of others) assert.equal(node.querySelector("[data-bb-chat-ui-quote-glyph]"), null);
+  } finally { stop(); f.cleanup(); }
+});
+
+// 파일 재사용·호스트 아이콘 교체·분리 때 소유 glyph와 표시를 복구한다.
+test("file glyphs follow host replacements and release reused or detached nodes", async () => {
+  const f = fixture();
+  const files = [f.quote(), f.quote()];
+  for (const file of files) file.setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "path", entryKind: "file", source: "thread-storage", path: "report.md", label: "report.md" }));
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    const replacement = f.document.createElement("span");
+    replacement.setAttribute("data-icon-root", "");
+    replacement.style.setProperty("display", "inline-flex", "important");
+    files[0].querySelector("[data-icon-root]")!.replaceWith(replacement);
+    await f.tick();
+    assert.equal(replacement.style.display, "none");
+    assert.equal(files[0].querySelectorAll("[data-bb-chat-ui-quote-glyph]").length, 1);
+    files[0].setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "path", entryKind: "directory", label: "folder" }));
+    files[1].remove();
+    await f.tick();
+    for (const node of files) {
+      assert.equal(node.querySelector("[data-bb-chat-ui-quote-glyph]"), null);
+      assert.equal(node.hasAttribute("data-bb-chat-ui-quote-icon"), false);
+    }
+    assert.equal(replacement.style.display, "inline-flex");
+    assert.equal(replacement.style.getPropertyPriority("display"), "important");
+  } finally { stop(); f.cleanup(); }
+});
+
+test("changing quote kinds and disposing preserves original host icon contents and display", async () => {
+  const f = fixture();
+  const quote = f.quote("Quote");
+  const icon = quote.querySelector<HTMLElement>("[data-icon-root]")!;
+  icon.innerHTML = "<svg><path></path></svg>";
+  icon.style.setProperty("display", "inline-flex", "important");
+  const original = icon.innerHTML;
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    for (const kind of ["MessageSquare", "FileDiff", "Quote"]) {
+      quote.setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "plugin", itemId: "quote:same", icon: kind }));
+      await f.tick();
+      assert.equal(quote.querySelectorAll("[data-bb-chat-ui-quote-glyph]").length, 1);
+      assert.equal(icon.innerHTML, original);
+    }
+    stop();
+    assert.equal(quote.querySelector("[data-bb-chat-ui-quote-glyph]"), null);
+    assert.equal(quote.hasAttribute("data-bb-chat-ui-quote-icon"), false);
+    assert.equal(icon.style.display, "inline-flex");
+    assert.equal(icon.style.getPropertyPriority("display"), "important");
+    assert.equal(icon.innerHTML, original);
+  } finally { stop(); f.cleanup(); }
+});
+
+test("a reused or removed quote releases its owned glyph", async () => {
+  const f = fixture();
+  const quote = f.quote("MessageSquare");
+  const detached = f.quote("FileDiff");
+  const stop = injectQuoteMentions(f.document);
+  try {
+    await f.tick();
+    quote.setAttribute("data-prompt-mention-resource", JSON.stringify({ kind: "plugin", itemId: "file:reused" }));
+    detached.remove();
+    await f.tick();
+    for (const node of [quote, detached]) {
+      assert.equal(node.querySelector("[data-bb-chat-ui-quote-glyph]"), null);
+      assert.equal(node.hasAttribute("data-bb-chat-ui-quote-icon"), false);
+      assert.equal(node.querySelector<HTMLElement>("[data-icon-root]")?.style.display, "");
+    }
   } finally { stop(); f.cleanup(); }
 });
 
@@ -176,7 +317,7 @@ test("one new quote is decorated once without rescanning its generated subtree",
   } finally { stop(); f.cleanup(); }
 });
 
-test("late Diff source searches only code quotes still waiting for it", async () => {
+test("late host Diff controls cannot replace the shared code glyph", async () => {
   const f = fixture();
   for (let i = 0; i < 30; i++) f.quote('Quote');
   const code = f.quote('FileDiff');
@@ -194,6 +335,8 @@ test("late Diff source searches only code quotes still waiting for it", async ()
     source.innerHTML = '<span data-icon="FileDiff">Diff</span>';
     f.document.body.append(source); await f.tick();
     assert.equal(scans, 1, 'scan the added source subtree, never the document root');
-    assert.equal(code.querySelector('[data-bb-chat-ui-code-icon]')?.textContent, 'Diff');
+    assert.ok(code.querySelector('[data-bb-chat-ui-quote-glyph]'));
+    assert.equal(code.querySelector('[data-bb-chat-ui-code-icon]'), null);
+    assert.equal(code.textContent?.includes('Diff'), false);
   } finally { stop(); f.cleanup(); }
 });

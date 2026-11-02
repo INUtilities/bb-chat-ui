@@ -1,9 +1,10 @@
 export const QUOTE_PROVIDER_ID = "quote";
 export const QUOTE_LABEL_MAX = 42;
-export const QUOTE_CODE_ICON = "FileDiff";
+export const QUOTE_CODE_ICON = "Code";
 export const QUOTE_SELECTION_ICON = "Quote";
 export const QUOTE_WHOLE_ICON = "MessageSquare";
 export const QUOTE_GESTURE_ATTR = "data-bb-chat-ui-quote-gesture";
+const CODE_FENCE = /^(?:`{3,}|~{3,})/;
 
 export type QuoteGesture = "message" | "selection";
 
@@ -20,6 +21,7 @@ export function isQuoteMentionResource(resource: unknown): boolean {
   return record.pluginId === "bb-chat-ui" && record.provider === QUOTE_PROVIDER_ID;
 }
 
+// 명시적인 코드·변경 내용과 메시지 전체·범용 인용을 구분한다.
 export function quoteMentionIcon(
   body: string,
   gesture: QuoteGesture | null = null,
@@ -28,9 +30,14 @@ export function quoteMentionIcon(
     .split("\n")
     .map((part) => part.trim())
     .find((part) => part.length > 0);
-  if (line?.startsWith("diff --git ")) return QUOTE_CODE_ICON;
+  if (line?.startsWith("diff --git ") || CODE_FENCE.test(line ?? "")) return QUOTE_CODE_ICON;
   if (gesture === "message") return QUOTE_WHOLE_ICON;
   return QUOTE_SELECTION_ICON;
+}
+
+// 새 Code와 예전에 저장한 FileDiff를 같은 코드 인용으로 읽는다.
+export function isCodeQuoteIcon(icon: unknown): boolean {
+  return icon === QUOTE_CODE_ICON || icon === "FileDiff";
 }
 
 export function quoteGestureFromControl(control: {
@@ -54,11 +61,21 @@ function normalizeControlText(value: string | null): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
+// 변경 내용은 파일 이름을, 코드 블록과 일반 인용은 첫 내용 줄을 표시한다.
 export function quoteLabel(body: string): string | null {
-  const line = body
+  const lines = body
     .split("\n")
-    .map((part) => part.trim())
-    .find((part) => part.length > 0);
+    .map((part) => part.trim());
+  let line = lines.find((part) => part.length > 0);
+  const fence = line?.match(CODE_FENCE)?.[0];
+  if (line && fence) {
+    line = lines.slice(lines.indexOf(line) + 1).find((part) => part.length > 0);
+    const nextFence = line?.match(CODE_FENCE)?.[0];
+    if (nextFence) {
+      if (nextFence[0] === fence[0] && nextFence.length >= fence.length && line === nextFence) return null;
+      line = "코드";
+    }
+  }
   if (!line) return null;
   const file = quoteCodeFileName(line);
   if (file) {

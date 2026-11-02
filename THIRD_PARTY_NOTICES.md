@@ -52,10 +52,11 @@ SOFTWARE.
 License: https://github.com/lucide-icons/lucide/blob/0.300.0/LICENSE
 
 - app.tsx: bb-chat-ui-status — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/activity.svg
-- lib/quote-pill.ts: QUOTE_ICON — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/quote.svg
+- lib/quote-icons.ts: QUOTE_MARK_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/quote.svg
+- lib/quote-icons.ts: QUOTE_MESSAGE_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/message-square.svg
+- lib/quote-icons.ts: QUOTE_CODE_MASK (also used by lib/transcript-components.ts) — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/code.svg
 - lib/transcript-components.ts: WINDOW_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/app-window.svg
-- lib/transcript-components.ts: CODE_MASK — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/code.svg
-- lib/user-attachments.ts: FILE_ICON — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/file.svg
+- lib/quote-icons.ts: REFERENCE_FILE_MASK (also used by lib/user-attachments.ts) — https://github.com/lucide-icons/lucide/blob/0.300.0/icons/file.svg
 
 The status path matches this release. Its original copying route was not recorded;
 this release is the verified source used for attribution. The quote and file SVGs

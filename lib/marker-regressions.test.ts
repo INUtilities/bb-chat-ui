@@ -6,6 +6,7 @@ import { injectMentionPills } from "./mention-pill.ts";
 import { injectQuoteMentions } from "./quote-mention.ts";
 import { injectQuotePill } from "./quote-pill.ts";
 import { injectComposerGlass } from "./composer-glass.ts";
+import { QUOTE_CODE_MASK } from "./quote-icons.ts";
 
 // Scenarios from the review of the :has() → marker prototype. Each is a live-update path the
 // old :has() rules covered for free and a marker must keep covering.
@@ -48,15 +49,21 @@ test("compact editor that already holds a pill gets the compact mention layout",
   } finally { stop(); f.restore(); }
 });
 
-test("a code quote copies the Diff icon even when the Diff banner mounts after the quote", async () => {
+// 뒤늦게 붙은 호스트 배너가 공통 코드 자산을 바꾸지 않는지 확인한다.
+test("a legacy code quote uses the shared code asset before and after a host banner mounts", async () => {
   const resource = JSON.stringify({ kind: "plugin", itemId: "quote:1", icon: "Code", label: "diff --git a/x b/x" });
   const f = setup(`<div class="ProseMirror" contenteditable="true"><p><span class="prompt-mention-pill" data-prompt-mention="" data-prompt-mention-resource='${resource}'><span data-icon-root data-icon="Quote"></span><span class="truncate">x</span></span></p></div><div id="host"></div>`);
   const stop = injectQuoteMentions(f.document);
   try {
     await f.settle();
+    const glyph = f.document.querySelector<HTMLElement>("[data-bb-chat-ui-quote-glyph]");
+    assert.ok(glyph, "a code quote has an icon without a host Diff banner");
+    assert.equal(glyph.style.mask, QUOTE_CODE_MASK);
     f.document.getElementById("host")!.innerHTML = '<section><button id="thread-prompt-banner-git-toggle"><span data-icon="FileDiff"><svg></svg></span></button></section>';
     await f.settle();
-    assert.ok(f.document.querySelector("[data-icon-root] [data-bb-chat-ui-code-icon]"), "late Diff icon is copied into the quote");
+    assert.equal(f.document.querySelector("[data-bb-chat-ui-quote-glyph]"), glyph, "late host icons keep the existing shared glyph");
+    assert.equal(glyph.style.mask, QUOTE_CODE_MASK);
+    assert.equal(f.document.querySelector("[data-bb-chat-ui-code-icon]"), null, "host artwork is not copied into the quote");
   } finally { stop(); f.restore(); }
 });
 

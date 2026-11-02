@@ -1,12 +1,11 @@
 import { cardStyle } from "./info-card.ts";
 import { attachInlineVisCollapse } from "./inline-vis-collapse.ts";
+import { QUOTE_CODE_MASK as CODE_MASK } from "./quote-icons.ts";
 
 const STYLE_ID = "bb-chat-ui-transcript-components";
 const MARKDOWN = '[data-timeline-row-id*=":assistant:"] [data-markdown-preview]';
 const CODE = `${MARKDOWN} div.bg-surface-recessed.rounded-md`;
 const HEADER = `${CODE} > [data-clipboard-ignore]`;
-// Lucide 0.300.0 icons/code.svg (ISC), alpha mask; see THIRD_PARTY_NOTICES.md.
-const CODE_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`)}") center / contain no-repeat`;
 
 const FRAME = `${MARKDOWN} div[data-inline-vis-frame]`;
 const LOADING = `${MARKDOWN} div[role="status"][aria-label^="Loading visualization"]`;

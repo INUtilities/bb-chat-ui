@@ -50,7 +50,8 @@ test("builds a plugin mention whose id the host can resolve", () => {
   assert.equal(quoteStorageKey(id), `quote:${id}`);
 });
 
-test("uses the diff icon for code, the message icon for the button, and the quote icon for a drag", () => {
+// 코드·전체 메시지·범용 인용의 기존 구분을 확인한다.
+test("uses the code icon for code, the message icon for the button, and the quote icon for a drag", () => {
   const prose = "두 줄을 멘션했습니다.\n둘 다 직전 답입니다.";
   assert.equal(
     quoteMentionIcon("diff --git a/lib/quote-mention.test.ts b/lib/quote-mention.test.ts\n+++", "message"),
@@ -70,6 +71,24 @@ test("uses the diff icon for code, the message icon for the button, and the quot
     quoteGestureFromControl({ role: null, ariaLabel: null, text: "Add to chat" }),
     "selection",
   );
+});
+
+// 명시적인 코드와 변경 내용은 통합하고 근거 없는 평문 추정을 막는다.
+test("code and code changes share Code while ordinary prose keeps its quote kind", () => {
+  assert.equal(QUOTE_CODE_ICON, "Code");
+  for (const body of ["diff --git a/a.ts b/a.ts\n+line", "```ts\nconst ready = true;\n```", "~~~python\nprint('ready')\n~~~"]) {
+    assert.equal(quoteMentionIcon(body, "selection"), "Code");
+    assert.equal(quoteMentionIcon(body, "message"), "Code");
+  }
+  assert.equal(quoteMentionIcon("문장 안의 `code` 표기", "selection"), QUOTE_SELECTION_ICON);
+  assert.equal(quoteMentionIcon("const ready = true;", "selection"), QUOTE_SELECTION_ICON,
+    "untyped plain text is not guessed to be code");
+  assert.equal(quoteLabel("```ts\n\nconst ready = true;\n```"), "const ready = true;");
+  assert.equal(quoteLabel("~~~python\nprint('ready')\n~~~"), "print('ready')");
+  assert.equal(quoteLabel("```ts\n```"), null);
+  assert.equal(quoteLabel("````md\n```ts\nconst ready = true;\n```\n````"), "코드",
+    "a nested fence must not discard a nonempty code quote or enter the mention label");
+  assert.equal(quoteLabel("````md\n````"), null);
 });
 
 test("recognizes only this plugin's quote mentions", () => {

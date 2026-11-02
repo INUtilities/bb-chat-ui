@@ -1,10 +1,10 @@
 import { decorateQuotePreview, clearQuotePreview } from "./quote-preview.ts";
 import { deleteWithCaret } from "./delete-with-caret.ts";
 import { pillSlot, pillStyle } from "./pill.ts";
-import { QUOTE_MARK_MASK } from "./quote-pill.ts";
+import { QUOTE_MARK_MASK, QUOTE_MESSAGE_MASK, QUOTE_CODE_MASK, REFERENCE_FILE_MASK } from "./quote-icons.ts";
 import { decorateLegacyQuote, LEGACY_QUOTE_REMOVE, pruneLegacyQuoteControls } from "./legacy-quote-controls.ts";
 import {
-  QUOTE_CODE_ICON,
+  isCodeQuoteIcon,
   QUOTE_GESTURE_ATTR,
   QUOTE_WHOLE_ICON,
   isQuoteMentionResource,
@@ -13,9 +13,16 @@ import {
 
 const MENTION_RESOURCE = "data-prompt-mention-resource";
 const ICON_MARK = "data-bb-chat-ui-quote-icon";
-const CODE_CLONE = "data-bb-chat-ui-code-icon";
 const MESSAGE_GLYPH = pillSlot.icon;
-const DIFF_ICON_SOURCE = "#thread-prompt-banner-git-toggle [data-icon=\"FileDiff\"]";
+
+interface QuoteIconState {
+  glyph: HTMLElement;
+  native: HTMLElement | SVGElement | null;
+  display: string;
+  priority: string;
+  mark: string | null;
+  mask: string;
+}
 
 interface MentionView {
   state: { tr: { delete: (from: number, to: number) => unknown } };
@@ -31,15 +38,16 @@ interface MentionDesc {
 
 type MentionElement = HTMLElement & { pmViewDesc?: MentionDesc };
 
+// 인용·파일의 공통 아이콘과 인용 전용 편집 동작을 설치하고 해제한다.
 export function injectQuoteMentions(doc: Document): () => void {
   const root = doc.documentElement;
   if (!root) return () => {};
 
-  const pendingCodes = new Set<HTMLElement>();
+  const icons = new Map<HTMLElement, QuoteIconState>();
+  // 연결된 인용·파일을 장식하고 재사용된 다른 멘션의 자산을 복구한다.
   const decorate = (node: HTMLElement) => {
-    if (!node.isConnected) { pendingCodes.delete(node); return; }
-    if (lockQuoteMention(node, doc)) pendingCodes.add(node);
-    else pendingCodes.delete(node);
+    if (!node.isConnected) { clearQuoteGlyph(node, icons); return; }
+    lockQuoteMention(node, icons);
   };
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Backspace" && event.key !== "Delete") return;
@@ -63,16 +71,24 @@ export function injectQuoteMentions(doc: Document): () => void {
     }
   };
 
+  // 바뀐 부분 트리와 인용만 갱신하고 소유 자산의 분리도 처리한다.
   const observer = new MutationObserver(records => {
     const candidates = new Set<HTMLElement>();
     const subtrees = new Set<Element>();
-    for (const node of pendingCodes) if (!node.isConnected) pendingCodes.delete(node);
     for (const record of records) {
+      // 분리된 부분 트리에서만 소유 자산을 해제하고 문서 전체를 다시 찾지 않는다.
+      for (const removed of Array.from(record.removedNodes)) {
+        if (!(removed instanceof HTMLElement) || removed.isConnected || !icons.size) continue;
+        clearQuoteGlyph(removed, icons);
+        for (const node of Array.from(removed.querySelectorAll(`[${ICON_MARK}]`))) {
+          if (node instanceof HTMLElement) clearQuoteGlyph(node, icons);
+        }
+      }
       const target = record.target instanceof Element ? record.target : record.target.parentElement;
       // These records are our completed lock/glyph writes, not native changes.
       if (record.attributeName === "contenteditable" && target instanceof HTMLElement && target.contentEditable === "false") continue;
       if (record.type === "childList" && record.addedNodes.length && Array.from(record.addedNodes).every(node =>
-        node instanceof Element && (node.hasAttribute(MESSAGE_GLYPH) || node.hasAttribute(CODE_CLONE) || node.hasAttribute(LEGACY_QUOTE_REMOVE)))) continue;
+        node instanceof Element && (node.hasAttribute(MESSAGE_GLYPH) || node.hasAttribute(LEGACY_QUOTE_REMOVE)))) continue;
       const legacy = target?.closest("blockquote");
       if (legacy instanceof HTMLElement) { decorateLegacyQuote(legacy); decorateQuotePreview(legacy); }
       const mention = target?.closest(`[${MENTION_RESOURCE}]`);
@@ -94,10 +110,6 @@ export function injectQuoteMentions(doc: Document): () => void {
       }
       for (const node of Array.from(subtree.querySelectorAll(`[${MENTION_RESOURCE}], blockquote`))) {
         if (node instanceof HTMLElement) { if (node.tagName === "BLOCKQUOTE") { decorateLegacyQuote(node); decorateQuotePreview(node); } else candidates.add(node); }
-      }
-      if (pendingCodes.size && (subtree.matches(DIFF_ICON_SOURCE) ||
-        (subtree.id === "thread-prompt-banner-git-toggle" ? subtree.querySelector('[data-icon="FileDiff"]') : subtree.querySelector(DIFF_ICON_SOURCE)))) {
-        for (const node of pendingCodes) candidates.add(node);
       }
     }
     for (const node of candidates) decorate(node);
@@ -121,9 +133,10 @@ export function injectQuoteMentions(doc: Document): () => void {
     if (node.tagName === "BLOCKQUOTE") { decorateLegacyQuote(node); decorateQuotePreview(node); } else decorate(node);
   }
 
+  // 관찰과 입력 처리를 해제하고 원래 아이콘 표시를 복구한다.
   return () => {
     observer.disconnect();
-    pendingCodes.clear();
+    for (const node of icons.keys()) clearQuoteGlyph(node, icons);
     doc.removeEventListener("keydown", onKeyDown, true);
     doc.removeEventListener("beforeinput", onBeforeInput, true);
     doc.removeEventListener("pointerdown", onQuoteGesture, true);
@@ -144,15 +157,26 @@ function quoteGestureFromTarget(target: EventTarget | null) {
   });
 }
 
-function lockQuoteMention(node: HTMLElement, doc: Document) {
+// 파일에는 아이콘만 표시하고 인용에만 잠금과 원문 팝업을 적용한다.
+function lockQuoteMention(node: HTMLElement, icons: Map<HTMLElement, QuoteIconState>) {
   const resource = mentionResource(node);
+  const record = resource as { kind?: unknown; entryKind?: unknown; icon?: unknown; label?: unknown } | null;
+  if (record?.kind === "path" && record.entryKind === "file") {
+    clearQuotePreview(node);
+    paintMentionIcon(node, REFERENCE_FILE_MASK, "file", icons);
+    return;
+  }
   const root = mentionRoot(node) ?? node;
-  if (!isQuoteMentionResource(resource)) { clearQuotePreview(root); return false; }
+  if (!isQuoteMentionResource(resource)) { clearQuotePreview(root); clearQuoteGlyph(root, icons); return; }
   decorateQuotePreview(root);
   if (root.contentEditable !== "false") root.contentEditable = "false";
   if (root.style.maxWidth !== "100%") root.style.maxWidth = "100%";
   if (root.style.whiteSpace !== "nowrap") root.style.whiteSpace = "nowrap";
-  return paintMentionIcon(root, resource, doc);
+  const code = isCodeQuoteIcon(record?.icon) ||
+    (typeof record?.label === "string" && record.label.startsWith("diff --git "));
+  const whole = record?.icon === QUOTE_WHOLE_ICON;
+  paintMentionIcon(root, code ? QUOTE_CODE_MASK : whole ? QUOTE_MESSAGE_MASK : QUOTE_MARK_MASK,
+    code ? "code" : whole ? "whole" : "selection", icons);
 }
 
 function mentionResource(node: HTMLElement): unknown {
@@ -165,71 +189,59 @@ function mentionResource(node: HTMLElement): unknown {
   }
 }
 
-function paintMentionIcon(root: HTMLElement, resource: unknown, doc: Document) {
-  const record = resource as { icon?: unknown; label?: unknown };
-  const code =
-    record.icon === QUOTE_CODE_ICON ||
-    (typeof record.label === "string" && record.label.startsWith("diff --git "));
-  const mark = (value: string) => {
-    if (root.getAttribute(ICON_MARK) !== value) root.setAttribute(ICON_MARK, value);
-  };
-  if (code) {
-    mark("code");
-    return paintCodeIcon(root, doc);
+// 인용·파일의 공통 glyph를 표시하고 호스트 아이콘의 원래 상태를 보관한다.
+function paintMentionIcon(root: HTMLElement, mask: string, mark: string, icons: Map<HTMLElement, QuoteIconState>) {
+  let state = icons.get(root);
+  if (!state) {
+    const glyph = root.ownerDocument.createElement("span");
+    glyph.setAttribute(MESSAGE_GLYPH, "");
+    glyph.setAttribute("aria-hidden", "true");
+    glyph.style.cssText = pillStyle.quoteGlyph;
+    state = { glyph, native: null, display: "", priority: "", mark: root.getAttribute(ICON_MARK), mask: "" };
+    icons.set(root, state);
   }
-  if (record.icon === QUOTE_WHOLE_ICON) {
-    mark("whole");
-    const icon = iconRoot(root);
-    if (icon) clearQuoteGlyph(icon);
-    return false;
+  if (root.getAttribute(ICON_MARK) !== mark) root.setAttribute(ICON_MARK, mark);
+  const icon = iconRoot(root);
+  const native = icon instanceof HTMLElement || icon instanceof SVGElement ? icon : null;
+  if (state.native !== native) {
+    restoreNativeIcon(state);
+    state.native = native;
+    state.display = native?.style.getPropertyValue("display") ?? "";
+    state.priority = native?.style.getPropertyPriority("display") ?? "";
   }
-  mark("selection");
-  paintMessageIcon(root);
-  return false;
+  if (native && (native.style.display !== "none" || native.style.getPropertyPriority("display") !== "important")) {
+    native.style.setProperty("display", "none", "important");
+  }
+  if (state.mask !== mask) {
+    state.glyph.style.webkitMask = mask;
+    state.glyph.style.mask = mask;
+    state.mask = mask;
+  }
+  const parent = icon?.parentElement ?? root;
+  if (state.glyph.parentElement !== parent) parent.insertBefore(state.glyph, icon ?? parent.firstChild);
 }
 
+// 호스트가 제공한 아이콘 자리만 찾는다.
 function iconRoot(root: HTMLElement): Element | null {
   return root.querySelector("[data-icon-root]");
 }
 
-function paintCodeIcon(root: HTMLElement, doc: Document) {
-  const icon = iconRoot(root);
-  if (!icon) return true;
-  clearQuoteGlyph(icon);
-  if (icon.getAttribute("data-icon") === QUOTE_CODE_ICON) return false;
-  if (icon.querySelector(`[${CODE_CLONE}]`)) return false;
-  const source = doc.querySelector(DIFF_ICON_SOURCE);
-  if (!(source instanceof HTMLElement)) return true;
-  const clone = source.cloneNode(true);
-  if (!(clone instanceof HTMLElement)) return true;
-  clone.setAttribute(CODE_CLONE, "");
-  icon.replaceChildren(clone);
-  return false;
+// 플러그인이 숨긴 호스트 아이콘의 원래 display 값만 복구한다.
+function restoreNativeIcon(state: QuoteIconState) {
+  if (state.native?.style.display !== "none" || state.native.style.getPropertyPriority("display") !== "important") return;
+  if (state.display) state.native.style.setProperty("display", state.display, state.priority);
+  else state.native.style.removeProperty("display");
 }
 
-function paintMessageIcon(root: HTMLElement) {
-  const icon = iconRoot(root);
-  if (!icon) return;
-  const parent = icon.parentElement;
-  if (!parent) return;
-  icon.querySelector(`[${CODE_CLONE}]`)?.remove();
-  if ((icon instanceof HTMLElement || icon instanceof SVGElement) && icon.style.display !== "none") {
-    icon.style.display = "none";
-  }
-  if (parent.querySelector(`:scope > [${MESSAGE_GLYPH}]`)) return;
-  const glyph = parent.ownerDocument.createElement("span");
-  glyph.setAttribute(MESSAGE_GLYPH, "");
-  glyph.style.cssText = pillStyle.quoteGlyph;
-  glyph.style.webkitMask = QUOTE_MARK_MASK;
-  glyph.style.mask = QUOTE_MARK_MASK;
-  parent.insertBefore(glyph, icon);
-}
-
-function clearQuoteGlyph(icon: Element) {
-  icon.parentElement?.querySelector(`:scope > [${MESSAGE_GLYPH}]`)?.remove();
-  if ((icon instanceof HTMLElement || icon instanceof SVGElement) && icon.style.display !== "") {
-    icon.style.display = "";
-  }
+// 소유 glyph와 표식만 제거하고 호스트 아이콘은 그대로 복구한다.
+function clearQuoteGlyph(root: HTMLElement, icons: Map<HTMLElement, QuoteIconState>) {
+  const state = icons.get(root);
+  if (!state) return;
+  state.glyph.remove();
+  restoreNativeIcon(state);
+  if (state.mark === null) root.removeAttribute(ICON_MARK);
+  else root.setAttribute(ICON_MARK, state.mark);
+  icons.delete(root);
 }
 
 function isQuoteMentionElement(node: HTMLElement): boolean {

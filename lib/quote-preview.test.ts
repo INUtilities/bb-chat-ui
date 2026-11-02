@@ -8,6 +8,20 @@ test('quote preview reads full source lazily, creates one common card and preser
 
 test('legacy preview preserves paragraphs, inline markup and code without controls',()=>{const f=fixture();try{assert.equal(quoteDomText(f.d.getElementById('legacy')!),'one\ntwo\nthree');}finally{f.cleanup();}});
 
+// 명시적인 새 코드 종류와 이전 종류의 원문 서체를 함께 유지한다.
+test('Code and saved FileDiff resources keep code typography without a fence', async () => {
+ const f = fixture();
+ const stop = injectQuotePreview(f.d, { readQuote: async () => 'const ready = true;' });
+ try {
+  for (const icon of ['Code', 'FileDiff']) {
+   f.q.setAttribute('data-prompt-mention-resource', JSON.stringify({kind:'plugin',pluginId:'bb-chat-ui',itemId:'quote:one',icon,label:'code'}));
+   f.q.click(); await tick();
+   assert.ok(f.d.querySelector('[data-bb-chat-ui-quote-text][data-code]'), icon);
+   f.d.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')!.click();
+  }
+ } finally { stop(); f.cleanup(); }
+});
+
 test('keyboard open, Escape, outside click and close action return focus; remove does not open',async()=>{const f=fixture(),stop=injectQuotePreview(f.d,{readQuote:async()=> 'text'});try{const key=(value:string)=>f.q.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:value,bubbles:true,cancelable:true}));f.q.focus();key('Enter');await tick();assert.ok(f.d.querySelector(`[${MARK}]`));f.d.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(f.d.querySelector(`[${MARK}]`),null);assert.equal(f.d.activeElement,f.q);key(' ');await tick();f.d.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')!.click();assert.equal(f.d.activeElement,f.q);key('Enter');await tick();f.d.getElementById('outside')!.dispatchEvent(new f.dom.window.MouseEvent('pointerdown',{bubbles:true}));assert.equal(f.d.querySelector(`[${MARK}]`),null);f.q.querySelector('button')!.click();assert.equal(f.d.querySelector(`[${MARK}]`),null);}finally{stop();f.cleanup();}});
 
 test('a stale source response cannot replace another quote or revive a closed popup',async()=>{const f=fixture();let finish!:(text:string)=>void;const stop=injectQuotePreview(f.d,{readQuote:id=>id==='one'?new Promise(resolve=>{finish=resolve;}):Promise.resolve('second')});try{f.q.click();(f.d.getElementById('two')as HTMLElement).click();await tick();finish('stale');await tick();assert.equal(f.d.querySelector('[data-bb-chat-ui-quote-text]')!.textContent,'second');f.d.dispatchEvent(new f.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(f.d.querySelector(`[${MARK}]`),null);}finally{stop();f.cleanup();}});

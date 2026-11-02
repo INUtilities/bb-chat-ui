@@ -1,5 +1,6 @@
 import { pillSlot, pillStyle } from "./pill.ts";
 import { PHONE_NARROW } from "./device-chrome.ts";
+import { REFERENCE_FILE_MASK as FILE_ICON_MASK } from "./quote-icons.ts";
 
 const STYLE_ID = "bb-chat-ui-user-attachments";
 // Markers set by injectUserAttachments replace :has(): in transcript rows a :has() rule with a
@@ -12,11 +13,6 @@ const HAS_CLAMP = "data-bb-chat-ui-attach-clamp";
 const BUBBLE_CANDIDATE = '[data-message-column] > .group\\/message.ml-auto > .flex > .rounded-xl';
 const USER_BUBBLE = `${BUBBLE_CANDIDATE}[${BUBBLE_MARK}]`;
 const FILE_CHIP = `${USER_BUBBLE} > .mt-2.space-y-2 > .flex[${FILE_ROW}] > :is(a, button, span)`;
-// Lucide 0.300.0 icons/file.svg (ISC), black CSS mask stroke centered at 85%; see THIRD_PARTY_NOTICES.md.
-const FILE_ICON = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(1.8 1.8) scale(.85)"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></g></svg>`,
-);
-const FILE_ICON_MASK = `url("data:image/svg+xml,${FILE_ICON}") center / contain no-repeat`;
 
 export function userAttachmentsCss(): string {
   return `

@@ -1,5 +1,5 @@
 import { CARD, createCardClose, cardSlot, cardStyle, infoCardCss } from './info-card.ts';
-import { isQuoteMentionResource } from './quote-text.ts';
+import { isQuoteMentionResource, isCodeQuoteIcon, quoteMentionIcon } from './quote-text.ts';
 import { acceptJumpPulse, postHaptic, readHapticBridge } from './send-haptic.ts';
 import { popoverRise } from './motion.ts';
 import {COMPOSER_LEGACY_QUOTE,LEGACY_QUOTE_OPEN,legacyQuoteFromPreview,legacyQuotePreviewControl} from './legacy-quote-controls.ts';
@@ -68,6 +68,7 @@ export function injectQuotePreview(doc:Document,options:QuotePreviewOptions={}):
   card.style.maxHeight=`min(var(--bb-chat-ui-info-max-height,min(50dvh,26rem)), ${available}px)`;
   card.style.top=above?'auto':`${Math.max(16,r.bottom+8)}px`;card.style.bottom=above?`${Math.max(16,view.innerHeight-r.top+8)}px`:'auto';
  }
+ // 저장된 인용 종류와 원문을 읽어 같은 코드 서체 정책으로 팝오버를 연다.
  async function open(trigger:HTMLElement,event:Event){if(active?.trigger===trigger){close(true,true,event);return;}close(false,false);decorateQuotePreview(trigger);
   const card=doc.createElement('section');card.setAttribute(PANEL,'');card.setAttribute(CARD,'');card.setAttribute('role','dialog');card.setAttribute('aria-label','인용 원문');card.setAttribute('aria-busy','true');
   const head=doc.createElement('header');head.setAttribute(cardSlot.head,'');const title=doc.createElement('span');title.setAttribute(cardSlot.title,'');title.textContent='인용 원문';head.append(title);
@@ -84,7 +85,7 @@ export function injectQuotePreview(doc:Document,options:QuotePreviewOptions={}):
    else{const id=typeof data?.itemId==='string'?data.itemId.slice('quote:'.length):'';const read=options.readQuote??[...(readers.get(doc)??[])].at(-1);if(!read)throw Error('reader unavailable');content=await read(id);}
    if(disposed||active!==current)return;if(!trigger.isConnected){close(false,false);return;}
    text.textContent=content??'인용 원문을 찾지 못했습니다.';
-   if(data?.icon==='FileDiff'||source.querySelector('pre,code')||content?.startsWith('diff --git ')||content?.startsWith('```'))text.setAttribute('data-code','');
+   if(isCodeQuoteIcon(data?.icon)||source.querySelector('pre,code')||isCodeQuoteIcon(quoteMentionIcon(content??'')))text.setAttribute('data-code','');
   }catch{if(active===current)text.textContent='인용 원문을 불러오지 못했습니다.';}
   finally{if(active===current)card.setAttribute('aria-busy','false');}
  }
