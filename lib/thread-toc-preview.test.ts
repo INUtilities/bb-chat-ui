@@ -1,97 +1,126 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { JSDOM } from "jsdom";
-import { paintTocReply, clearTocReplies, TOC_REPLY_MARK } from "./thread-toc-preview.ts";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
+import { paintTocReply, clearTocReplies, registerTocOutlineReader, TOC_REPLY_MARK, type TocOutline, type TocOutlineReader } from './thread-toc-preview.ts';
 
-interface Fiber {
-  key?: string;
-  memoizedProps?: unknown;
-  return?: Fiber;
-  alternate?: Fiber;
-  child?: Fiber;
-  sibling?: Fiber;
-  stateNode?: { current: Fiber };
+const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+const outline = (text = 'Current reply'): TocOutline => ({items: [
+  {id:'u1',role:'user',preview:'Question'}, {id:'a1',role:'assistant',preview:text},
+]});
+function fixture() {
+  const dom = new JSDOM('<div data-thread-toc><button class="no-scrollbar" aria-controls="thread-toc-panel-current"></button><ul></ul></div>');
+  const doc = dom.window.document, root = doc.querySelector<HTMLElement>('[data-thread-toc]')!;
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'HTMLElement');
+  Object.defineProperty(globalThis, 'HTMLElement', {configurable:true,value:dom.window.HTMLElement});
+  const add = (id: string) => {
+    const item=doc.createElement('li');item.innerHTML='<button><span>Question</span></button>';
+    const props={}; Object.assign(item,{__reactProps$test:props,__reactFiber$test:{key:id,memoizedProps:props}});
+    root.querySelector('ul')!.append(item);return item;
+  };
+  const item = add('u1');
+  return {dom,doc,root,item,add,text:(node=item)=>node.querySelector(`[${TOC_REPLY_MARK}]`)?.textContent,
+    cleanup(){clearTocReplies(root);dom.window.close();if(previous)Object.defineProperty(globalThis,'HTMLElement',previous);else Reflect.deleteProperty(globalThis,'HTMLElement');}};
 }
 
-function fixture(sharedChild = false) {
-  const dom = new JSDOM('<div data-thread-toc><ul><li><button><span>Question</span></button></li></ul></div>');
-  const doc = dom.window.document, root = doc.querySelector<HTMLElement>("[data-thread-toc]")!, item = root.querySelector<HTMLElement>("li")!;
-  const previous = Object.getOwnPropertyDescriptor(globalThis, "HTMLElement");
-  Object.defineProperty(globalThis, "HTMLElement", { configurable: true, value: dom.window.HTMLElement });
-  const user = { kind: "conversation", id: "u1", threadId: "current", role: "user", text: "Question" };
-  const rows = (text: string) => [user, { ...user, id: "a1", role: "assistant", text }];
-  const props = {}, host: Fiber = { memoizedProps: props }, alternateHost: Fiber = sharedChild ? host : { memoizedProps: props, alternate: host };
-  if (!sharedChild) host.alternate = alternateHost;
-  const owner: Fiber = { memoizedProps: { threadId: "current", timelineRows: rows("old reply") }, child: host };
-  const alternateOwner: Fiber = { memoizedProps: { threadId: "current", timelineRows: rows("current reply") }, child: alternateHost, alternate: owner };
-  owner.alternate = alternateOwner;
-  const tree: Fiber = { child: owner }, alternateTree: Fiber = { child: alternateOwner, alternate: tree };
-  tree.alternate = alternateTree;
-  const mounted = { current: tree }; tree.stateNode = alternateTree.stateNode = mounted;
-  owner.return = tree; alternateOwner.return = alternateTree;
-  host.return = owner; if (!sharedChild) alternateHost.return = alternateOwner;
-  const itemProps = {};
-  Object.assign(root, { __reactFiber$test: host, __reactProps$test: props });
-  Object.assign(item, { __reactFiber$test: { key: "u1", memoizedProps: itemProps }, __reactProps$test: itemProps });
-  return { root, item, owner, alternateOwner, tree, alternateTree, mounted,
-    read() { paintTocReply(root, item); return root.querySelector(`[${TOC_REPLY_MARK}]`)?.textContent; },
-    cleanup() { clearTocReplies(root); dom.window.close(); if (previous) Object.defineProperty(globalThis, "HTMLElement", previous); else Reflect.deleteProperty(globalThis, "HTMLElement"); } };
-}
-
-test("TOC replies use the committed tree when both host fibers share DOM props", () => {
-  const f = fixture();
-  try {
-    assert.equal(f.read(), "old reply");
-    f.mounted.current = f.alternateTree;
-    assert.equal(f.read(), "current reply");
-    f.mounted.current = f.tree;
-    assert.equal(f.read(), "old reply");
-  } finally { f.cleanup(); }
+test('historical TOC users outside the loaded timeline receive their outline reply', async () => {
+  const f=fixture();let reads=0;
+  // 현재 타임라인은 새 사용자만 포함하며 이전 사용자·응답은 공개 outline에 있다.
+  Object.assign(f.root,{__reactFiber$test:{memoizedProps:{threadId:'current',timelineRows:[{kind:'conversation',id:'recent',role:'user'}]}}});
+  const read: TocOutlineReader=async(threadId,signal)=>{reads++;assert.equal(threadId,'current');assert.equal(signal.aborted,false);return {items:[...outline('Historical reply').items,{id:'recent',role:'user',preview:'Recent question'}]};};
+  try{paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'Historical reply');assert.equal(reads,1);}finally{f.cleanup();}
 });
 
-test("a shared host child reads its current owner instead of the stale return pointer", () => {
-  const f = fixture(true);
-  try {
-    f.mounted.current = f.alternateTree;
-    assert.equal(f.read(), "current reply");
-    f.alternateOwner.memoizedProps = { threadId: "current", timelineRows: [
-      { kind: "conversation", id: "u1", threadId: "current", role: "user" },
-      { kind: "conversation", id: "a1", threadId: "current", role: "assistant", text: "new reply" },
-    ] };
-    assert.equal(f.read(), "new reply");
-  } finally { f.cleanup(); }
+test('TOC replies follow the active SDK source while reusing host DOM', async () => {
+  const f=fixture();
+  const hostProps={},fiber={memoizedProps:hostProps};Object.assign(fiber,{alternate:{memoizedProps:hostProps}});
+  Object.assign(f.root,{__reactProps$test:hostProps,__reactFiber$test:fiber});
+  try{
+    paintTocReply(f.root,f.item,async()=>outline('Old reply'));await tick();assert.equal(f.text(),'Old reply');
+    paintTocReply(f.root,f.item,async()=>outline('Updated reply'));await tick();assert.equal(f.text(),'Updated reply');
+  }finally{f.cleanup();}
 });
 
-test("unmounted or inconsistent trees never fall back to an old reply", () => {
-  const f = fixture();
-  try {
-    f.mounted.current = {};
-    assert.equal(f.read(), "응답 미리보기를 불러오지 못했습니다.");
-    f.mounted.current = f.tree;
-    f.tree.child = {};
-    assert.equal(f.read(), "응답 미리보기를 불러오지 못했습니다.");
-  } finally { f.cleanup(); }
+test('shared host children do not read a stale parent timeline', async () => {
+  const f=fixture();Object.assign(f.root,{__reactFiber$test:{return:{memoizedProps:{threadId:'other',timelineRows:[{role:'assistant',text:'Wrong reply'}]}}}});
+  try{paintTocReply(f.root,f.item,async()=>outline('Current reply'));await tick();assert.equal(f.text(),'Current reply');}finally{f.cleanup();}
 });
 
-test("current reply data cannot cross thread, user or unloaded-turn boundaries", () => {
-  const f = fixture(true);
-  try {
-    f.mounted.current = f.alternateTree;
-    for (const row of [
-      { kind: "conversation", id: "a1", threadId: "other", role: "assistant", text: "wrong thread" },
-      { kind: "turn", id: "unloaded" },
-    ]) {
-      f.alternateOwner.memoizedProps = { threadId: "current", timelineRows: [
-        { kind: "conversation", id: "u1", threadId: "current", role: "user" }, row,
-        { kind: "conversation", id: "a2", threadId: "current", role: "assistant", text: "later reply" },
-      ] };
-      assert.equal(f.read(), "응답 미리보기를 불러오지 못했습니다.");
-    }
-    f.alternateOwner.memoizedProps = { threadId: "current", timelineRows: [
-      { kind: "conversation", id: "u1", threadId: "current", role: "user" },
-      { kind: "conversation", id: "u2", threadId: "current", role: "user" },
-      { kind: "conversation", id: "a2", threadId: "current", role: "assistant", text: "another turn" },
-    ] };
-    assert.equal(f.read(), "표시할 응답이 없습니다.");
-  } finally { f.cleanup(); }
+test('closing or removing a TOC prevents a late response from reviving it', async () => {
+  const f=fixture();let finish!:(value:TocOutline)=>void,signal!:AbortSignal;
+  const read:TocOutlineReader=async(_,s)=>{signal=s;return new Promise(resolve=>{finish=resolve;});};
+  try{
+    paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'응답을 불러오는 중…');
+    clearTocReplies(f.root);f.root.remove();assert.equal(signal.aborted,true);finish(outline('Late reply'));await tick();assert.equal(f.text(),undefined);
+  }finally{f.cleanup();}
+});
+
+test('outline replies stop at the next user and never borrow another turn', async () => {
+  const f=fixture();
+  const data:TocOutline={items:[{id:'u1',role:'user',preview:'Question'}, {id:'u2',role:'user',preview:''}, {id:'a2',role:'assistant',preview:'Reply for u2'}]};
+  try{paintTocReply(f.root,f.item,async()=>data);await tick();assert.equal(f.text(),'표시할 응답이 없습니다.');}finally{f.cleanup();}
+});
+
+test('switching thread scopes aborts the old request and ignores its late completion', async () => {
+  const f=fixture();let finish!:(value:TocOutline)=>void,oldSignal!:AbortSignal;
+  const requested:string[]=[];
+  const read:TocOutlineReader=async(id,signal)=>{requested.push(id);if(id==='current'){oldSignal=signal;return new Promise(resolve=>{finish=resolve;});}return outline('Other thread reply');};
+  try{
+    paintTocReply(f.root,f.item,read);await tick();
+    f.root.querySelector('button.no-scrollbar')!.setAttribute('aria-controls','thread-toc-panel-other');
+    paintTocReply(f.root,f.item,read);await tick();assert.equal(oldSignal.aborted,true);assert.equal(f.text(),'Other thread reply');
+    finish(outline('Stale thread reply'));await tick();assert.equal(f.text(),'Other thread reply');assert.deepEqual(requested,['current','other']);
+  }finally{f.cleanup();}
+});
+
+test('a thread scope change without a repaint still suppresses old response content', async () => {
+  const f=fixture();let finish!:(value:TocOutline)=>void;
+  try{
+    paintTocReply(f.root,f.item,async()=>new Promise(resolve=>{finish=resolve;}));await tick();
+    f.root.querySelector('button.no-scrollbar')!.setAttribute('aria-controls','thread-toc-panel-other');
+    finish(outline('Stale'));await tick();assert.notEqual(f.text(),'Stale');
+  }finally{f.cleanup();}
+});
+
+test('moving between entries shares one request and paints only the latest selection', async () => {
+  const f=fixture(),second=f.add('u2');let reads=0,finish!:(value:TocOutline)=>void;
+  const read:TocOutlineReader=async()=>{reads++;return new Promise(resolve=>{finish=resolve;});};
+  try{
+    paintTocReply(f.root,f.item,read);await tick();
+    for(let i=0;i<20;i++)paintTocReply(f.root, i%2?second:f.item,read);
+    finish({items:[...outline('First reply').items,{id:'u2',role:'user',preview:'Second'},{id:'a2',role:'assistant',preview:'Second reply'}]});
+    await tick();assert.equal(f.text(),undefined);assert.equal(f.text(second),'Second reply');assert.equal(reads,1);
+    paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'First reply');assert.equal(reads,1);
+  }finally{f.cleanup();}
+});
+
+test('reopening a TOC refreshes its outline instead of retaining a stale cache', async () => {
+  const f=fixture();let reads=0;const read:TocOutlineReader=async()=>outline(`Reply ${++reads}`);
+  try{
+    paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'Reply 1');
+    clearTocReplies(f.root);paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'Reply 2');assert.equal(reads,2);
+  }finally{f.cleanup();}
+});
+
+test('SDK owner cleanup aborts pending reads and cannot publish a disposed reply', async () => {
+  const f=fixture();let finish!:(value:TocOutline)=>void,signal!:AbortSignal;
+  const stop=registerTocOutlineReader(f.doc,async(_,s)=>{signal=s;return new Promise(resolve=>{finish=resolve;});});
+  try{
+    paintTocReply(f.root,f.item);await tick();stop();assert.equal(signal.aborted,true);
+    finish(outline('Disposed reply'));await tick();assert.notEqual(f.text(),'Disposed reply');
+    const next=registerTocOutlineReader(f.doc,async()=>outline('New owner'));
+    try{paintTocReply(f.root,f.item);await tick();assert.equal(f.text(),'New owner');}finally{next();}
+  }finally{stop();f.cleanup();}
+});
+
+test('a failed outline is handled and a new opening retries it', async () => {
+  const f=fixture();let reads=0;const read:TocOutlineReader=async()=>{if(++reads===1)throw Error('offline');return outline('Recovered');};
+  try{
+    paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'응답 미리보기를 불러오지 못했습니다.');
+    clearTocReplies(f.root);paintTocReply(f.root,f.item,read);await tick();assert.equal(f.text(),'Recovered');assert.equal(reads,2);
+  }finally{f.cleanup();}
+});
+
+test('an outline with no matching native user ID is never matched by text', async () => {
+  const f=fixture();
+  try{paintTocReply(f.root,f.item,async()=>({items:[{id:'other-user',role:'user',preview:'Question'},{id:'other-reply',role:'assistant',preview:'Wrong'}]}));await tick();assert.equal(f.text(),'응답 미리보기를 불러오지 못했습니다.');}finally{f.cleanup();}
 });

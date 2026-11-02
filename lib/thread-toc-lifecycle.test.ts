@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { injectThreadToc } from './thread-toc.ts';
+import { registerTocOutlineReader } from './thread-toc-preview.ts';
 
 function fixture() {
   const dom=new JSDOM('<body></body>',{pretendToBeVisual:true});const {document}=dom.window;
@@ -97,18 +98,28 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
   const ticks=[...rail.querySelectorAll('span')];
   for(const [index,tick] of ticks.entries())tick.getBoundingClientRect=()=>({top:index*20,height:3}) as DOMRect;
   const stop=injectThreadToc(f.document);
+  const unregister=registerTocOutlineReader(f.document,async threadId=>{
+    if(threadId!=='thread-test')throw Error('wrong thread');
+    return {items: rows.map(row=>{
+      if(row.kind!=='conversation'||row.threadId!==threadId)throw Error('unavailable outline');
+      return {id:row.id as string,role:row.role as 'user'|'assistant',preview:(row.text??'') as string};
+    })};
+  });
+  rail.setAttribute('aria-controls','thread-toc-panel-thread-test');
   try{
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'첫 번째 최종 응답');
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:20}));await f.tick();
     assert.equal(items[1].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'표시할 응답이 없습니다.');
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]'),null);
+    // 다음 열기에서 자료가 없으면 이전 응답을 재사용하지 않는다.
+    root.dispatchEvent(new f.dom.window.MouseEvent('mouseleave'));
     rows.splice(1,0,{kind:'turn',id:'unloaded',children:null});
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
-    rows.splice(1,1);owner.memoizedProps.threadId='another-thread';
+    rows.splice(1,1);rail.setAttribute('aria-controls','thread-toc-panel-another-thread');
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
     stop();assert.equal(root.querySelector('[data-bb-chat-ui-toc-reply]'),null);
-  }finally{stop();f.cleanup();}
+  }finally{unregister();stop();f.cleanup();}
 });

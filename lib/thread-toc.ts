@@ -70,6 +70,7 @@ ${glassSurfaceScopeCss}
 }
 [id^="thread-toc-panel-"] > .rounded-lg {
   min-height: 6rem;
+  border-radius: 18px;
   transform-origin: right center;
   transition: transform 140ms ease-out;
   background: ${LIGHT_GLASS_FACE} !important;

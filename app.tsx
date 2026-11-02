@@ -18,6 +18,7 @@ import { injectSendHaptic } from "./lib/send-haptic";
 import { injectQueuedMessages } from "./lib/queued-messages";
 import { injectTranscriptComponents } from "./lib/transcript-components";
 import { injectThreadToc } from "./lib/thread-toc";
+import { ThreadTocBridge } from "./lib/thread-toc-bridge";
 import { injectUserAttachments } from "./lib/user-attachments";
 import { injectWorkspaceDiffPill } from "./lib/workspace-diff-pill";
 import { WorkspaceDiffBridge } from "./lib/workspace-diff-bridge";
@@ -34,6 +35,7 @@ function ComposerBridges() {
 
 // Register composer bridges, content scripts, and locally attributed icons.
 export default definePluginApp((app) => {
+  app.slots.experimental_appOverlay({ id: 'toc-data', component: ThreadTocBridge });
   app.contentScripts.register({ id:"pill-styles", mount:() => injectPillStyles(document) });
   app.contentScripts.register({ id:"quote-preview", mount:() => injectQuotePreview(document) });
   // phone의 +·모델·전송·PR 머지 옵션 drawer만 떠 있는 모양으로 꾸민다.
