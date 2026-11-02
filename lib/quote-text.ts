@@ -65,16 +65,23 @@ function normalizeControlText(value: string | null): string {
 export function quoteLabel(body: string): string | null {
   const lines = body
     .split("\n")
-    .map((part) => part.trim());
-  let line = lines.find((part) => part.length > 0);
-  const fence = line?.match(CODE_FENCE)?.[0];
-  if (line && fence) {
-    line = lines.slice(lines.indexOf(line) + 1).find((part) => part.length > 0);
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  let index = 0;
+  let line = lines[index];
+  while (line) {
+    const fence = line.match(CODE_FENCE)?.[0];
+    if (!fence) break;
+    line = lines[++index];
     const nextFence = line?.match(CODE_FENCE)?.[0];
     if (nextFence) {
-      if (nextFence[0] === fence[0] && nextFence.length >= fence.length && line === nextFence) return null;
+      if (nextFence[0] === fence[0] && nextFence.length >= fence.length && line === nextFence) {
+        line = lines[++index];
+        continue;
+      }
       line = "코드";
     }
+    break;
   }
   if (!line) return null;
   const file = quoteCodeFileName(line);

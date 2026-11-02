@@ -86,8 +86,10 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
     {kind:'conversation',id:'a3',role:'assistant',text:'다음 질문의 응답'},
   ];
   for(const row of rows)row.threadId='thread-test';
-  const props={},owner={memoizedProps:{threadId:'thread-test',timelineRows:rows}};
-  Object.assign(root,{'__reactProps$test':props,'__reactFiber$test':{memoizedProps:props,return:owner}});
+  const props={},host={memoizedProps:props},owner={memoizedProps:{threadId:'thread-test',timelineRows:rows},child:host};
+  const tree={child:owner};
+  Object.assign(tree,{stateNode:{current:tree}});Object.assign(owner,{return:tree});Object.assign(host,{return:owner});
+  Object.assign(root,{'__reactProps$test':props,'__reactFiber$test':host});
   const items=[...root.querySelectorAll('li')];
   for(const [index,item] of items.entries()){
     const itemProps={};Object.assign(item,{'__reactProps$test':itemProps,'__reactFiber$test':{key:index===0?'u1':'u2',memoizedProps:itemProps}});

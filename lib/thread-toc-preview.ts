@@ -6,6 +6,9 @@ interface NativeFiber {
   memoizedProps?: unknown;
   return?: NativeFiber | null;
   alternate?: NativeFiber | null;
+  child?: NativeFiber | null;
+  sibling?: NativeFiber | null;
+  stateNode?: { current?: NativeFiber } | null;
 }
 
 interface NativeRow {
@@ -16,24 +19,53 @@ interface NativeRow {
   threadId?: unknown;
 }
 
-// 호스트 DOM의 현재 props와 일치하는 fiber만 선택하고 모호한 이전 트리는 제외한다.
-function currentFiber(node: HTMLElement): NativeFiber | null {
+// DOM 연결은 진입점으로만 쓰고, 현재 props가 어느 쪽에도 없으면 읽지 않는다.
+function nativeFiber(node: HTMLElement): { fiber: NativeFiber; props: unknown } | null {
   const fields = node as unknown as Record<string, unknown>;
   const keys = Object.keys(fields);
   const fiberKey = keys.find(key => key.startsWith("__reactFiber$"));
   const propsKey = keys.find(key => key.startsWith("__reactProps$"));
   if (!fiberKey || !propsKey) return null;
   const fiber = fields[fiberKey] as NativeFiber | undefined;
-  const matches = [fiber, fiber?.alternate].filter(candidate => candidate?.memoizedProps === fields[propsKey]);
-  return matches.length === 1 ? matches[0] ?? null : null;
+  const props = fields[propsKey];
+  if (!fiber || ![fiber, fiber.alternate].some(candidate => candidate?.memoizedProps === props)) return null;
+  return { fiber, props };
+}
+
+// 공유된 host fiber의 return은 이전 owner를 가리킬 수 있다. 현재 root에서
+// 이 DOM의 조상 경로만 내려와 실제 owner를 읽으며 다른 가지는 탐색하지 않는다.
+function currentAncestors(node: HTMLElement): NativeFiber[] {
+  const native = nativeFiber(node);
+  if (!native) return [];
+  const path: NativeFiber[] = [];
+  for (let fiber: NativeFiber | null = native.fiber; fiber && path.length < 128; fiber = fiber.return ?? null) path.push(fiber);
+  const tree = path.at(-1)!;
+  if (tree.return) return [];
+  const committed = tree.stateNode?.current;
+  if (!committed || (committed !== tree && committed !== tree.alternate)) return [];
+  let current: NativeFiber = committed;
+  const ancestors = [current];
+  let remaining = 1024;
+  for (let index = path.length - 2; index >= 0; index--) {
+    const expected = path[index];
+    let child: NativeFiber | null | undefined = current.child;
+    while (child && child !== expected && child !== expected.alternate) {
+      if (--remaining === 0) return [];
+      child = child.sibling;
+    }
+    if (!child) return [];
+    current = child;
+    ancestors.push(current);
+  }
+  return current.memoizedProps === native.props ? ancestors.reverse() : [];
 }
 
 // 같은 native 목차의 사용자 ID 뒤부터 다음 사용자 앞까지 마지막 응답을 읽는다.
 function nativeReply(root: HTMLElement, item: HTMLElement): string | null | undefined {
-  const userId = currentFiber(item)?.key;
-  if (typeof userId !== "string") return undefined;
-  let fiber = currentFiber(root);
-  for (let depth = 0; fiber && depth < 32; depth++, fiber = fiber.return ?? null) {
+  const itemFiber = nativeFiber(item)?.fiber;
+  const userId = itemFiber?.key;
+  if (typeof userId !== "string" || (itemFiber?.alternate && itemFiber.alternate.key !== userId)) return undefined;
+  for (const fiber of currentAncestors(root).slice(0, 32)) {
     const props = fiber.memoizedProps as { threadId?: unknown; timelineRows?: unknown } | null;
     if (typeof props?.threadId !== "string" || !Array.isArray(props.timelineRows)) continue;
     const rows = props.timelineRows as NativeRow[];
