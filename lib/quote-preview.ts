@@ -77,6 +77,27 @@ export function injectQuotePreview(doc: Document, options: QuotePreviewOptions =
  let active: { trigger: HTMLElement; card: HTMLElement; phone: boolean; mode: 'hover' | 'keyboard' | 'phone'; dialog: HTMLDialogElement | null; release: () => void; animation: Animation | null } | null = null;
  let disposed = false, leaveTimer: number | null = null;
  const pulses = new WeakMap<HTMLElement, number>();
+ let cachedReader: Reader | undefined;
+ const originals = new Map<string, { value: Promise<string | null>; size: number; expires: number }>();
+ // 같은 연결의 원문 조회를 합치고 최근 원문만 1분간 제한된 크기로 보관한다.
+ const readOriginal = (read: Reader, id: string): Promise<string | null> => {
+  if (cachedReader !== read) { originals.clear(); cachedReader = read; }
+  const cached = originals.get(id);
+  if (cached && cached.expires > Date.now()) { originals.delete(id); originals.set(id, cached); return cached.value; }
+  const entry = { value: read(id), size: 0, expires: Date.now() + 60_000 }; originals.delete(id); originals.set(id, entry);
+  // 항목 수와 원문 글자 수를 함께 제한하며 오래된 항목부터 해제한다.
+  const trim = () => {
+   let size = [...originals.values()].reduce((sum, item) => sum + item.size, 0);
+   while (originals.size > 16 || size > 128_000) { const oldest = originals.keys().next().value!; size -= originals.get(oldest)!.size; originals.delete(oldest); }
+  };
+  trim();
+  void entry.value.then(text => {
+   if (disposed || originals.get(id) !== entry) return;
+   if (text === null) originals.delete(id);
+   else { entry.size = text.length; trim(); }
+  }, () => { if (originals.get(id) === entry) originals.delete(id); });
+  return entry.value;
+ };
  // BB의 device 표식으로 phone을 판별한다.
  const isPhone = () => doc.documentElement.getAttribute('data-bb-chat-ui-root-device') === 'phone';
  // 두 번째 이후의 touch 조작을 제외한다.
@@ -215,7 +236,7 @@ export function injectQuotePreview(doc: Document, options: QuotePreviewOptions =
    else {
     const id = typeof data?.itemId === 'string' ? data.itemId.slice('quote:'.length) : '';
     const read = options.readQuote ?? [...(readers.get(doc) ?? [])].at(-1);
-    if (!read) throw Error('reader unavailable'); content = await read(id);
+    if (!read) throw Error('reader unavailable'); content = await readOriginal(read, id);
    }
    if (disposed || active !== state) return;
    if (!trigger.isConnected) { close(false, false); return; }
@@ -262,7 +283,7 @@ export function injectQuotePreview(doc: Document, options: QuotePreviewOptions =
  doc.addEventListener('pointerover', onOver, true); doc.addEventListener('pointerout', onOut, true);
  doc.addEventListener('click', onClick, true); doc.addEventListener('keydown', onKey, true); doc.addEventListener('pointerdown', onOutside, true);
  return () => {
-  if (disposed) return; disposed = true; close(false, false);
+  if (disposed) return; disposed = true; close(false, false); originals.clear(); cachedReader = undefined;
   doc.removeEventListener('pointerover', onOver, true); doc.removeEventListener('pointerout', onOut, true);
   doc.removeEventListener('click', onClick, true); doc.removeEventListener('keydown', onKey, true); doc.removeEventListener('pointerdown', onOutside, true);
   for (const node of Array.from(doc.querySelectorAll<HTMLElement>(`[${MARK}]`))) clearQuotePreview(node);

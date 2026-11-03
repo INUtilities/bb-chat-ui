@@ -1,9 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { injectQuotePreview } from './quote-preview.ts';
+import { injectQuotePreview, registerQuoteReader } from './quote-preview.ts';
 
 const PANEL = '[data-bb-chat-ui-quote-preview-card]';
+
+// 같은 원문의 중복 조회를 합치고 닫았다 다시 열 때 재사용한다.
+test('reopening a quote shares pending reads and reuses a successful original', async () => {
+  const f = fixture(true); let reads = 0, finish!: (text: string) => void;
+  const stop = injectQuotePreview(f.doc, { readQuote: () => { reads++; return new Promise(resolve => { finish = resolve; }); } });
+  const pill = f.doc.getElementById('message') as HTMLElement;
+  try {
+    pill.click(); pill.click(); pill.click(); await f.tick(); assert.equal(reads, 1);
+    finish('동일한 원문'); await f.tick(); assert.equal(f.doc.querySelector('[data-bb-chat-ui-quote-text]')?.textContent, '동일한 원문');
+    pill.click(); pill.click(); await f.tick(); assert.equal(reads, 1);
+    assert.equal(f.doc.querySelector('[data-bb-chat-ui-quote-text]')?.textContent, '동일한 원문');
+  } finally { stop(); f.cleanup(); }
+});
+
+// 원문 연결이 바뀌면 같은 ID여도 이전 원문 캐시를 쓰지 않는다.
+test('a replaced quote reader never receives another reader cache', async () => {
+  const f = fixture(true); let secondReads = 0;
+  const first = registerQuoteReader(f.doc, async () => '첫 연결의 원문');
+  let second = () => {}; const stop = injectQuotePreview(f.doc);
+  const pill = f.doc.getElementById('message') as HTMLElement;
+  try {
+    pill.click(); await f.tick(); pill.click(); first();
+    second = registerQuoteReader(f.doc, async () => { secondReads++; return '새 연결의 원문'; });
+    pill.click(); await f.tick(); assert.equal(secondReads, 1);
+    assert.equal(f.doc.querySelector('[data-bb-chat-ui-quote-text]')?.textContent, '새 연결의 원문');
+  } finally { second(); first(); stop(); f.cleanup(); }
+});
 // 검수용 문서에 native dialog의 최소 동작과 두 위치의 인용을 준비한다.
 function fixture(phone = false) {
   const dom = new JSDOM(`<html data-bb-chat-ui-root-device="${phone ? 'phone' : 'desktop'}"><body><input id="input"><div data-promptbox><span id="composer" class="prompt-mention-pill" data-prompt-mention-resource='{"kind":"plugin","pluginId":"bb-chat-ui","itemId":"quote:composer","label":"작성 중 인용"}'>작성 중 인용</span></div><div data-message-column><span id="message" class="prompt-mention-pill" data-prompt-mention-resource='{"kind":"plugin","pluginId":"bb-chat-ui","itemId":"quote:message","label":"보낸 인용"}'>보낸 인용</span></div></body></html>`, { pretendToBeVisual: true });
