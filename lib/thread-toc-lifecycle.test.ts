@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { injectThreadToc } from './thread-toc.ts';
 
+// 실제 관찰과 표시 프레임까지 처리하는 검수 창을 만든다.
 function fixture() {
   const dom=new JSDOM('<body></body>',{pretendToBeVisual:true});const {document}=dom.window;
   const keys=['HTMLElement','HTMLButtonElement','Node','MutationObserver'] as const;
@@ -20,7 +21,7 @@ function fixture() {
     if(listener)active.get(this)?.get(type)?.delete(listener);return remove.call(this,type,listener,options);
   };
   const makeRoot=()=>{const root=document.createElement('div');root.setAttribute('data-thread-toc','');root.innerHTML='<button class="no-scrollbar"><span class="rounded-full"></span></button>';document.body.append(root);return root;};
-  return {document,dom,makeRoot,count:(node:Element)=>[...(active.get(node)?.values()??[])].reduce((n,listeners)=>n+listeners.size,0),tick:()=>new Promise<void>(resolve=>setImmediate(resolve)),cleanup(){
+  return {document,dom,makeRoot,count:(node:Element)=>[...(active.get(node)?.values()??[])].reduce((n,listeners)=>n+listeners.size,0),tick:()=>new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>setImmediate(resolve))),cleanup(){
     for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
     dom.window.close();
   }};
@@ -105,6 +106,7 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
     rows.splice(1,1);owner.memoizedProps.threadId='another-thread';
+    items[0].querySelector('span')!.textContent='다른 채팅의 질문';
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
     stop();assert.equal(root.querySelector('[data-bb-chat-ui-toc-reply]'),null);

@@ -33,7 +33,6 @@ ${glassSurfaceScopeCss}
   align-items: stretch;
   gap: 6px;
   min-width: 0;
-  min-height: calc(6rem - 8px);
 }
 [id^="thread-toc-panel-"] li button > span:first-child {
   display: block;
@@ -58,8 +57,8 @@ ${glassSurfaceScopeCss}
 [id^="thread-toc-panel-"] [${TOC_REPLY_MARK}] {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
-  line-clamp: 6;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -69,7 +68,7 @@ ${glassSurfaceScopeCss}
   line-height: 18px;
 }
 [id^="thread-toc-panel-"] > .rounded-lg {
-  min-height: 6rem;
+  border-radius: 18px !important;
   transform-origin: right center;
   transition: transform 140ms ease-out;
   background: ${LIGHT_GLASS_FACE} !important;
@@ -107,6 +106,9 @@ ${glassSurfaceScopeCss}
 
 const hoveredTickByRoot = new WeakMap<HTMLElement, number>();
 const pendingNavigationByRoot = new WeakMap<HTMLElement, number>();
+const currentItemByRoot = new WeakMap<HTMLElement, HTMLElement>();
+const selectedTickByRoot = new WeakMap<HTMLElement, HTMLElement>();
+const invalidateRail = new WeakMap<HTMLElement, () => void>();
 
 export function tickWidth(distancePx: number): number {
   const distance = Math.max(0, distancePx);
@@ -135,6 +137,7 @@ export function injectThreadToc(document: Document): () => void {
   document.head.append(style);
 
   const cleanups = new Map<HTMLElement, () => void>();
+  // 분리된 연결을 해제하고 현재 목차만 갱신한다.
   const paint = () => {
     for (const [node, cleanup] of cleanups) {
       if (node.isConnected) continue;
@@ -152,14 +155,22 @@ export function injectThreadToc(document: Document): () => void {
       if (node instanceof HTMLElement) syncHoveredMessage(node);
     }
   };
+  // 소유 응답의 변경은 제외하고 native 변경만 반영한다.
   const observer = new MutationObserver(records => {
-    if (Array.from(cleanups.keys()).some(node => !node.isConnected) || records.some(record => {
+    let changedToc = Array.from(cleanups.keys()).some(node => !node.isConnected);
+    for (const record of records) {
       const target = record.target instanceof HTMLElement ? record.target : record.target.parentElement;
-      if (target?.closest("[data-thread-toc]")) return true;
-      return Array.from(record.addedNodes).some(node => node instanceof HTMLElement &&
+      if (target?.closest(`[${TOC_REPLY_MARK}]`)) continue;
+      const changed = [...Array.from(record.addedNodes), ...Array.from(record.removedNodes ?? [])];
+      if (changed.length && changed.every(node => node instanceof HTMLElement && node.hasAttribute(TOC_REPLY_MARK))) continue;
+      const rail = target?.closest<HTMLElement>('button.no-scrollbar');
+      if (rail) invalidateRail.get(rail)?.();
+      if (changedToc) continue;
+      changedToc = !!target?.closest("[data-thread-toc]") || Array.from(record.addedNodes).some(node => node instanceof HTMLElement &&
         (node.matches("[data-thread-toc]") || node.querySelector("[data-thread-toc]")),
       );
-    })) paint();
+    }
+    if (changedToc) paint();
   });
   observer.observe(document.body, { childList: true, subtree: true });
   paint();
@@ -177,13 +188,51 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
   if (button.hasAttribute(RAIL_MARK)) return;
   button.setAttribute(RAIL_MARK, "");
   const root = button.closest("[data-thread-toc]");
-  const onMove = (event: MouseEvent) => {
-    applyTickWidths(button, event.clientY);
+  const view = button.ownerDocument.defaultView;
+  let frame = 0, clientY = 0, height: number | undefined;
+  let geometry: { ticks: HTMLElement[]; centers: number[] } | undefined;
+  // 대기 중인 이동을 취소하고 다음 진입 때 위치를 다시 읽는다.
+  const reset = () => { if (frame) view?.cancelAnimationFrame(frame); frame = 0; geometry = undefined; };
+  invalidateRail.set(button, reset);
+  // 같은 프레임의 이동을 합치고 세로 위치를 읽은 뒤 너비를 바꾼다.
+  const move = () => {
+    frame = 0;
+    if (!button.isConnected) return;
+    const top = button.getBoundingClientRect().top;
+    if (!geometry) {
+      const ticks = tickElements(button);
+      geometry = { ticks, centers: ticks.map(tick => { const rect = tick.getBoundingClientRect(); return rect.top - top + rect.height / 2; }) };
+    }
+    let index = 0, nearest = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < geometry.ticks.length; i++) {
+      const distance = Math.abs(clientY - top - geometry.centers[i]);
+      if (distance < nearest) { nearest = distance; index = i; }
+      const width = `${Math.round(tickWidth(distance))}px`;
+      if (geometry.ticks[i].style.width !== width) geometry.ticks[i].style.width = width;
+    }
     if (!(root instanceof HTMLElement)) return;
-    hoveredTickByRoot.set(root, nearestTickIndex(button, event.clientY));
-    syncHoveredMessage(root);
+    if (hoveredTickByRoot.get(root) !== index) {
+      hoveredTickByRoot.set(root, index);
+      syncHoveredMessage(root);
+    }
   };
+  // 첫 진입은 즉시 처리하고 연속 이동은 다음 표시 프레임에 모은다.
+  const onMove = (event: MouseEvent) => {
+    clientY = event.clientY;
+    if (!geometry || !view?.requestAnimationFrame) move();
+    else if (!frame) frame = view.requestAnimationFrame(move);
+  };
+  // 너비 변화는 제외하고 목차 높이가 바뀔 때만 위치를 다시 읽는다.
+  const resize = view && typeof view.ResizeObserver === 'function' ? new view.ResizeObserver(entries => {
+    const next = entries[0]?.contentRect.height;
+    if (next !== height) { height = next; reset(); }
+  }) : null;
+  resize?.observe(button);
+  view?.addEventListener('resize', reset);
+  if (view) button.ownerDocument.addEventListener('scroll', reset, { capture: true, passive: true });
+  // 실제 클릭은 최신 위치로 이동 대상을 확정한다.
   const onClick = (event: MouseEvent) => {
+    reset();
     if (!(root instanceof HTMLElement) || tickElements(button).length === 0) return;
     const tickIndex = event.detail === 0
       ? hoveredTickByRoot.get(root) ?? 0
@@ -196,6 +245,9 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
   button.addEventListener("mousemove", onMove);
   button.addEventListener("click", onClick);
   cleanups.set(button, () => {
+    reset(); resize?.disconnect(); invalidateRail.delete(button);
+    view?.removeEventListener('resize', reset);
+    if (view) button.ownerDocument.removeEventListener('scroll', reset, true);
     button.removeEventListener("mouseenter", onMove);
     button.removeEventListener("mousemove", onMove);
     button.removeEventListener("click", onClick);
@@ -204,6 +256,8 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
     for (const tick of tickElements(button)) tick.removeAttribute(SELECTED_MARK);
     if (root instanceof HTMLElement) {
       clearTocReplies(root);
+      currentItemByRoot.get(root)?.removeAttribute(CURRENT_MARK); currentItemByRoot.delete(root);
+      selectedTickByRoot.delete(root);
       hoveredTickByRoot.delete(root);
       pendingNavigationByRoot.delete(root);
     }
@@ -215,9 +269,12 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
 function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>) {
   if (root.hasAttribute(ROOT_MARK)) return;
   root.setAttribute(ROOT_MARK, "");
+  // 목차 밖으로 나가면 예약 이동과 현재 표시를 함께 정리한다.
   const onLeave = (event: MouseEvent) => {
     const next = event.relatedTarget;
     if (next instanceof Node && root.contains(next)) return;
+    const rail = root.querySelector<HTMLElement>('button.no-scrollbar');
+    if (rail) invalidateRail.get(rail)?.();
     releaseTocFocus(root);
     clearTocReplies(root);
     clearTickWidths(root);
@@ -225,6 +282,7 @@ function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>
     for (const item of Array.from(root.querySelectorAll(`[${CURRENT_MARK}]`))) {
       item.removeAttribute(CURRENT_MARK);
     }
+    currentItemByRoot.delete(root); selectedTickByRoot.delete(root);
     hoveredTickByRoot.delete(root);
   };
   root.addEventListener("mouseleave", onLeave, true);
@@ -237,6 +295,7 @@ function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>
     for (const item of Array.from(root.querySelectorAll(`[${CURRENT_MARK}]`))) item.removeAttribute(CURRENT_MARK);
     hoveredTickByRoot.delete(root);
     pendingNavigationByRoot.delete(root);
+    currentItemByRoot.delete(root); selectedTickByRoot.delete(root);
   });
 }
 
@@ -249,15 +308,15 @@ function syncHoveredMessage(root: HTMLElement) {
   showOnlyUserMessages(panel);
   if (tickIndex === undefined) return;
   const ticks = tickElements(root);
-  const items = Array.from(panel.querySelectorAll("ul > li"));
+  const items = panel.querySelector('ul')?.children;
+  if (!items) return;
   const listIndex = listIndexForTick(tickIndex, ticks.length, items.length);
-  for (const [index, item] of items.entries()) {
-    if (!(item instanceof HTMLElement)) continue;
-    if (index === listIndex) item.setAttribute(CURRENT_MARK, "");
-    else item.removeAttribute(CURRENT_MARK);
-  }
   const current = items[listIndex];
-  if (current instanceof HTMLElement) paintTocReply(root, current);
+  if (current instanceof HTMLElement) {
+    const previous = currentItemByRoot.get(root);
+    if (previous !== current) { previous?.removeAttribute(CURRENT_MARK); current.setAttribute(CURRENT_MARK, ''); currentItemByRoot.set(root, current); }
+    paintTocReply(root, current);
+  }
   const scroller = panel.querySelector(".overflow-y-auto");
   if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
   const tick = ticks[tickIndex];
@@ -276,11 +335,13 @@ function releaseTocFocus(root: HTMLElement) {
   if (active instanceof HTMLElement && root.contains(active)) active.blur();
 }
 
+// 이전 눈금과 새 눈금만 갱신한다.
 function markSelectedTick(root: HTMLElement, tickIndex: number) {
-  for (const [index, tick] of tickElements(root).entries()) {
-    if (index === tickIndex) tick.setAttribute(SELECTED_MARK, "");
-    else tick.removeAttribute(SELECTED_MARK);
-  }
+  const tick = tickElements(root)[tickIndex], previous = selectedTickByRoot.get(root);
+  if (previous === tick) return;
+  previous?.removeAttribute(SELECTED_MARK);
+  if (tick) { tick.setAttribute(SELECTED_MARK, ''); selectedTickByRoot.set(root, tick); }
+  else selectedTickByRoot.delete(root);
 }
 
 function showOnlyUserMessages(panel: HTMLElement) {
@@ -316,14 +377,6 @@ function nearestTickIndex(button: HTMLButtonElement, clientY: number): number {
     }
   }
   return best;
-}
-
-function applyTickWidths(button: HTMLButtonElement, clientY: number) {
-  for (const tick of tickElements(button)) {
-    const rect = tick.getBoundingClientRect();
-    const center = rect.top + rect.height / 2;
-    tick.style.width = `${Math.round(tickWidth(Math.abs(clientY - center)))}px`;
-  }
 }
 
 function clearTickWidths(root: ParentNode) {
