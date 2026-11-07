@@ -123,3 +123,48 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
     stop();assert.equal(root.querySelector('[data-bb-chat-ui-toc-reply]'),null);
   }finally{unregister();stop();f.cleanup();}
 });
+
+test('sampled TOC ticks use native IDs, including the retained active row, and ignore round sender icons',()=>{
+  const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
+  const ids=['u0','u3','u4','u6','u8'];
+  rail.innerHTML=ids.map(()=>'<span class="rounded-full"></span>').join('');
+  root.insertAdjacentHTML('beforeend','<div id="thread-toc-panel-current"><ul>'+Array.from({length:9},(_,i)=>`<li><button><span>Question ${i}</span><span class="rounded-full">Sender</span></button></li>`).join('')+'</ul></div>');
+  const items=[...root.querySelectorAll('li')],ticks=[...rail.querySelectorAll('span')];
+  items.forEach((item,i)=>Object.assign(item,{'__reactFiber$test':{key:`u${i}`}}));
+  ticks.forEach((tick,i)=>{
+    Object.assign(tick,{'__reactFiber$test':{key:ids[i]}});
+    tick.getBoundingClientRect=()=>({top:i*20,height:3}) as DOMRect;
+  });
+  const clicked:number[]=[];items.forEach((item,i)=>item.querySelector('button')!.addEventListener('click',()=>clicked.push(i)));
+  const stop=injectThreadToc(f.document);
+  try{
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:21}));
+    assert.equal(items[3].hasAttribute('data-bb-chat-ui-toc-current'),true,'the retained active tick is not proportionally remapped');
+    rail.dispatchEvent(new f.dom.window.MouseEvent('click',{clientY:81,detail:1}));
+    assert.deepEqual(clicked,[8],'the final tick reaches the final user despite round icons inside the list');
+    assert.equal(root.querySelector('li .rounded-full')!.hasAttribute('data-bb-chat-ui-toc-selected'),false);
+    // A native tick can arrive before its matching row; never navigate to a different user.
+    Object.assign(ticks[4],{'__reactFiber$test':{key:'pending-user'}});
+    rail.dispatchEvent(new f.dom.window.MouseEvent('click',{clientY:81,detail:1}));
+    assert.deepEqual(clicked,[8]);
+  }finally{stop();f.cleanup();}
+});
+
+test('one pointer move reads tick geometry once before writing any widths',()=>{
+  const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
+  rail.innerHTML=Array.from({length:20},()=>'<span class="rounded-full"></span>').join('');
+  const ticks=[...rail.querySelectorAll('span')];let reads=0,writes=0,readsAfterWrite=0;
+  const width=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ticks[0].style),'width')!;
+  ticks.forEach((tick,i)=>{
+    tick.getBoundingClientRect=()=>{if(writes)readsAfterWrite++;reads++;return {top:i*7,height:3} as DOMRect;};
+    Object.defineProperty(tick.style,'width',{configurable:true,get(){return width.get!.call(this);},set(value){writes++;width.set!.call(this,value);}});
+  });
+  const stop=injectThreadToc(f.document);
+  try{
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:70}));
+    assert.equal(reads,20);assert.equal(readsAfterWrite,0,'geometry must be read before the width update batch');assert.ok(writes>0);
+    reads=0;writes=0;
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:70}));
+    assert.equal(reads,20);assert.equal(writes,0,'unchanged widths should not be assigned again');
+  }finally{stop();f.cleanup();}
+});

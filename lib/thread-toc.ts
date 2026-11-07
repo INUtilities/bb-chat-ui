@@ -1,5 +1,5 @@
 import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass-surface.ts";
-import { TOC_REPLY_MARK, clearTocReplies, paintTocReply } from "./thread-toc-preview.ts";
+import { TOC_REPLY_MARK, clearTocReplies, nativeTocItemId, paintTocReply } from "./thread-toc-preview.ts";
 
 const STYLE_ID = "bb-chat-ui-thread-toc";
 const RAIL_MARK = "data-bb-chat-ui-toc-rail";
@@ -179,9 +179,10 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
   button.setAttribute(RAIL_MARK, "");
   const root = button.closest("[data-thread-toc]");
   const onMove = (event: MouseEvent) => {
-    applyTickWidths(button, event.clientY);
+    const tickIndex = applyTickWidths(button, event.clientY);
     if (!(root instanceof HTMLElement)) return;
-    hoveredTickByRoot.set(root, nearestTickIndex(button, event.clientY));
+    if (hoveredTickByRoot.get(root) === tickIndex) return;
+    hoveredTickByRoot.set(root, tickIndex);
     syncHoveredMessage(root);
   };
   const onClick = (event: MouseEvent) => {
@@ -251,14 +252,18 @@ function syncHoveredMessage(root: HTMLElement) {
   if (tickIndex === undefined) return;
   const ticks = tickElements(root);
   const items = Array.from(panel.querySelectorAll("ul > li"));
-  const listIndex = listIndexForTick(tickIndex, ticks.length, items.length);
+  const tickId = ticks[tickIndex] ? nativeTocItemId(ticks[tickIndex]) : null;
+  // BB may retain an active row between its evenly sampled ticks.
+  const listIndex = tickId === null ? listIndexForTick(tickIndex, ticks.length, items.length)
+    : items.findIndex(item => item instanceof HTMLElement && nativeTocItemId(item) === tickId);
   for (const [index, item] of items.entries()) {
     if (!(item instanceof HTMLElement)) continue;
-    if (index === listIndex) item.setAttribute(CURRENT_MARK, "");
-    else item.removeAttribute(CURRENT_MARK);
+    if (index === listIndex) { if (!item.hasAttribute(CURRENT_MARK)) item.setAttribute(CURRENT_MARK, ""); }
+    else if (item.hasAttribute(CURRENT_MARK)) item.removeAttribute(CURRENT_MARK);
   }
   const current = items[listIndex];
   if (current instanceof HTMLElement) paintTocReply(root, current);
+  else clearTocReplies(root);
   const scroller = panel.querySelector(".overflow-y-auto");
   if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
   const tick = ticks[tickIndex];
@@ -279,8 +284,8 @@ function releaseTocFocus(root: HTMLElement) {
 
 function markSelectedTick(root: HTMLElement, tickIndex: number) {
   for (const [index, tick] of tickElements(root).entries()) {
-    if (index === tickIndex) tick.setAttribute(SELECTED_MARK, "");
-    else tick.removeAttribute(SELECTED_MARK);
+    if (index === tickIndex) { if (!tick.hasAttribute(SELECTED_MARK)) tick.setAttribute(SELECTED_MARK, ""); }
+    else if (tick.hasAttribute(SELECTED_MARK)) tick.removeAttribute(SELECTED_MARK);
   }
 }
 
@@ -320,11 +325,19 @@ function nearestTickIndex(button: HTMLButtonElement, clientY: number): number {
 }
 
 function applyTickWidths(button: HTMLButtonElement, clientY: number) {
-  for (const tick of tickElements(button)) {
+  const ticks = tickElements(button);
+  let nearest = 0, bestDistance = Number.POSITIVE_INFINITY;
+  // Read the complete batch before changing widths to avoid layout read/write cycles.
+  const widths = ticks.map((tick, index) => {
     const rect = tick.getBoundingClientRect();
-    const center = rect.top + rect.height / 2;
-    tick.style.width = `${Math.round(tickWidth(Math.abs(clientY - center)))}px`;
+    const distance = Math.abs(clientY - (rect.top + rect.height / 2));
+    if (distance < bestDistance) { nearest = index; bestDistance = distance; }
+    return `${Math.round(tickWidth(distance))}px`;
+  });
+  for (const [index, tick] of ticks.entries()) {
+    if (tick.style.width !== widths[index]) tick.style.width = widths[index];
   }
+  return nearest;
 }
 
 function clearTickWidths(root: ParentNode) {
@@ -334,7 +347,8 @@ function clearTickWidths(root: ParentNode) {
 }
 
 function tickElements(root: ParentNode): HTMLElement[] {
-  return Array.from(root.querySelectorAll("span.rounded-full")).filter(
+  const rail = root instanceof HTMLButtonElement ? root : root.querySelector("button.no-scrollbar");
+  return Array.from(rail?.querySelectorAll("span.rounded-full") ?? []).filter(
     (node): node is HTMLElement => node instanceof HTMLElement,
   );
 }

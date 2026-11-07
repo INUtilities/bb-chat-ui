@@ -38,7 +38,7 @@ function threadId(root: HTMLElement): string | null {
   const prefix = 'thread-toc-panel-';
   return id?.startsWith(prefix) ? id.slice(prefix.length) || null : null;
 }
-function userId(item: HTMLElement): string | null {
+export function nativeTocItemId(item: HTMLElement): string | null {
   const fields = item as unknown as Record<string, unknown>;
   const field = Object.keys(fields).find(key => key.startsWith('__reactFiber$'));
   const fiber = (field ? fields[field] : null) as {key?: unknown; alternate?: {key?: unknown}} | null;
@@ -59,7 +59,7 @@ function cancel(root: HTMLElement): void {
 }
 function render(root: HTMLElement, state: ReplyState): void {
   if (states.get(root) !== state || state.controller.signal.aborted || !root.isConnected ||
-    threadId(root) !== state.threadId || !root.contains(state.item) || userId(state.item) !== state.userId ||
+    threadId(root) !== state.threadId || !root.contains(state.item) || nativeTocItemId(state.item) !== state.userId ||
     state.reply.parentElement !== state.item.querySelector('button') ||
     (state.source && activeSource(root.ownerDocument) !== state.source)) return;
   const value = state.index?.get(state.userId);
@@ -81,7 +81,7 @@ export function paintTocReply(root: HTMLElement, item: HTMLElement, readOutline?
   for (const reply of Array.from(root.querySelectorAll(`[${TOC_REPLY_MARK}]`))) if (reply.parentElement !== button) reply.remove();
   let reply = button.querySelector<HTMLElement>(`[${TOC_REPLY_MARK}]`);
   if (!reply) { reply = root.ownerDocument.createElement('span'); reply.setAttribute(TOC_REPLY_MARK, ''); button.append(reply); }
-  const id = threadId(root), user = userId(item), source = readOutline ? undefined : activeSource(root.ownerDocument);
+  const id = threadId(root), user = nativeTocItemId(item), source = readOutline ? undefined : activeSource(root.ownerDocument);
   const reader = readOutline ?? source?.read;
   if (!id || !user || !reader) {
     cancel(root);
