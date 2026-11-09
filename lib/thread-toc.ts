@@ -71,6 +71,7 @@ ${glassSurfaceScopeCss}
 [id^="thread-toc-panel-"] > .rounded-lg {
   min-height: 6rem;
   border-radius: 18px;
+  corner-shape: squircle;
   transform-origin: right center;
   transition: transform 140ms ease-out;
   background: ${LIGHT_GLASS_FACE} !important;
@@ -87,6 +88,9 @@ ${glassSurfaceScopeCss}
   box-shadow:
     0 6px 18px -12px color-mix(in oklab, black 60%, transparent),
     inset 0 1px 3px color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+@supports (corner-shape: squircle) {
+  [id^="thread-toc-panel-"] > .rounded-lg { border-radius: 36px !important; }
 }
 [id^="thread-toc-panel-"]:hover > .rounded-lg {
   transform: scale(1.05);
