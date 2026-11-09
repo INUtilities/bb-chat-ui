@@ -109,7 +109,7 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
   try{
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'첫 번째 최종 응답');
-    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:20}));await f.tick();
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:20}));await new Promise<void>(resolve=>f.dom.window.requestAnimationFrame(()=>resolve()));await f.tick();
     assert.equal(items[1].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'표시할 응답이 없습니다.');
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]'),null);
     // 다음 열기에서 자료가 없으면 이전 응답을 재사용하지 않는다.
@@ -118,7 +118,7 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
     rows.splice(1,1);rail.setAttribute('aria-controls','thread-toc-panel-another-thread');
-    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await new Promise<void>(resolve=>f.dom.window.requestAnimationFrame(()=>resolve()));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
     stop();assert.equal(root.querySelector('[data-bb-chat-ui-toc-reply]'),null);
   }finally{unregister();stop();f.cleanup();}
@@ -150,7 +150,7 @@ test('sampled TOC ticks use native IDs, including the retained active row, and i
   }finally{stop();f.cleanup();}
 });
 
-test('one pointer move reads tick geometry once before writing any widths',()=>{
+test('one pointer move reads tick geometry once before writing any widths',async()=>{
   const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
   rail.innerHTML=Array.from({length:20},()=>'<span class="rounded-full"></span>').join('');
   const ticks=[...rail.querySelectorAll('span')];let reads=0,writes=0,readsAfterWrite=0;
@@ -165,6 +165,32 @@ test('one pointer move reads tick geometry once before writing any widths',()=>{
     assert.equal(reads,20);assert.equal(readsAfterWrite,0,'geometry must be read before the width update batch');assert.ok(writes>0);
     reads=0;writes=0;
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:70}));
+    assert.equal(reads,0,'subsequent moves wait for the next frame');
+    await new Promise<void>(resolve=>f.dom.window.requestAnimationFrame(()=>resolve()));
     assert.equal(reads,20);assert.equal(writes,0,'unchanged widths should not be assigned again');
   }finally{stop();f.cleanup();}
+});
+
+test('TOC draws its first pointer immediately and coalesces later moves to the latest frame',async()=>{
+ const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
+ rail.innerHTML=Array.from({length:20},()=>'<span class="rounded-full"></span>').join('');
+ const ticks=[...rail.querySelectorAll('span')];let reads=0,id=0;
+ const frames=new Map<number,FrameRequestCallback>();
+ f.dom.window.requestAnimationFrame=run=>{frames.set(++id,run);return id;};
+ f.dom.window.cancelAnimationFrame=id=>{frames.delete(id);};
+ ticks.forEach((tick,i)=>tick.getBoundingClientRect=()=>{reads++;return{top:i*7,height:3} as DOMRect;});
+ const stop=injectThreadToc(f.document),move=(y:number)=>rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:y}));
+ const paint=()=>{for(const[id,run]of [...frames]){frames.delete(id);run(0);}};
+ try{
+  move(1.5);assert.equal(reads,20);assert.equal(ticks[0].style.width,'32px','first entry is immediate');
+  for(let i=0;i<99;i++)move(i);
+  move(134.5);
+  assert.equal(reads,20,'100 later moves do not each read all twenty ticks');assert.equal(frames.size,1);
+  paint();assert.equal(reads,40);assert.equal(ticks[19].style.width,'32px','the frame uses the latest pointer');
+  move(0);root.dispatchEvent(new f.dom.window.MouseEvent('mouseleave'));assert.equal(frames.size,0);paint();
+  assert.ok(ticks.every(tick=>tick.style.width===''),'a delayed frame cannot restore a closed preview');
+  move(0);move(20);assert.equal(frames.size,1);root.remove();await f.tick();assert.equal(frames.size,0,'removal cancels a pending frame');
+  f.document.body.append(root);await f.tick();move(0);move(20);assert.equal(frames.size,1);
+  stop();assert.equal(frames.size,0,'unload cancels a pending frame');
+ }finally{stop();f.cleanup();}
 });
