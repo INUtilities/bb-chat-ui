@@ -52,6 +52,27 @@ export function injectQuotePreview(doc:Document,options:QuotePreviewOptions={}):
  for(const node of Array.from(doc.querySelectorAll<HTMLElement>(`${LEGACY}, .prompt-mention-pill[data-prompt-mention-resource]`)))decorateQuotePreview(node);
  let active:{trigger:HTMLElement;card:HTMLElement;text:HTMLElement}|null=null,disposed=false;
  const pulses=new WeakMap<HTMLElement,number>();
+ let cachedReader: Reader | undefined;
+ const originals = new Map<string, { value: Promise<string | null>; size: number; expires: number }>();
+ // 같은 연결의 원문 조회를 합치고 최근 원문만 1분간 제한된 크기로 보관한다.
+ const readOriginal = (read: Reader, id: string): Promise<string | null> => {
+  if (cachedReader !== read) { originals.clear(); cachedReader = read; }
+  const cached = originals.get(id);
+  if (cached && cached.expires > Date.now()) { originals.delete(id); originals.set(id, cached); return cached.value; }
+  const entry = { value: read(id), size: 0, expires: Date.now() + 60_000 }; originals.delete(id); originals.set(id, entry);
+  // 항목 수와 원문 글자 수를 함께 제한하며 오래된 항목부터 해제한다.
+  const trim = () => {
+   let size = [...originals.values()].reduce((sum, item) => sum + item.size, 0);
+   while (originals.size > 16 || size > 128_000) { const oldest = originals.keys().next().value!; size -= originals.get(oldest)!.size; originals.delete(oldest); }
+  };
+  trim();
+  void entry.value.then(text => {
+   if (disposed || originals.get(id) !== entry) return;
+   if (text === null) originals.delete(id);
+   else { entry.size = text.length; trim(); }
+  }, () => { if (originals.get(id) === entry) originals.delete(id); });
+  return entry.value;
+ };
  const secondary=(event:Event)=>'pointerType'in event&&event.pointerType==='touch'&&'isPrimary'in event&&!event.isPrimary;
  const pulse=(trigger:HTMLElement,event?:Event)=>{if((event&&secondary(event))||doc.documentElement.getAttribute('data-bb-chat-ui-root-device')!=='phone')return;
   const at=acceptJumpPulse(pulses.get(trigger)??null,view.performance.now());if(at!==null&&postHaptic(readHapticBridge(view),'impact-light'))pulses.set(trigger,at);};
@@ -82,7 +103,7 @@ export function injectQuotePreview(doc:Document,options:QuotePreviewOptions={}):
   try{
    let content:string|null;
    if(source.matches(LEGACY))content=quoteDomText(source);
-   else{const id=typeof data?.itemId==='string'?data.itemId.slice('quote:'.length):'';const read=options.readQuote??[...(readers.get(doc)??[])].at(-1);if(!read)throw Error('reader unavailable');content=await read(id);}
+   else{const id=typeof data?.itemId==='string'?data.itemId.slice('quote:'.length):'';const read=options.readQuote??[...(readers.get(doc)??[])].at(-1);if(!read)throw Error('reader unavailable');content=await readOriginal(read,id);}
    if(disposed||active!==current)return;if(!trigger.isConnected){close(false,false);return;}
    text.textContent=content??'인용 원문을 찾지 못했습니다.';
    if(isCodeQuoteIcon(data?.icon)||source.querySelector('pre,code')||isCodeQuoteIcon(quoteMentionIcon(content??'')))text.setAttribute('data-code','');
@@ -95,5 +116,5 @@ export function injectQuotePreview(doc:Document,options:QuotePreviewOptions={}):
   const trigger=fromTarget(event.target);if(!trigger)return;event.preventDefault();event.stopPropagation();void open(trigger,event);};
  const onOutside=(event:Event)=>{if(!active||!(event.target instanceof Node)||active.card.contains(event.target)||active.trigger.contains(event.target))return;const other=!!fromTarget(event.target);close(!other,!other,event);};
  doc.addEventListener('click',onClick,true);doc.addEventListener('keydown',onKey,true);doc.addEventListener('pointerdown',onOutside,true);
- return()=>{if(disposed)return;disposed=true;close(false,false);doc.removeEventListener('click',onClick,true);doc.removeEventListener('keydown',onKey,true);doc.removeEventListener('pointerdown',onOutside,true);for(const n of Array.from(doc.querySelectorAll<HTMLElement>(`[${MARK}]`)))clearQuotePreview(n);sheet.remove();};
+ return()=>{if(disposed)return;disposed=true;close(false,false);originals.clear();cachedReader=undefined;doc.removeEventListener('click',onClick,true);doc.removeEventListener('keydown',onKey,true);doc.removeEventListener('pointerdown',onOutside,true);for(const n of Array.from(doc.querySelectorAll<HTMLElement>(`[${MARK}]`)))clearQuotePreview(n);sheet.remove();};
 }
