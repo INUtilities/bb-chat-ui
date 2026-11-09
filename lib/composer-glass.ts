@@ -3,6 +3,7 @@ import { DARK_GLASS_FACE, LIGHT_GLASS_FACE, glassSurfaceScopeCss } from "./glass
 import { COMPOSER_HANDOFF_RESIZING, injectComposerHandoff } from "./composer-handoff.ts";
 import { injectPhoneExpansionVisual } from "./composer-expand-visual.ts";
 import { injectComposerToolbar } from "./composer-toolbar.ts";
+import { attachPhoneComposerAdd } from "./phone-composer-layout.ts";
 import { addedMutationRoots } from "./mutation-roots.ts";
 
 const FOOTER = "[data-scroll-footer]:has(.chat-prompt-box)";
@@ -645,6 +646,7 @@ export function injectComposerGlass(document: Document): () => void {
   const bindComposerRadius = (composer: HTMLElement) => {
     if (radiusWatches.has(composer) || typeof MutationObserver === "undefined") return;
     const stopHandoff = injectComposerHandoff(composer);
+    const stopPhoneAdd = attachPhoneComposerAdd(composer);
     let compact = composer.hasAttribute("data-promptbox-compact");
     let radiusMotion: { from: string; to: string; startedAt: number } | null = null;
     let motion: ComposerHeightMotion | null = null;
@@ -902,6 +904,7 @@ export function injectComposerGlass(document: Document): () => void {
       startedAt: () => motion?.startedAt ?? radiusMotion?.startedAt ?? null,
     });
     radiusWatches.set(composer, () => {
+      stopPhoneAdd();
       stopToolbar();
       expansionVisual.destroy();
       stopHandoff();

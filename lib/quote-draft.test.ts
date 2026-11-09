@@ -34,3 +34,23 @@ test("does not treat text inside an existing mention as a quote", () => {
   const span = firstQuoteSpan(text, [{ from: 0, to: text.length }]);
   assert.equal(span, null);
 });
+
+test("keeps nonempty quotes after leading empty code blocks", () => {
+  for (const empty of ["```ts\n```", "~~~\n~~~", "```\n```\n\n~~~py\n~~~"]) {
+    for (const content of ["본문 설명", "```ts\nconst ready = true;\n```", "````md\n```ts\nconst ready = true;\n```\n````"]) {
+      const body = `${empty}\n\n${content}`;
+      const raw = body.split("\n").map(line => `> ${line}`).join("\n");
+      const draft = `앞\n${raw}\n뒤`;
+      const span = firstQuoteSpan(draft);
+      assert.ok(span, "content after an empty code block still becomes a quote");
+      assert.equal(span.body, body);
+      assert.equal(span.raw, raw);
+      assert.equal(span.label, content === "본문 설명" ? content : content.startsWith("````") ? "코드" : "const ready = true;");
+      const mention = { from: span.start, to: span.start + span.label.length, id: "quote" };
+      assert.equal(replaceQuoteSpan({ text: draft, mentions: [] }, span, mention)?.text, `앞\n${span.label}\n뒤`);
+    }
+  }
+  for (const body of ["```ts\n```", "~~~\n~~~", "```\n```\n~~~py\n~~~"]) {
+    assert.equal(firstQuoteSpan(body.split("\n").map(line => `> ${line}`).join("\n")), null);
+  }
+});

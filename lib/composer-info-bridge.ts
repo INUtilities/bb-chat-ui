@@ -7,11 +7,9 @@ import { childExecutionLabel, childState, childUnread } from "./composer-child.t
 import { startComposerInfoRefresh, type ComposerInfoSnapshot } from "./composer-info-refresh.ts";
 import { createThreadRestorer, type RestoreState } from "./composer-restore.ts";
 import { cardSlot, CARD_CLOSE_ICON, CARD_CLOSE_PATH } from "./info-card.ts";
-import { refreshTocOutline, registerTocOutlineReader } from "./thread-toc-preview.ts";
 
 const mark = "data-bb-chat-ui-info";
 
-// 현재 컴포저의 정보와 필요할 때 읽는 목차 연결을 제공한다.
 export function ComposerInfoBridge() {
   const sdk = useSdk();
   const navigate = useBbNavigate();
@@ -21,19 +19,6 @@ export function ComposerInfoBridge() {
   const listed = listedInfo(values ?? {});
   const { providers } = experimental_useProviders();
   const threadId = scope.kind === "thread" ? scope.threadId : null;
-  useEffect(() => {
-    if (!threadId) return;
-    const stop = registerTocOutlineReader(threadId, signal => sdk.threads.conversationOutline({ threadId, signal }));
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = sdk.subscribe({ event:"thread:changed", callback:event => {
-      if (event.id !== threadId || !event.changes.includes("events-appended")) return;
-      const types = event.metadata?.eventTypes;
-      if (types && !types.some(type => ["item/completed", "turn/completed", "turn/input/accepted"].includes(type))) return;
-      clearTimeout(timer);
-      timer = setTimeout(() => refreshTocOutline(threadId), 500);
-    }});
-    return () => { clearTimeout(timer); unsubscribe(); stop(); };
-  }, [sdk, threadId]);
   const [snapshot, setSnapshot] = useState<ComposerInfoSnapshot | null>(null);
   const [error, setError] = useState(false);
   const [restoreStates, setRestoreStates] = useState<Record<string, RestoreState>>({});

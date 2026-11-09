@@ -48,7 +48,7 @@ test("phone option sheets leave information pills, the catalog and quote preview
         }
       }
       assert.equal(values['--bb-chat-ui-card-menu-pad'],'4px',id+' uses desktop option menu inset');
-      assert.equal(values['--bb-chat-ui-card-menu-radius'],'10px',id+' uses desktop option row corners');
+      assert.equal(values['--bb-chat-ui-card-menu-radius'],'14px',id+' uses phone option row corners');
     }
   } finally { stop(); f.dom.window.close(); }
 });
@@ -57,6 +57,21 @@ test("sheet styling covers composer option drawers and PR methods while excludin
   const f = fixture();
   try {
     assert.deepEqual(Array.from(f.d.querySelectorAll(PHONE_DRAWERS)).map(el=>el.id), ["plus", "model", "send", "merge"]);
+  } finally { f.dom.window.close(); }
+});
+
+test('the replacement composer send menu gets the option sheet without capturing its information drawers', () => {
+  const f = fixture();
+  try {
+    const send = f.d.getElementById('send')!;
+    send.setAttribute('data-bb-plugin', 'bb-chat-ui');
+    const information = f.d.createElement('section');
+    information.setAttribute('data-persistent-drawer-content', '');
+    information.setAttribute('data-bb-plugin', 'bb-chat-ui');
+    information.innerHTML = '<h2>Information</h2>';
+    f.d.body.append(information);
+    assert.equal(send.matches(PHONE_DRAWERS), true);
+    assert.equal(information.matches(PHONE_DRAWERS), false);
   } finally { f.dom.window.close(); }
 });
 

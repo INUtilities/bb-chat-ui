@@ -880,6 +880,8 @@ test("every empty detail has its family icon before the title while the full cat
     f.click('[data-bb-chat-ui-info-all]'); f.click('[data-bb-chat-ui-info-choice="plan"]');
     source.querySelector('[data-bb-chat-ui-info-icon="plan"]')!.innerHTML = '<svg data-family="plan-updated" />';
     await f.tick();
+    // 35ms 타이머 뒤에도 예약 frame이 남을 수 있으므로 실제 갱신 frame까지 기다린다.
+    await new Promise<void>(resolve => f.dom.window.requestAnimationFrame(() => resolve()));
     assert.ok(f.document.querySelector('header [data-bb-chat-ui-info-title-icon="plan"] [data-family="plan-updated"]'), 'late SDK artwork updates an open title');
   } finally { stop(); f.dom.window.close(); }
 });

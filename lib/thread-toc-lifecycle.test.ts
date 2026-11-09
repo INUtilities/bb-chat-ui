@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { injectThreadToc } from './thread-toc.ts';
+import { registerTocOutlineReader } from './thread-toc-preview.ts';
 
-// 실제 관찰과 표시 프레임까지 처리하는 검수 창을 만든다.
+// 관찰과 표시 프레임을 포함해 목차의 실제 수명 주기를 검증한다.
 function fixture() {
   const dom=new JSDOM('<body></body>',{pretendToBeVisual:true});const {document}=dom.window;
   const keys=['HTMLElement','HTMLButtonElement','Node','MutationObserver'] as const;
@@ -21,7 +22,7 @@ function fixture() {
     if(listener)active.get(this)?.get(type)?.delete(listener);return remove.call(this,type,listener,options);
   };
   const makeRoot=()=>{const root=document.createElement('div');root.setAttribute('data-thread-toc','');root.innerHTML='<button class="no-scrollbar"><span class="rounded-full"></span></button>';document.body.append(root);return root;};
-  return {document,dom,makeRoot,count:(node:Element)=>[...(active.get(node)?.values()??[])].reduce((n,listeners)=>n+listeners.size,0),tick:()=>new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>setImmediate(resolve))),cleanup(){
+  return {document,dom,makeRoot,count:(node:Element)=>[...(active.get(node)?.values()??[])].reduce((n,listeners)=>n+listeners.size,0),tick:()=>new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>resolve())),cleanup(){
     for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
     dom.window.close();
   }};
@@ -87,8 +88,10 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
     {kind:'conversation',id:'a3',role:'assistant',text:'다음 질문의 응답'},
   ];
   for(const row of rows)row.threadId='thread-test';
-  const props={},owner={memoizedProps:{threadId:'thread-test',timelineRows:rows}};
-  Object.assign(root,{'__reactProps$test':props,'__reactFiber$test':{memoizedProps:props,return:owner}});
+  const props={},host={memoizedProps:props},owner={memoizedProps:{threadId:'thread-test',timelineRows:rows},child:host};
+  const tree={child:owner};
+  Object.assign(tree,{stateNode:{current:tree}});Object.assign(owner,{return:tree});Object.assign(host,{return:owner});
+  Object.assign(root,{'__reactProps$test':props,'__reactFiber$test':host});
   const items=[...root.querySelectorAll('li')];
   for(const [index,item] of items.entries()){
     const itemProps={};Object.assign(item,{'__reactProps$test':itemProps,'__reactFiber$test':{key:index===0?'u1':'u2',memoizedProps:itemProps}});
@@ -96,19 +99,74 @@ test('TOC preview reuses native row IDs and keeps replies inside their user turn
   const ticks=[...rail.querySelectorAll('span')];
   for(const [index,tick] of ticks.entries())tick.getBoundingClientRect=()=>({top:index*20,height:3}) as DOMRect;
   const stop=injectThreadToc(f.document);
+  const unregister=registerTocOutlineReader(f.document,async threadId=>{
+    if(threadId!=='thread-test')throw Error('wrong thread');
+    return {items: rows.map(row=>{
+      if(row.kind!=='conversation'||row.threadId!==threadId)throw Error('unavailable outline');
+      return {id:row.id as string,role:row.role as 'user'|'assistant',preview:(row.text??'') as string};
+    })};
+  });
+  rail.setAttribute('aria-controls','thread-toc-panel-thread-test');
   try{
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'첫 번째 최종 응답');
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:20}));await f.tick();
     assert.equal(items[1].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'표시할 응답이 없습니다.');
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]'),null);
+    // 다음 열기에서 자료가 없으면 이전 응답을 재사용하지 않는다.
+    root.dispatchEvent(new f.dom.window.MouseEvent('mouseleave'));
     rows.splice(1,0,{kind:'turn',id:'unloaded',children:null});
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
-    rows.splice(1,1);owner.memoizedProps.threadId='another-thread';
-    items[0].querySelector('span')!.textContent='다른 채팅의 질문';
+    rows.splice(1,1);rail.setAttribute('aria-controls','thread-toc-panel-another-thread');
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:0}));await f.tick();
     assert.equal(items[0].querySelector('[data-bb-chat-ui-toc-reply]')?.textContent,'응답 미리보기를 불러오지 못했습니다.');
     stop();assert.equal(root.querySelector('[data-bb-chat-ui-toc-reply]'),null);
+  }finally{unregister();stop();f.cleanup();}
+});
+
+test('sampled TOC ticks use native IDs, including the retained active row, and ignore round sender icons',()=>{
+  const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
+  const ids=['u0','u3','u4','u6','u8'];
+  rail.innerHTML=ids.map(()=>'<span class="rounded-full"></span>').join('');
+  root.insertAdjacentHTML('beforeend','<div id="thread-toc-panel-current"><ul>'+Array.from({length:9},(_,i)=>`<li><button><span>Question ${i}</span><span class="rounded-full">Sender</span></button></li>`).join('')+'</ul></div>');
+  const items=[...root.querySelectorAll('li')],ticks=[...rail.querySelectorAll('span')];
+  items.forEach((item,i)=>Object.assign(item,{'__reactFiber$test':{key:`u${i}`}}));
+  ticks.forEach((tick,i)=>{
+    Object.assign(tick,{'__reactFiber$test':{key:ids[i]}});
+    tick.getBoundingClientRect=()=>({top:i*20,height:3}) as DOMRect;
+  });
+  const clicked:number[]=[];items.forEach((item,i)=>item.querySelector('button')!.addEventListener('click',()=>clicked.push(i)));
+  const stop=injectThreadToc(f.document);
+  try{
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:21}));
+    assert.equal(items[3].hasAttribute('data-bb-chat-ui-toc-current'),true,'the retained active tick is not proportionally remapped');
+    rail.dispatchEvent(new f.dom.window.MouseEvent('click',{clientY:81,detail:1}));
+    assert.deepEqual(clicked,[8],'the final tick reaches the final user despite round icons inside the list');
+    assert.equal(root.querySelector('li .rounded-full')!.hasAttribute('data-bb-chat-ui-toc-selected'),false);
+    // A native tick can arrive before its matching row; never navigate to a different user.
+    Object.assign(ticks[4],{'__reactFiber$test':{key:'pending-user'}});
+    rail.dispatchEvent(new f.dom.window.MouseEvent('click',{clientY:81,detail:1}));
+    assert.deepEqual(clicked,[8]);
+  }finally{stop();f.cleanup();}
+});
+
+test('one pointer move reads tick geometry once before writing any widths',async()=>{
+  const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
+  rail.innerHTML=Array.from({length:20},()=>'<span class="rounded-full"></span>').join('');
+  const ticks=[...rail.querySelectorAll('span')];let reads=0,writes=0,readsAfterWrite=0;
+  const width=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ticks[0].style),'width')!;
+  ticks.forEach((tick,i)=>{
+    tick.getBoundingClientRect=()=>{if(writes)readsAfterWrite++;reads++;return {top:i*7,height:3} as DOMRect;};
+    Object.defineProperty(tick.style,'width',{configurable:true,get(){return width.get!.call(this);},set(value){writes++;width.set!.call(this,value);}});
+  });
+  const stop=injectThreadToc(f.document);
+  try{
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:70}));
+    assert.equal(reads,20);assert.equal(readsAfterWrite,0,'geometry must be read before the width update batch');assert.ok(writes>0);
+    reads=0;writes=0;
+    rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:70}));
+    await f.tick();
+    assert.equal(reads,20);assert.equal(writes,0,'unchanged widths should not be assigned again');
   }finally{stop();f.cleanup();}
 });

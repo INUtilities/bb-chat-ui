@@ -1,6 +1,7 @@
 import { cardStyle } from "./info-card.ts";
 import { EASE } from "./motion.ts";
 import { acceptJumpPulse, postHaptic, readHapticBridge } from "./send-haptic.ts";
+import { phoneComposerOptionsCss } from "./phone-composer-options.ts";
 
 /**
  * phone의 컴포저 옵션 drawer를 떠 있는 하단 시트로 꾸민다.
@@ -27,6 +28,7 @@ const GRAB = "color-mix(in oklab,var(--muted-foreground) 45%,transparent)";
 /** 떠 있는 모양만 바꾸는 BB drawer. 위치·끌기·닫기는 BB가 소유해 펼친 단계는 없다. */
 export const PHONE_DRAWERS = [
   '[data-persistent-drawer-content][data-bb-plugin="bb--composer"]',
+  '[data-persistent-drawer-content][data-bb-plugin="bb-chat-ui"]:has([aria-label="Send options"])',
   '[data-persistent-drawer-content]:has(> div[aria-label="Prompt actions"])',
   "[data-persistent-drawer-content][data-bb-chat-ui-pr-menu]",
   "[data-persistent-drawer-content][data-bb-chat-ui-model-menu]",
@@ -36,6 +38,7 @@ export const PHONE_DRAWERS = [
 // :has() cannot nest, so each backdrop names its drawer by the drawer's own child or mark.
 const BACKDROPS = [
   ':has(+ [data-persistent-drawer-content][data-bb-plugin="bb--composer"])',
+  ':has(+ [data-persistent-drawer-content][data-bb-plugin="bb-chat-ui"] [aria-label="Send options"])',
   ':has(+ [data-persistent-drawer-content] > div[aria-label="Prompt actions"])',
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-pr-menu])",
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-model-menu])",
@@ -136,7 +139,7 @@ ${D} [class~="${CONTEXT_CONTAINER}"] { ${cardStyle.flat} border:0 !important; }
 ${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div[class~="bg-background"],
 ${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div > div[class~="bg-background"] { background:transparent !important; }
 ${D} {
-  --bb-chat-ui-card-menu-pad:4px; --bb-chat-ui-card-menu-radius:10px;
+  --bb-chat-ui-card-menu-pad:4px; --bb-chat-ui-card-menu-radius:14px;
   left:var(--bb-chat-ui-sheet-inset) !important; right:var(--bb-chat-ui-sheet-inset) !important;
   width:auto !important; max-width:none !important;
   border-radius:var(--bb-chat-ui-sheet-radius) !important; overflow:hidden;
@@ -147,6 +150,7 @@ ${D}[data-state="open"] { translate:0 calc(-1 * var(--bb-chat-ui-sheet-inset)); 
 ${D} > [data-persistent-drawer-handle] { height:var(--bb-chat-ui-sheet-pad-top) !important; padding-top:var(--bb-chat-ui-sheet-grab-top); align-items:flex-start !important; background:transparent !important; }
 ${D} > [data-persistent-drawer-handle] > div { width:var(--bb-chat-ui-sheet-grab-w) !important; height:var(--bb-chat-ui-sheet-grab-h) !important; background:${GRAB} !important; }
 ${PHONE} [data-persistent-drawer-backdrop]:is(${BACKDROPS}) { background:transparent !important; }
+${phoneComposerOptionsCss}
 `;
 }
 

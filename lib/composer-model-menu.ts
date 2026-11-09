@@ -139,7 +139,7 @@ export function injectComposerModelMenus(document: Document): () => void {
         card.setAttribute(MODEL_MENU_MARK, "");
         // Native editor focus restoration also runs while its phone drawer is open.
         // The portaled controls remain interactive; only their underlying composer is inert.
-        const composer = phoneTrigger.closest<HTMLElement>('[data-promptbox]');
+        const composer = phoneTrigger.closest<HTMLElement>('[data-promptbox], [data-bb-chat-ui-fluid-composer]');
         const previousInert = composer?.getAttribute('inert') ?? null;
         if (composer && !composer.contains(card)) composer.setAttribute('inert', '');
         const stopProvider = injectComposerProviderMotion(card);

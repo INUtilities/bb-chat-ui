@@ -13,7 +13,17 @@ import {
   type SheetBounds, type SheetGeometry,
 } from "./phone-sheet.ts";
 
-const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+// 승인된 카드 스쿼클만 역변환해 기존 CSS의 나머지 바이트를 계속 비교한다.
+const sha = (text: string) => createHash("sha256").update(text
+  .replaceAll('corner-shape:squircle; ', '')
+  .replace(/\n@supports \(corner-shape: squircle\) \{ [^{}\n]+ \{ border-radius:36px !important; \} \}/g, '')).digest("hex");
+
+test("shared card squircle keeps its approved face and supported radius", () => {
+  const css = infoCardCss();
+  assert.equal(css.split('corner-shape:squircle; ').length - 1, 1);
+  assert.equal(css.split('@supports (corner-shape: squircle)').length - 1, 1);
+  assert.match(css, /@supports \(corner-shape: squircle\) \{ :is\(\[data-bb-chat-ui-card\]\) \{ border-radius:36px !important; \} \}/);
+});
 
 // Latest 높이 수정 두 곳만 역변환해 기존 CSS 기준과 나머지 바이트를 계속 비교한다.
 const withoutLatestLayout = () => {
