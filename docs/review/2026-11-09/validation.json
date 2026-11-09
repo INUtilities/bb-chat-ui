@@ -1,0 +1,34 @@
+{
+  "codeCommit": "e402e41627d1dd763f87f879612fba48823606b9",
+  "tests": {
+    "nodePassed": 759,
+    "tocPassed": 28
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "visual": "passed",
+  "visualResults": [
+    {
+      "device": "desktop",
+      "corner": {
+        "shape": "superellipse(2)",
+        "radius": "36px"
+      },
+      "errors": []
+    },
+    {
+      "device": "phone",
+      "corner": {
+        "shape": "superellipse(2)",
+        "radius": "36px"
+      },
+      "errors": []
+    }
+  ],
+  "fixtures": "Product source imports; host DOM/SDK data/icons/external actions are fixtures.",
+  "unverified": [
+    "physical phone",
+    "real microphone/IME/upload/external send",
+    "live BB frontend screenshot"
+  ]
+}
