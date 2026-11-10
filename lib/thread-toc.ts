@@ -71,6 +71,7 @@ ${glassSurfaceScopeCss}
 [id^="thread-toc-panel-"] > .rounded-lg {
   min-height: 6rem;
   border-radius: 18px;
+  corner-shape: squircle;
   transform-origin: right center;
   transition: transform 140ms ease-out;
   background: ${LIGHT_GLASS_FACE} !important;
@@ -87,6 +88,9 @@ ${glassSurfaceScopeCss}
   box-shadow:
     0 6px 18px -12px color-mix(in oklab, black 60%, transparent),
     inset 0 1px 3px color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+@supports (corner-shape: squircle) {
+  [id^="thread-toc-panel-"] > .rounded-lg { border-radius: 36px !important; }
 }
 [id^="thread-toc-panel-"]:hover > .rounded-lg {
   transform: scale(1.05);
@@ -107,6 +111,7 @@ ${glassSurfaceScopeCss}
 `;
 
 const hoveredTickByRoot = new WeakMap<HTMLElement, number>();
+const pendingRailMoves = new WeakMap<HTMLButtonElement, () => void>();
 const pendingNavigationByRoot = new WeakMap<HTMLElement, number>();
 
 export function tickWidth(distancePx: number): number {
@@ -178,14 +183,29 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
   if (button.hasAttribute(RAIL_MARK)) return;
   button.setAttribute(RAIL_MARK, "");
   const root = button.closest("[data-thread-toc]");
-  const onMove = (event: MouseEvent) => {
-    const tickIndex = applyTickWidths(button, event.clientY);
+  const view = button.ownerDocument.defaultView;
+  let frame = 0, clientY = 0, entered = false;
+  // 같은 프레임의 포인터 이동은 한 번만 읽고 원격 main의 ID 연결을 유지한다.
+  const paint = () => {
+    frame = 0;
+    if (!button.isConnected) return;
+    const tickIndex = applyTickWidths(button, clientY);
     if (!(root instanceof HTMLElement)) return;
     if (hoveredTickByRoot.get(root) === tickIndex) return;
     hoveredTickByRoot.set(root, tickIndex);
     syncHoveredMessage(root);
   };
+  // 첫 진입은 즉시 그리고 이후 이동을 표시 프레임에 합친다.
+  const onMove = (event: MouseEvent) => {
+    clientY = event.clientY;
+    if (!entered || !view?.requestAnimationFrame) { entered = true; paint(); }
+    else if (!frame) frame = view.requestAnimationFrame(paint);
+  };
+  // 레일 이탈이나 해제 뒤에는 예약한 이동이 다시 카드를 만들지 못하게 한다.
+  const leave = () => { if (frame) view?.cancelAnimationFrame(frame); frame = 0; entered = false; };
+  pendingRailMoves.set(button, leave);
   const onClick = (event: MouseEvent) => {
+    leave();
     if (!(root instanceof HTMLElement) || tickElements(button).length === 0) return;
     const tickIndex = event.detail === 0
       ? hoveredTickByRoot.get(root) ?? 0
@@ -198,6 +218,8 @@ function bindRail(button: HTMLButtonElement, cleanups: Map<HTMLElement, () => vo
   button.addEventListener("mousemove", onMove);
   button.addEventListener("click", onClick);
   cleanups.set(button, () => {
+    leave();
+    pendingRailMoves.delete(button);
     button.removeEventListener("mouseenter", onMove);
     button.removeEventListener("mousemove", onMove);
     button.removeEventListener("click", onClick);
@@ -220,6 +242,7 @@ function bindRootLeave(root: HTMLElement, cleanups: Map<HTMLElement, () => void>
   const onLeave = (event: MouseEvent) => {
     const next = event.relatedTarget;
     if (next instanceof Node && root.contains(next)) return;
+    for (const rail of Array.from(root.querySelectorAll<HTMLButtonElement>('button.no-scrollbar'))) pendingRailMoves.get(rail)?.();
     releaseTocFocus(root);
     clearTocReplies(root);
     clearTickWidths(root);

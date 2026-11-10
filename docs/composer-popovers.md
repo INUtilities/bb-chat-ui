@@ -419,8 +419,8 @@ native 큐가 열릴 때 자동으로 포커스를 보내는 숨겨진 `Collapse
 ## phone 옵션 메뉴 하단 시트
 
 phone(`html[data-bb-chat-ui-root-device="phone"]`)의 `+`·모델 선택·전송 옵션·권한 모드·context·PR 머지 방식 등
-**컴포저 옵션 메뉴만** iOS식 떠 있는 하단 시트로 꾸민다. 정보 pill 상세 카드·전체 정보 목록·
-인용 원문은 기존 팝오버 위치·높이·스크롤·등장 모션을 유지한다.
+**컴포저 옵션 메뉴**를 iOS식 떠 있는 하단 시트로 꾸민다. 정보 pill 상세 카드·전체 정보 목록은
+기존 팝오버 위치·높이·스크롤·등장 모션을 유지한다. 인용 원문은 아래의 별도 원문 드로어 규칙을 따른다.
 
 `lib/phone-sheet.ts`의 `injectPhoneSheet`는 phone일 때만 옵션 drawer stylesheet를 설치한다.
 `bb--composer`가 소유한 `data-persistent-drawer-content`와 명시적인 PR·모델 메뉴 표식을 대상으로 한다.
@@ -570,3 +570,25 @@ D 확정 검수는 `phone-sheet-polish/final-d/`에 둔다. 이후 D/E 비교에
 D 10.07ms·E 9.63ms였으나 compositor CPU는 D 2.21ms·E 2.73ms로, 성능 우위를
 확정하지 않는다. 비교 기록은 `phone-context-frost-transform/motion/`, 최종 E 검수는
 `phone-context-frost-transform/final-e/`에 둔다(thread-storage의 `thr_2azf6e7w23`).
+
+
+## 인용 원문 열기
+
+컴포저·메시지의 인용 필은 desktop에서 포인터를 올리면 원문을 연다.
+필 바로 위를 기준으로 배치하고 위쪽 공간이 부족할 때만 아래로 배치한다.
+Hover는 입력 포커스를 가져오지 않으며 필과 원문 사이 이동에는 120ms 닫기 대기를 둔다.
+카드 안에서 스크롤·선택할 수 있고, 두 영역을 벗어나거나 바깥 스크롤·화면 이동 때 닫힌다.
+Desktop 클릭만으로 열거나 닫지 않는다. 키보드 Enter·Space와 Escape·닫기 버튼은 유지한다.
+
+Phone은 탭으로 native HTML dialog의 모달 하단 드로어를 연다.
+좌우·아래 8px, 모서리 30px, 손잡이 40×4px, 기존 frost 한 겹과 공통 최대 높이를 쓴다.
+키보드가 바꾼 visual viewport와 safe area를 반영한다.
+바깥 탭·Escape·닫기 버튼·손잡이 하향 끌기로 닫고 짧은 끌기는 원래 위치로 돌아간다.
+펼친 추가 단계는 없다. 모달의 포커스 제한과 배경 비활성화는 브라우저가 맡는다.
+이 드로어는 옵션 메뉴의 native DOM이나 디자인 레퍼런스 controller를 변경하지 않는다.
+
+두 기기 모두 `인용 원문` 타이틀 아래에 표시 이름을 별도 제목으로 둔다.
+다음 행에는 위치, 그 아래에는 줄바꿈을 유지한 전문을 표시한다.
+현재 인용 저장 형식에는 원문 위치가 없으므로 `원문 위치 정보 없음`으로 표시하고 추정하지 않는다.
+원문 읽기는 열 때만 수행하며 늦은 응답은 다른 인용이나 닫힌 화면에 반영하지 않는다.
+닫기·기기 변경 후 resize·플러그인 해제 때 모달·스크롤 잠금·대기·모션·리스너를 정리한다.

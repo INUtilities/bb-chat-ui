@@ -50,7 +50,7 @@ export const cardStyle = {
   prose: PROSE_TYPE,
   titleText: TITLE_TYPE,
   secondaryText: SECONDARY_TYPE,
-  face: `--bb-chat-ui-card-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); border:0 !important; border-radius:18px !important; color:var(--foreground); background:var(--bb-chat-ui-card-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow),inset 0 1px 3px var(--bb-chat-ui-card-edge) !important;`,
+  face: `--bb-chat-ui-card-face:${LIGHT_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--popover) 35%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,var(--ink,var(--foreground)) 22%,transparent); border:0 !important; border-radius:18px !important; corner-shape:squircle; color:var(--foreground); background:var(--bb-chat-ui-card-face) !important; backdrop-filter:blur(14px) saturate(1.25); -webkit-backdrop-filter:blur(14px) saturate(1.25); box-shadow:0 12px 32px -14px var(--bb-chat-ui-card-shadow),inset 0 1px 3px var(--bb-chat-ui-card-edge) !important;`,
   faceDark: `--bb-chat-ui-card-face:${DARK_GLASS_FACE}; --bb-chat-ui-card-edge:color-mix(in oklab,var(--foreground) 8%,transparent); --bb-chat-ui-card-shadow:color-mix(in oklab,black 60%,transparent);`,
   head: `display:flex; align-items:center; gap:var(--bb-chat-ui-card-gap); box-sizing:border-box; min-width:0; height:var(--bb-chat-ui-card-head); min-height:var(--bb-chat-ui-card-head); margin:0 0 var(--bb-chat-ui-card-gap); padding:0 var(--bb-chat-ui-card-close-gutter) 0 0 !important; ${TITLE_TYPE}`,
   headOnly: "margin-bottom:0;",
@@ -73,9 +73,9 @@ export const cardStyle = {
   flat: FLAT,
 } as const;
 
-/** The frost face alone, for menus that float outside a card (no padding or slots). */
+// 공통 frost 면을 만들고 스쿼클 지원 시 바깥 반지름을 넓힌다.
 export function cardFaceCss(selector: string): string {
-  return `${selector} { ${cardStyle.face} }\n.dark ${selector}, .dark${selector} { ${cardStyle.faceDark} }`;
+  return `${selector} { ${cardStyle.face} }\n.dark ${selector}, .dark${selector} { ${cardStyle.faceDark} }\n@supports (corner-shape: squircle) { ${selector} { border-radius:36px !important; } }`;
 }
 
 /** Native + 메뉴와 PR 머지 메뉴의 목록 inset·hover 모서리. 행 글자·높이·입력은 native가 소유한다. */

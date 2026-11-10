@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { injectThreadToc } from './thread-toc.ts';
 import { registerTocOutlineReader } from './thread-toc-preview.ts';
 
+// 관찰과 표시 프레임을 포함해 목차의 실제 수명 주기를 검증한다.
 function fixture() {
   const dom=new JSDOM('<body></body>',{pretendToBeVisual:true});const {document}=dom.window;
   const keys=['HTMLElement','HTMLButtonElement','Node','MutationObserver'] as const;
@@ -21,7 +22,7 @@ function fixture() {
     if(listener)active.get(this)?.get(type)?.delete(listener);return remove.call(this,type,listener,options);
   };
   const makeRoot=()=>{const root=document.createElement('div');root.setAttribute('data-thread-toc','');root.innerHTML='<button class="no-scrollbar"><span class="rounded-full"></span></button>';document.body.append(root);return root;};
-  return {document,dom,makeRoot,count:(node:Element)=>[...(active.get(node)?.values()??[])].reduce((n,listeners)=>n+listeners.size,0),tick:()=>new Promise<void>(resolve=>setImmediate(resolve)),cleanup(){
+  return {document,dom,makeRoot,count:(node:Element)=>[...(active.get(node)?.values()??[])].reduce((n,listeners)=>n+listeners.size,0),tick:()=>new Promise<void>(resolve=>dom.window.requestAnimationFrame(()=>resolve())),cleanup(){
     for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
     dom.window.close();
   }};
@@ -150,7 +151,7 @@ test('sampled TOC ticks use native IDs, including the retained active row, and i
   }finally{stop();f.cleanup();}
 });
 
-test('one pointer move reads tick geometry once before writing any widths',()=>{
+test('one pointer move reads tick geometry once before writing any widths',async()=>{
   const f=fixture(),root=f.makeRoot(),rail=root.querySelector('button')!;
   rail.innerHTML=Array.from({length:20},()=>'<span class="rounded-full"></span>').join('');
   const ticks=[...rail.querySelectorAll('span')];let reads=0,writes=0,readsAfterWrite=0;
@@ -165,6 +166,7 @@ test('one pointer move reads tick geometry once before writing any widths',()=>{
     assert.equal(reads,20);assert.equal(readsAfterWrite,0,'geometry must be read before the width update batch');assert.ok(writes>0);
     reads=0;writes=0;
     rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove',{clientY:70}));
+    await f.tick();
     assert.equal(reads,20);assert.equal(writes,0,'unchanged widths should not be assigned again');
   }finally{stop();f.cleanup();}
 });

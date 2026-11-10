@@ -654,3 +654,56 @@ test('queue action popover send, edit and delete pulse once and keep forwarded n
   listeners.get('click')!({target:buttons[0],isTrusted:true} as unknown as Event);assert.equal(messages.length,4);
   stop();assert.equal(listeners.size,0);
 });
+
+for (const formAttribute of ['data-promptbox', 'data-bb-chat-ui-fluid-composer']) {
+test(`phone composer ${formAttribute} add, voice and model triggers pulse once per real activation`, t => {
+  const dom = new JSDOM(`<html data-bb-chat-ui-root-device="phone"><body><form ${formAttribute}>
+    <button type="button" aria-label="Prompt actions"><svg></svg></button>
+    <button type="button" aria-label="Start voice input"><svg></svg></button>
+    <button type="button" aria-label="Provider, model and reasoning (⇧ ⌘ M)"><svg></svg></button>
+    <button type="button" aria-label="Send options"><svg></svg></button>
+    <button type="button" aria-label="Prompt actions" disabled></button>
+    <button type="button" aria-label="Start voice input" aria-disabled="true"></button>
+    <button type="button" aria-label="Provider, model and reasoning" aria-busy="true"></button>
+  </form><button aria-label="Prompt actions">Unrelated</button></body></html>`);
+  const original = {Element: globalThis.Element, HTMLElement: globalThis.HTMLElement, HTMLButtonElement: globalThis.HTMLButtonElement};
+  Object.assign(globalThis, {Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, HTMLButtonElement: dom.window.HTMLButtonElement});
+  t.after(() => {Object.assign(globalThis, original); dom.window.close();});
+  const messages: unknown[] = [];
+  Object.assign(dom.window, {bb: {native: {capabilities: ['haptic'], post: (m: unknown) => messages.push(m)}}});
+  const listeners = new Map<string, (e: Event) => void>();
+  const d = {body: null, documentElement: dom.window.document.documentElement, defaultView: dom.window,
+    addEventListener: (type: string, fn: (e: Event) => void) => listeners.set(type, fn),
+    removeEventListener: (type: string) => listeners.delete(type)} as unknown as Document;
+  const stop = injectSendHaptic(d); t.after(stop);
+  const controls = [...dom.window.document.querySelectorAll<HTMLButtonElement>('form button:not([disabled]):not([aria-disabled]):not([aria-busy])')];
+  let actions = 0;
+  for (const [i, button] of controls.entries()) {
+    const target = button.querySelector('svg')!;
+    button.addEventListener('click', () => actions++);
+    listeners.get('pointerup')!({target, pointerType: 'touch', isPrimary: true} as unknown as Event);
+    listeners.get('click')!({target, isTrusted: true} as unknown as Event);
+    assert.equal(messages.length, i + 1, 'a touch compatibility click adds one pulse');
+    button.click();
+    listeners.get('click')!({target, isTrusted: false} as unknown as Event);
+    assert.equal(messages.length, i + 1, 'forwarded synthetic clicks stay quiet');
+  }
+  assert.equal(actions, 4, 'native click callbacks remain intact');
+  assert.deepEqual(messages, Array(4).fill({type: 'haptic', kind: 'selection'}));
+  for (const target of dom.window.document.querySelectorAll('button[disabled],button[aria-disabled],button[aria-busy],body > button')) {
+    listeners.get('click')!({target, isTrusted: true} as unknown as Event);
+  }
+  assert.equal(messages.length, 4);
+  listeners.get('click')!({target: controls[0], isTrusted: true, detail: 0} as unknown as Event);
+  assert.equal(messages.length, 5, 'keyboard and assistive activation also pulse once');
+  dom.window.document.documentElement.setAttribute('data-bb-chat-ui-root-device', 'desktop');
+  listeners.get('click')!({target: controls[1], isTrusted: true} as unknown as Event);
+  assert.equal(messages.length, 5, 'desktop stays unchanged');
+  dom.window.document.documentElement.setAttribute('data-bb-chat-ui-root-device', 'phone');
+  Object.assign(dom.window, {bb: {native: {capabilities: [], post: (m: unknown) => messages.push(m)}}});
+  listeners.get('click')!({target: controls[2], isTrusted: true} as unknown as Event);
+  assert.equal(messages.length, 5, 'capability is required');
+  stop(); assert.equal(listeners.size, 0);
+});
+
+}

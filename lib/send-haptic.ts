@@ -298,7 +298,7 @@ export function injectSendHaptic(document: Document): () => void {
       return;
     }
     // Other information controls use click for touch, mouse and keyboard alike.
-    if (composerInfoButtonFrom(event.target) || questionButtonFrom(event.target) || queueEditorButtonFrom(event.target) || queueActionButtonFrom(event.target)) return;
+    if (composerInfoButtonFrom(event.target) || questionButtonFrom(event.target) || queueEditorButtonFrom(event.target) || queueActionButtonFrom(event.target) || composerOptionButtonFrom(event.target)) return;
     if (isFileDiffBlockToggle(event.target)) {
       pulseDiffToggle();
       return;
@@ -336,6 +336,13 @@ export function injectSendHaptic(document: Document): () => void {
       }
       return;
     }
+    const option = composerOptionButtonFrom(event.target);
+    if (option && document.documentElement?.getAttribute('data-bb-chat-ui-root-device') === 'phone') {
+      if (event.isTrusted && !option.hasAttribute('disabled') && option.getAttribute('aria-disabled') !== 'true' && option.getAttribute('aria-busy') !== 'true') {
+        postHaptic(readHapticBridge(view), 'selection');
+      }
+      return;
+    }
     const info = composerInfoButtonFrom(event.target);
     if (info) {
       // Disclosures also forward synthetic clicks to the original host controls.
@@ -359,7 +366,7 @@ export function injectSendHaptic(document: Document): () => void {
   const onSubmit = (event: SubmitEvent) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
-    if (!form.matches("[data-promptbox]")) return;
+    if (!form.matches("[data-promptbox], [data-bb-chat-ui-fluid-composer]")) return;
     const submitter = event.submitter;
     if (!(submitter instanceof HTMLButtonElement)) return;
     if (!submitter.matches(SEND_BUTTON) || submitter.disabled || queueEditorButtonFrom(submitter)) return;
@@ -468,6 +475,11 @@ function queueActionButtonFrom(target: EventTarget | null): Element | null {
 function queueEditorButtonFrom(target: EventTarget | null): Element | null {
   const button = asElement(target)?.closest('button[aria-label="Prompt actions"],button[aria-label="Start voice input"],button[data-bb-chat-ui-queue-edit-save]');
   return button?.closest('[data-queued-message-inline-editor]')?.closest('section[aria-label="Queued messages"][data-bb-chat-ui-info-open="queue"]') ? button : null;
+}
+
+function composerOptionButtonFrom(target: EventTarget | null): Element | null {
+  const button = asElement(target)?.closest('button[aria-label="Prompt actions"],button[aria-label="Start voice input"],button[aria-label^="Provider, model and reasoning"],button[aria-label="Send options"]');
+  return button?.closest('[data-promptbox], [data-bb-chat-ui-fluid-composer]') ? button : null;
 }
 
 function jumpButtonFrom(target: EventTarget | null): HTMLButtonElement | null {

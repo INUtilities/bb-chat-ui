@@ -39,13 +39,13 @@ for (const phone of [false, true]) test(`plugin-wrapped prompt actions share nat
     // override because JSDOM does not inherit custom properties into its rows.
     const drawer = f.document.querySelector('[data-persistent-drawer-content]')!;
     const radius = f.dom.window.getComputedStyle(drawer).getPropertyValue('--bb-chat-ui-card-menu-radius').trim();
-    assert.equal(radius, '10px');
+    assert.equal(radius, '14px');
     f.document.documentElement.style.setProperty('--bb-chat-ui-card-menu-radius', radius);
   }
   try {
     for (const row of f.document.querySelectorAll('[aria-label="Prompt actions"] [role="menuitem"]')) {
-      assert.equal(resolvedStyle(row).borderRadius, '10px', row.textContent!);
-      assert.equal(resolvedStyle(row).padding, '5px 8px', 'native row padding stays intact');
+      assert.equal(resolvedStyle(row).borderRadius, phone ? '14px' : '10px', row.textContent!);
+      assert.equal(resolvedStyle(row).padding, phone ? '8px' : '5px 8px', 'phone uses the shared row inset; desktop keeps native padding');
     }
     assert.equal(resolvedStyle(f.document.querySelector('[aria-label="Other"] .item')!).borderRadius, '4px');
   } finally { stop(); f.restore(); }
