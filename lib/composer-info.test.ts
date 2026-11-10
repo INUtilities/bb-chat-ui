@@ -749,6 +749,24 @@ test("fitting reveals all candidate pills before reading their widths", async ()
   } finally { stop(); f.dom.window.close(); }
 });
 
+test("temporary composer pills reserve the existing row width and release it on removal", async () => {
+  const f=fixture(),stack=f.document.querySelector<HTMLElement>('[data-promptbox-shell] > .grid')!;
+  stack.getBoundingClientRect=()=>({width:600} as DOMRect);
+  Object.defineProperty(f.dom.window.HTMLElement.prototype,'offsetWidth',{configurable:true,get(){return this.hasAttribute('data-bb-chat-ui-info-trigger') ? 80:0;}});
+  const stop=injectComposerInfo(f.document);
+  try{
+    await f.tick();await f.tick();
+    const bar=stack.querySelector<HTMLElement>('[data-bb-chat-ui-info-bar]')!;
+    // 현재 펼친 정보 필의 수를 읽는다.
+    const count=()=>[...bar.querySelectorAll<HTMLElement>('[data-bb-chat-ui-info-trigger]')].filter(button=>!button.hidden).length;
+    const before=count();assert.ok(before>1);
+    bar.style.setProperty('--bb-chat-ui-fluid-toolbar-width','400');bar.dispatchEvent(new f.dom.window.Event('bb-chat-ui:composer-data',{bubbles:true}));
+    await f.tick();assert.ok(count()<before,'temporary pills must not overlap the existing pills');
+    bar.style.removeProperty('--bb-chat-ui-fluid-toolbar-width');bar.dispatchEvent(new f.dom.window.Event('bb-chat-ui:composer-data',{bubbles:true}));
+    await f.tick();assert.equal(count(),before);
+  }finally{stop();f.dom.window.close();}
+});
+
 test("late nested composers and device markers still trigger discovery and removal cleanup", async () => {
   const f = fixture();
   const shell = f.document.querySelector<HTMLElement>('[data-promptbox-shell]')!;

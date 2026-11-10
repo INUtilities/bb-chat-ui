@@ -1937,7 +1937,7 @@ export function injectComposerInfo(document: Document): () => void {
         return { key, width:widthAnimations.get(button)?.width ?? width };
       });
       for (const [key, exit] of exits) if (!buttons.has(key)) widths.push({ key, width:exit.node.offsetWidth });
-      const width = stack.getBoundingClientRect().width;
+      const width = Math.max(0,stack.getBoundingClientRect().width - (Number.parseFloat(bar.style.getPropertyValue('--bb-chat-ui-fluid-toolbar-width')) || 0));
       const activeKinds = new Set(items.filter(item=>item.key!=="diff" || readDiff()?.presentation?.visible!==false).map(item => item.key));
       const place = () => {
         if (readOnlyLabel) return new Set<InfoKind>(["status"]);
@@ -2246,7 +2246,7 @@ export function injectComposerInfo(document: Document): () => void {
     let suspended = false;
     let fitSignature = "";
     // Fit only changed pill content, membership, artwork, or layout inputs, not detail revisions.
-    const currentFitSignature = () => JSON.stringify([threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(),
+    const currentFitSignature = () => JSON.stringify([threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(), bar.style.getPropertyValue('--bb-chat-ui-fluid-toolbar-width'),
       listed, showInactive, items.filter(item => item.key !== "diff" || readDiff()?.presentation?.visible !== false).map(item => item.key),
       [...buttons].map(([key, button]) => [key, buttonContent.get(button)]),
       // Match the artwork fallback used when rendering catalog-only folded icons.
