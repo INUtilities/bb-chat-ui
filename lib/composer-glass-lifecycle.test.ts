@@ -50,6 +50,26 @@ function fixture() {
   }};
 }
 
+test('composer glass shows the compact add control on phone and hides it on desktop', () => {
+  const f = fixture(), { composer } = f.add();
+  const root = f.document.documentElement;
+  root.setAttribute('data-bb-chat-ui-root-device', 'phone');
+  composer.setAttribute('data-promptbox-compact', '');
+  const stop = injectComposerGlass(f.document);
+  try {
+    const add = composer.querySelector<HTMLButtonElement>('[data-bb-chat-ui-compact-add]');
+    assert.ok(add);
+    assert.equal(f.dom.window.getComputedStyle(add).display, 'inline-flex');
+    root.setAttribute('data-bb-chat-ui-root-device', 'desktop');
+    assert.equal(f.dom.window.getComputedStyle(add).display, 'none');
+  } finally {
+    stop();
+    assert.equal(f.document.getElementById('bb-chat-ui-phone-composer-layout'), null);
+    assert.equal(composer.querySelector('[data-bb-chat-ui-compact-add]'), null);
+    f.cleanup();
+  }
+});
+
 // Scope both mutation and resize geometry to their owning footer.
 test('independent footers only measure dirty geometry and observe each resize',async()=>{
  const f=fixture(),first=f.add(),second=f.add(),reads=[0,0];

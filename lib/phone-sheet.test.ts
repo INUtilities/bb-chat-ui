@@ -13,7 +13,17 @@ import {
   type SheetBounds, type SheetGeometry,
 } from "./phone-sheet.ts";
 
-const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+// 승인된 카드 스쿼클만 역변환해 기존 CSS의 나머지 바이트를 계속 비교한다.
+const sha = (text: string) => createHash("sha256").update(text
+  .replaceAll('corner-shape:squircle; ', '')
+  .replace(/\n@supports \(corner-shape: squircle\) \{ [^{}\n]+ \{ border-radius:36px !important; \} \}/g, '')).digest("hex");
+
+test("shared card squircle keeps its approved face and supported radius", () => {
+  const css = infoCardCss();
+  assert.equal(css.split('corner-shape:squircle; ').length - 1, 1);
+  assert.equal(css.split('@supports (corner-shape: squircle)').length - 1, 1);
+  assert.match(css, /@supports \(corner-shape: squircle\) \{ :is\(\[data-bb-chat-ui-card\]\) \{ border-radius:36px !important; \} \}/);
+});
 
 // Latest 높이 수정 두 곳만 역변환해 기존 CSS 기준과 나머지 바이트를 계속 비교한다.
 const withoutLatestLayout = () => {
@@ -45,11 +55,12 @@ const withoutRequestSignal = () => {
   return css.replace(requestSignalCss, legacyRequestCss);
 };
 
-// 카드는 Workflow selector 최적화 기준을 반영하며 아래 역변환 검사로 나머지 바이트를 보존한다. 인용은 기존 기준을 유지한다. 메뉴는 plugin wrapper 항목의 공통 모서리 수정(2026-10-28)을 반영한다.
+// 카드는 Workflow selector 최적화 기준을 반영하며 아래 역변환 검사로 나머지 바이트를 보존한다. 인용은 기기별 hover·하단 드로어 기준을 반영한다. 메뉴는 plugin wrapper 항목의 공통 모서리 수정(2026-10-28)을 반영한다.
 // Queue는 SDK wrapper를 사이에 둔 편집 form의 자체 grid 수정 기준을 반영한다.
-test("desktop card, menu and quote CSS stay byte-identical", () => {
+// 원문 UI의 기기별 변경을 반영하고 공통 카드·메뉴의 기준은 유지한다.
+test("card menu and device-specific quote CSS match approved snapshots", () => {
   assert.equal(sha(withoutRequestSignal()), "319a8ed9d6e0f555707d3e067def85f7ed72f8c76596e3865580e87bdccba253");
-  assert.equal(sha(quotePreviewCss), "71f4f433df57b51d308983e6fa392465a60e4edcc03633d68f33483652252af6");
+  assert.equal(sha(quotePreviewCss), "852397ffea768e7b6de66239afee7a77a854257695cdf833d34a7d43928f1e0e");
   assert.equal(sha(composerMenuGlassCss), "eb18fa958d725987aa3771b491418430b5d9e4ef678704258b64239e2dc5ccc9");
   assert.equal(sha(queuedMessagesCss), "55646dbd272cff7f0a53d83096929f1ea130bb8762b304b4a91812912dff2576");
   assert.equal(sha(infoCardCss()), "8c9e1d7134c5cff3b1c27635e919b338f58c5960f224a8ef13c443cb8228d3cc");

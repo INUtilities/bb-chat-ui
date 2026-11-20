@@ -60,6 +60,24 @@ test("sheet styling covers composer option drawers and PR methods while excludin
   } finally { f.dom.window.close(); }
 });
 
+test('the replacement composer send menu gets the option sheet without capturing its information drawers', () => {
+  const f = fixture();
+  try {
+    const send = f.d.getElementById('send')!;
+    const information = f.d.createElement('section');
+    information.setAttribute('data-persistent-drawer-content', '');
+    information.setAttribute('data-bb-plugin', 'bb-chat-ui');
+    information.innerHTML = '<h2>Information</h2>';
+    f.d.body.append(information);
+    for (const owner of ['bb-chat-ui', 'composer', 'other-plugin']) {
+      send.setAttribute('data-bb-plugin', owner);
+      information.setAttribute('data-bb-plugin', owner);
+      assert.equal(send.matches(PHONE_DRAWERS), owner !== 'other-plugin');
+      assert.equal(information.matches(PHONE_DRAWERS), false);
+    }
+  } finally { f.dom.window.close(); }
+});
+
 test("phone model provider tabs are transparent on the drawer's single frost face", () => {
   const f = fixture();
   try {

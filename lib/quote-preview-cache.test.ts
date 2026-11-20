@@ -11,18 +11,18 @@ function fixture(){
  return{d,dom,pill,tick,async open(id='one'){
   d.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')?.click();
   pill.setAttribute('data-prompt-mention-resource',JSON.stringify({kind:'plugin',pluginId:'bb-chat-ui',itemId:'quote:'+id,label:'Quote'}));
-  pill.click();await tick();
+  pill.dispatchEvent(new dom.window.MouseEvent('pointerover',{bubbles:true}));await tick();
  },close(){d.querySelector<HTMLButtonElement>('[data-bb-chat-ui-card-close]')?.click();},cleanup(){dom.window.close();for(const[key,value]of saved){if(value)Object.defineProperty(globalThis,key,value);else Reflect.deleteProperty(globalThis,key);}}};
 }
 
-test('a quote shares its pending read and reuses the successful original without changing click behavior',async()=>{
+test('a quote shares its pending read and reuses the successful original across hovers',async()=>{
  const f=fixture();let reads=0,finish!:(text:string)=>void;
  const stop=injectQuotePreview(f.d,{readQuote:()=>{reads++;return new Promise(resolve=>finish=resolve);}});
  try{
   assert.equal(reads,0);await f.open();await f.open();assert.equal(reads,1,'reopening during a request must share it');
   finish('Original');await f.tick();assert.equal(f.d.querySelector('[data-bb-chat-ui-quote-text]')?.textContent,'Original');
   await f.open();assert.equal(reads,1);assert.equal(f.d.querySelector('[data-bb-chat-ui-quote-text]')?.textContent,'Original');
-  f.pill.click();assert.equal(f.d.querySelector('[data-bb-chat-ui-quote-preview-card]'),null,'existing click-to-close is retained');
+  f.close();assert.equal(f.d.querySelector('[data-bb-chat-ui-quote-preview-card]'),null);
  }finally{stop();f.cleanup();}
 });
 

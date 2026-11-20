@@ -194,3 +194,22 @@ test('TOC draws its first pointer immediately and coalesces later moves to the l
   stop();assert.equal(frames.size,0,'unload cancels a pending frame');
  }finally{stop();f.cleanup();}
 });
+
+test('replacing the rail and panel together discards pending geometry for the old rail', async () => {
+  const f = fixture(), root = f.makeRoot();
+  root.innerHTML = '<button class="no-scrollbar" aria-controls="thread-toc-panel-old"><span class="rounded-full"></span></button><div id="thread-toc-panel-old"></div>';
+  const oldRail = root.querySelector('button')!;
+  const stop = injectThreadToc(f.document);
+  const move = (rail: HTMLButtonElement) => rail.dispatchEvent(new f.dom.window.MouseEvent('mousemove', {clientY: 0}));
+  try {
+    move(oldRail);
+    move(oldRail);
+    root.innerHTML = '<button class="no-scrollbar" aria-controls="thread-toc-panel-new"><span class="rounded-full"></span></button><div id="thread-toc-panel-new"></div>';
+    await f.tick();
+    const newRail = root.querySelector('button')!;
+    move(newRail);
+    await new Promise<void>(resolve => f.dom.window.requestAnimationFrame(() => resolve()));
+    assert.equal(oldRail.querySelector('span')?.style.width, '');
+    assert.equal(newRail.querySelector('span')?.style.width, '32px');
+  } finally { stop(); f.cleanup(); }
+});

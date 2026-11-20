@@ -23,10 +23,12 @@ const PHONE_DARK = 'html.dark[data-bb-chat-ui-root-device="phone"]';
 const OPEN_MS = 320;
 const CLOSE_MS = 260;
 const GRAB = "color-mix(in oklab,var(--muted-foreground) 45%,transparent)";
+const SEND_DRAWER = '[data-persistent-drawer-content]:is([data-bb-plugin="bb-chat-ui"], [data-bb-plugin="composer"])';
 
 /** 떠 있는 모양만 바꾸는 BB drawer. 위치·끌기·닫기는 BB가 소유해 펼친 단계는 없다. */
 export const PHONE_DRAWERS = [
   '[data-persistent-drawer-content][data-bb-plugin="bb--composer"]',
+  `${SEND_DRAWER}:has([aria-label="Send options"])`,
   '[data-persistent-drawer-content]:has(> div[aria-label="Prompt actions"])',
   "[data-persistent-drawer-content][data-bb-chat-ui-pr-menu]",
   "[data-persistent-drawer-content][data-bb-chat-ui-model-menu]",
@@ -36,6 +38,7 @@ export const PHONE_DRAWERS = [
 // :has() cannot nest, so each backdrop names its drawer by the drawer's own child or mark.
 const BACKDROPS = [
   ':has(+ [data-persistent-drawer-content][data-bb-plugin="bb--composer"])',
+  `:has(+ ${SEND_DRAWER} [aria-label="Send options"])`,
   ':has(+ [data-persistent-drawer-content] > div[aria-label="Prompt actions"])',
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-pr-menu])",
   ":has(+ [data-persistent-drawer-content][data-bb-chat-ui-model-menu])",
@@ -132,6 +135,8 @@ export function phoneDrawerCss(drawers: string = PHONE_DRAWERS): string {
 ${D} { ${cardStyle.face} }
 ${PHONE_DARK} :is(${drawers}):not(#bb-chat-ui-sheet) { ${cardStyle.faceDark} }
 ${D} > div[aria-label="Prompt actions"] { ${cardStyle.flat} }
+${D} > div[aria-label="Send options"] { padding:var(--bb-chat-ui-card-menu-pad) !important; }
+${D} > div[aria-label="Send options"] [role="menuitem"] { border-radius:var(--bb-chat-ui-card-menu-radius) !important; }
 ${D} [class~="${CONTEXT_CONTAINER}"] { ${cardStyle.flat} border:0 !important; }
 ${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div[class~="bg-background"],
 ${PHONE} [data-persistent-drawer-content][data-bb-chat-ui-model-menu] > div > div[class~="bg-background"] { background:transparent !important; }
