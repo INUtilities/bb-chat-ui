@@ -218,6 +218,7 @@ test("PR method menus stay above the popover and the header reserves its close-b
     await f.tick();f.click('[data-bb-chat-ui-info-trigger="pullRequest"]');
     const caret=context.querySelector('[aria-label="Choose pull request merge method"]')!;
     caret.setAttribute('aria-expanded','true');await f.tick();
+    await new Promise<void>(resolve => f.dom.window.requestAnimationFrame(() => resolve()));
     assert.equal(layer.hasAttribute('data-bb-chat-ui-pr-menu-layer'),true);
     assert.equal(layer.firstElementChild!.hasAttribute('data-bb-chat-ui-pr-menu'),true);
     assert.equal(resolvedStyle(context.firstElementChild!).paddingRight,"32px",'8px inset + 24px close + 8px gap');
@@ -880,6 +881,7 @@ test("every empty detail has its family icon before the title while the full cat
     f.click('[data-bb-chat-ui-info-all]'); f.click('[data-bb-chat-ui-info-choice="plan"]');
     source.querySelector('[data-bb-chat-ui-info-icon="plan"]')!.innerHTML = '<svg data-family="plan-updated" />';
     await f.tick();
+    await new Promise<void>(resolve => f.dom.window.requestAnimationFrame(() => resolve()));
     assert.ok(f.document.querySelector('header [data-bb-chat-ui-info-title-icon="plan"] [data-family="plan-updated"]'), 'late SDK artwork updates an open title');
   } finally { stop(); f.dom.window.close(); }
 });
