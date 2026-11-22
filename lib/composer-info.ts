@@ -84,6 +84,30 @@ export function scrollOverflowEdges(metrics: { scrollTop: number; clientHeight: 
 
 const CARD_ROOT = `[${MARK}-menu], ${DETAIL}`;
 const PILL = `:is([${pillSlot.navigation}], [${MARK}-stack-kind], [${MARK}-all], [${MARK}-bar][${MARK}-layout="dock"] > [${MARK}-jump])`;
+const FLUID_ROW = `[${MARK}-bar][${MARK}-scroll-row]`;
+
+const fluidInfoRowCss = `
+[${MARK}-leading]:not(:has(button:not([hidden]))), [${MARK}-scroll-track] > [data-bb-chat-ui-slot-toolbar]:empty { display:none; }
+${FLUID_ROW}:has(> [${MARK}-jump]:not([${MARK}-jump-off])) { padding-inline-end:40px; }
+${FLUID_ROW} > [data-bb-chat-ui-slot-toolbar] { order:-1; }
+${FLUID_ROW} [${MARK}-leading] { flex:none; }
+${FLUID_ROW} [${MARK}-scroll-rail] { display:block; position:relative; flex:1 1 auto; min-width:0; }
+${FLUID_ROW} [${MARK}-scroll] { display:block; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; scrollbar-width:none; scroll-padding-inline:26px; }
+${FLUID_ROW} [${MARK}-scroll]::-webkit-scrollbar { display:none; }
+${FLUID_ROW} [${MARK}-scroll-track] { display:flex; align-items:center; gap:8px; width:max-content; }
+${FLUID_ROW} [${MARK}-scroll-track] > [data-bb-chat-ui-slot-toolbar] { flex:none; }
+${FLUID_ROW} [${MARK}-scroll] button:focus-visible { outline-offset:-2px; }
+${FLUID_ROW} [${MARK}-fade-left]::before, ${FLUID_ROW} [${MARK}-fade-right]::after {
+  content:""; position:absolute; inset-block:0; width:26px; z-index:1; pointer-events:none; border-radius:999px;
+  backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+  background:linear-gradient(var(--bb-chat-ui-info-fade-direction),var(--bb-chat-ui-info-face),transparent);
+  mask-image:linear-gradient(var(--bb-chat-ui-info-fade-direction),black,transparent);
+}
+${FLUID_ROW} [${MARK}-fade-left]::before { left:0; --bb-chat-ui-info-fade-direction:to right; }
+${FLUID_ROW} [${MARK}-fade-right]::after { right:0; --bb-chat-ui-info-fade-direction:to left; }
+${FLUID_ROW} [${MARK}-stack-icons] { gap:8px; }
+${FLUID_ROW} [${MARK}-stack-icons] > button { margin-left:0; }
+`;
 
 export const composerInfoCss = `
 ${infoCardCss(CARD_ROOT, "[data-promptbox-shell]")}
@@ -506,7 +530,7 @@ export function injectComposerInfo(document: Document): () => void {
   if (!view) return () => {};
   const style = document.createElement("style");
   style.id = "bb-chat-ui-composer-info";
-  style.textContent = composerInfoCss;
+  style.textContent = composerInfoCss + fluidInfoRowCss;
   document.head.append(style);
   const states = new Map<HTMLElement, ReturnType<typeof mount>>();
   let disposed = false;
@@ -523,6 +547,14 @@ export function injectComposerInfo(document: Document): () => void {
     const queueControls = attachQueueControls(stack);
     const bar = document.createElement("div");
     bar.setAttribute(`${MARK}-bar`, "");
+    const leading = document.createElement("div");
+    leading.setAttribute(`${MARK}-leading`, "");
+    const rail = document.createElement("div");
+    rail.setAttribute(`${MARK}-scroll-rail`, "");
+    const viewport = document.createElement("div");
+    viewport.setAttribute(`${MARK}-scroll`, "");
+    const track = document.createElement("div");
+    track.setAttribute(`${MARK}-scroll-track`, "");
     const pills = document.createElement("div");
     pills.style.display = "contents";
     const orb = document.createElement("button");
@@ -554,10 +586,18 @@ export function injectComposerInfo(document: Document): () => void {
     const jumpLabel = document.createElement("span");
     jumpLabel.setAttribute(`${MARK}-jump-label`, ""); jumpLabel.textContent = "Latest";
     jump.append(svg(["M12 3v12", "m7 10 5 5 5-5", "M5 21h14"]), jumpLabel);
-    bar.append(pills);
+    viewport.append(track);
+    rail.append(viewport);
+    bar.append(pills, iconStack, jump);
     stack.append(bar);
     bar.setAttribute(`${MARK}-layout`, "dock");
-    pills.after(iconStack, jump);
+    let scrollRow = false;
+    const updateHorizontalOverflow = () => {
+      const end = scrollRow && viewport.clientWidth > 0 ? viewport.scrollWidth - viewport.clientWidth : 0;
+      rail.toggleAttribute(`${MARK}-fade-left`, end > 1 && viewport.scrollLeft > 1);
+      rail.toggleAttribute(`${MARK}-fade-right`, viewport.scrollLeft + 1 < end);
+    };
+    viewport.addEventListener("scroll", updateHorizontalOverflow, { passive:true });
     // The host keeps its own scroll logic; the visible control forwards to it.
     let jumpSource: HTMLButtonElement | null = null;
     let jumpVisible = false;
@@ -575,7 +615,7 @@ export function injectComposerInfo(document: Document): () => void {
         if (host) { host.setAttribute(`${MARK}-jump-source`, ""); jumpWatch.observe(host, { attributes:true, attributeFilter:["class", "disabled"] }); }
       }
       const nextJump = !!host && !host.disabled && !host.classList.contains("invisible");
-      if (nextJump !== jumpVisible && buttons.size) pendingJump = jumpReflow.capture();
+      if (!scrollRow && nextJump !== jumpVisible && buttons.size) pendingJump = jumpReflow.capture();
       jumpVisible = nextJump;
       jump.toggleAttribute(`${MARK}-jump-off`, !jumpVisible);
 
@@ -1925,8 +1965,8 @@ export function injectComposerInfo(document: Document): () => void {
       const hadStack = appeared.has("all") && !iconStack.hidden && stackIcons.size > 0;
       const previouslyVisible = new Set([...buttons.values()].filter(button => !button.hidden && positions.has(button)));
       // Reveal candidates together so width reads share one layout calculation.
-      for (const button of buttons.values()) if (!measuredWidths.has(button)) button.hidden = false;
-      const widths = [...buttons].map(([key, button]) => {
+      if (!scrollRow) for (const button of buttons.values()) if (!measuredWidths.has(button)) button.hidden = false;
+      const widths = scrollRow ? [] : [...buttons].map(([key, button]) => {
         // Entry transforms change visual bounds, but must not change which pills fit.
         let width = measuredWidths.get(button);
         if (width === undefined) {
@@ -1936,11 +1976,12 @@ export function injectComposerInfo(document: Document): () => void {
         }
         return { key, width:widthAnimations.get(button)?.width ?? width };
       });
-      for (const [key, exit] of exits) if (!buttons.has(key)) widths.push({ key, width:exit.node.offsetWidth });
-      const width = Math.max(0,stack.getBoundingClientRect().width - (Number.parseFloat(bar.style.getPropertyValue('--bb-chat-ui-fluid-toolbar-width')) || 0));
+      if (!scrollRow) for (const [key, exit] of exits) if (!buttons.has(key)) widths.push({ key, width:exit.node.offsetWidth });
+      const width = scrollRow ? 0 : Math.max(0,stack.getBoundingClientRect().width - (Number.parseFloat(bar.style.getPropertyValue('--bb-chat-ui-fluid-toolbar-width')) || 0));
       const activeKinds = new Set(items.filter(item=>item.key!=="diff" || readDiff()?.presentation?.visible!==false).map(item => item.key));
       const place = () => {
         if (readOnlyLabel) return new Set<InfoKind>(["status"]);
+        if (scrollRow) return new Set(buttons.keys());
         let shown:Set<string> = new Set(widths.map(item=>item.key));
         for (let attempt=0; attempt<=listed.length; attempt++) {
           const folded=infoStack(listed,activeKinds,new Set([...shown].filter(key=>buttons.has(key as InfoKind))),showInactive);
@@ -1954,6 +1995,11 @@ export function injectComposerInfo(document: Document): () => void {
       // Child Thread keeps three avatars when there is room, then two or one before folding.
       const childEntry = readOnlyLabel || !buttons.has("children") ? null : widths.find(item => item.key === "children");
       const childItem = items.find(item => item.key === "children");
+      if (scrollRow && avatarCap !== 3 && childItem) {
+        const childButton = buttons.get("children");
+        avatarCap = 3;
+        if (childButton) decorate(childButton, childItem, true);
+      }
       if (childEntry && childItem) {
         const circles = (cap: number) => Math.min(cap, childTotal) + (childTotal > cap ? 1 : 0);
         const base = childEntry.width;
@@ -1994,6 +2040,7 @@ export function injectComposerInfo(document: Document): () => void {
         }
         button.hidden = !visible.has(key);
       }
+      updateHorizontalOverflow();
       if (jumpBefore) {
         for (const [key, button] of buttons) if (!button.hidden) { appeared.add(key); positions.set(button, button.offsetLeft); }
         if (!iconStack.hidden) { appeared.add("all"); positions.set(iconStack, iconStack.offsetLeft); }
@@ -2081,15 +2128,21 @@ export function injectComposerInfo(document: Document): () => void {
       }
     };
     let resizeWidth: number | undefined;
-    // Refit width changes while keeping open-card scroll edges aligned on height changes.
+    // Track changes in the visible viewport and its intrinsic content width.
     const resize = typeof view!.ResizeObserver === "function" ? new view!.ResizeObserver(entries => {
       const width = entries?.find(entry => entry.target === stack)?.contentRect.width;
-      if (width !== undefined && width === resizeWidth) { updateScrollHints(); return; }
-      if (width === undefined || width !== resizeWidth) measuredWidths = new WeakMap();
+      if (entries?.length && (width === undefined || width === resizeWidth)) {
+        if (scrollRow) updateHorizontalOverflow();
+        updateScrollHints();
+        return;
+      }
+      measuredWidths = new WeakMap();
       resizeWidth = width;
       fit();
     }) : null;
     resize?.observe(stack);
+    resize?.observe(viewport);
+    resize?.observe(track);
     // Secret shells change height in the same commit that hides the body. Cache the
     // resting box and animate before paint; the shared rAF sync would already be the snapped frame.
     const SECRET_FORM = 'form[class~="@container/secrets"]';
@@ -2246,7 +2299,7 @@ export function injectComposerInfo(document: Document): () => void {
     let suspended = false;
     let fitSignature = "";
     // Fit only changed pill content, membership, artwork, or layout inputs, not detail revisions.
-    const currentFitSignature = () => JSON.stringify([threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(), bar.style.getPropertyValue('--bb-chat-ui-fluid-toolbar-width'),
+    const currentFitSignature = () => JSON.stringify([threadId, bar.hidden, readOnlyLabel, jumpVisible, reduced(), scrollRow, !scrollRow && bar.style.getPropertyValue('--bb-chat-ui-fluid-toolbar-width'),
       listed, showInactive, items.filter(item => item.key !== "diff" || readDiff()?.presentation?.visible !== false).map(item => item.key),
       [...buttons].map(([key, button]) => [key, buttonContent.get(button)]),
       // Match the artwork fallback used when rendering catalog-only folded icons.
@@ -2281,6 +2334,7 @@ export function injectComposerInfo(document: Document): () => void {
       }
       const nextThreadId = source.getAttribute(`${MARK}-thread`);
       if (nextThreadId !== threadId) {
+        viewport.scrollLeft = 0;
         cancelStackCount(); cancelQueueMotion(); cancelOwnedMotion(); queueSnapshot = null;
         cancelExit(); positions.clear(); moves.clear();
         close(false, true);
@@ -2368,14 +2422,29 @@ export function injectComposerInfo(document: Document): () => void {
       const settings = data?.value.settings ?? {};
       listed = listedInfo(settings);
       showInactive = settings.showInactiveInfo === true;
+      const nextScrollRow = !readOnlyLabel && !!stack.closest("[data-promptbox-shell]")?.querySelector("[data-bb-chat-ui-fluid-composer]");
+      if (scrollRow !== nextScrollRow) {
+        scrollRow = nextScrollRow;
+        jumpReflow.cancel();
+        pendingJump = null;
+        bar.toggleAttribute(`${MARK}-scroll-row`, scrollRow);
+        if (scrollRow) {
+          track.append(pills, iconStack);
+          bar.prepend(leading, rail);
+        } else {
+          bar.prepend(pills, iconStack);
+          leading.remove();
+          rail.remove();
+        }
+      }
       if (readOnlyLabel && !listed.includes("status")) listed.push("status");
       if (active && active !== "all" && !listed.includes(active)) close();
       if (active && active !== "all" && !showInactive && !items.some(item => item.key === active && (item.key !== "diff" || readDiff()?.presentation?.visible !== false))) close();
       if (active === "all" && !showInactive && !catalog().length) close();
       if (!listed.length) close();
-      bar.hidden = request || !listed.length && !editing();
+      bar.hidden = request || !scrollRow && !listed.length && !editing();
       syncJump();
-      if (!showInactive && !jumpVisible && !editing() && !items.some(item => listed.includes(item.key) && (item.key !== "diff" || readDiff()?.presentation?.visible !== false))) bar.hidden = true;
+      if (!scrollRow && !showInactive && !jumpVisible && !editing() && !items.some(item => listed.includes(item.key) && (item.key !== "diff" || readDiff()?.presentation?.visible !== false))) bar.hidden = true;
       const diff = readDiff();
       const unavailableDiff = diffData()?.value.state === "unavailable";
       const exposed: InfoKind[] = readOnlyLabel ? ["status"] : exposedInfo(settings).filter(key => key !== "diff" || !unavailableDiff && diff?.presentation?.visible !== false);
@@ -2550,6 +2619,7 @@ export function injectComposerInfo(document: Document): () => void {
       for (const animation of entryAnimations) animation.cancel();
       entryAnimations.clear();
       resize?.disconnect();
+      viewport.removeEventListener("scroll", updateHorizontalOverflow);
       edgeResize?.disconnect();
       jumpWatch.disconnect();
       sourceWatch.disconnect();
