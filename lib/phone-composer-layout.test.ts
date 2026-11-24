@@ -5,10 +5,10 @@ import {attachPhoneComposerAdd, phoneComposerLayoutCss} from './phone-composer-l
 
 function fixture(device = 'phone') {
   const dom = new JSDOM(`<html data-bb-chat-ui-root-device="${device}"><head><style>${phoneComposerLayoutCss}</style></head><body>
-    <div data-follow-up-composer><div data-composer-box><form data-promptbox data-promptbox-compact>
+    <div data-promptbox-shell><div data-follow-up-composer><div data-composer-box><form data-promptbox data-promptbox-compact>
       <div data-promptbox-editor-scroll><div contenteditable tabindex="0">초안 유지</div></div><div data-promptbox-action-row></div>
-    </form></div><div data-follow-up-composer-footer><button>Project</button><button>Permission</button></div></div>
-    <div id="new" data-app-composer data-app-composer-role="primary"><div data-composer-box><form data-promptbox></form></div><div data-new-thread-footer><button>Project</button></div></div>
+    </form></div><div data-follow-up-composer-footer><button>Project</button><button>Permission</button></div></div></div>
+    <div id="new" data-app-composer data-app-composer-role="primary" data-promptbox-shell><div data-composer-box><form data-promptbox></form></div><div data-new-thread-footer><button>Project</button></div></div>
     </body></html>`, {pretendToBeVisual: true});
   const d = dom.window.document, form = d.querySelector<HTMLFormElement>('form')!, editor = form.querySelector<HTMLElement>('[contenteditable]')!;
   let opens = 0;
@@ -69,6 +69,14 @@ test('phone styles native metadata pills in place and leaves the Composer metada
       assert.equal(f.dom.window.getComputedStyle(footer.querySelector('button')!).borderRadius, '999px', 'metadata becomes a floating pill');
       footer.setAttribute('data-bb-chat-ui-fluid-details', '');
       assert.notEqual(f.dom.window.getComputedStyle(footer.querySelector('button')!).borderRadius, '999px');
+      footer.removeAttribute('data-bb-chat-ui-fluid-details');
+      const shell = footer.closest('[data-promptbox-shell]')!;
+      for (const open of ['false', 'true']) {
+        shell.setAttribute('data-bb-chat-ui-slot-picker-open', open);
+        assert.notEqual(f.dom.window.getComputedStyle(footer.querySelector('button')!).borderRadius, '999px', 'the standalone Composer keeps the BB footer styling');
+      }
+      shell.removeAttribute('data-bb-chat-ui-slot-picker-open');
+      assert.equal(f.dom.window.getComputedStyle(footer.querySelector('button')!).borderRadius, '999px', 'native Composer styling returns when the standalone Composer unmounts');
     }
     assert.equal(f.dom.window.getComputedStyle(f.add()).display, 'inline-flex');
   } finally {f.stop(); f.dom.window.close();}

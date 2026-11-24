@@ -2,8 +2,9 @@ import { DARK_GLASS_FACE, LIGHT_GLASS_FACE } from './glass-surface.ts';
 
 const ADD = 'data-bb-chat-ui-compact-add';
 const PHONE = 'html[data-bb-chat-ui-root-device="phone"]';
+// 독립 Composer의 shell에는 슬롯을 꺼도 표시 속성이 남는다.
 const NATIVE_FOOTER = `:is([data-follow-up-composer] > [data-follow-up-composer-footer],
-  [data-app-composer][data-app-composer-role="primary"] > [data-new-thread-footer]):not([data-bb-chat-ui-fluid-details])`;
+  [data-app-composer][data-app-composer-role="primary"] > [data-new-thread-footer]):not([data-bb-chat-ui-fluid-details], [data-promptbox-shell][data-bb-chat-ui-slot-picker-open] *)`;
 
 export const phoneComposerLayoutCss = `
 [${ADD}] { display:none; }
