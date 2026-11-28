@@ -7010,3 +7010,52 @@ test("temporary composer pills reserve the existing row width and release it on 
     await f.tick();assert.equal(count(),before);
   }finally{stop();f.dom.window.close();}
 });
+
+test("Fluid Composer scrolls every exposed pill between fixed controls and fades the hidden edges", async () => {
+  const f = fixture();
+  const shell = f.document.querySelector('[data-promptbox-shell]')!;
+  const stack = shell.querySelector<HTMLElement>(':scope > .grid')!;
+  const composer = f.document.createElement('div');
+  composer.setAttribute('data-bb-chat-ui-fluid-composer', '');
+  shell.append(composer);
+  const native = f.document.createElement('button');
+  native.setAttribute('aria-label', 'Scroll to latest event');
+  stack.closest('[data-scroll-footer]')!.append(native);
+  stack.getBoundingClientRect = () => ({width: 260} as DOMRect);
+  Object.defineProperty(f.dom.window.HTMLElement.prototype, 'offsetWidth', {
+    configurable:true, get() { return this.hasAttribute('data-bb-chat-ui-info-trigger') ? 80 : 0; },
+  });
+  const stop = injectComposerInfo(f.document);
+  try {
+    const bar = stack.querySelector('[data-bb-chat-ui-info-bar]')!;
+    const leading = bar.querySelector('[data-bb-chat-ui-info-leading]');
+    const viewport = bar.querySelector<HTMLElement>('[data-bb-chat-ui-info-scroll]');
+    const jump = bar.querySelector('[data-bb-chat-ui-info-jump]');
+    assert.ok(leading && viewport && jump);
+    assert.equal(leading.parentElement, bar);
+    assert.equal(jump.parentElement, bar);
+    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('[data-bb-chat-ui-info-trigger]')];
+    assert.ok(buttons.length > 3);
+    assert.ok(buttons.every(button => viewport.contains(button) && !button.hidden));
+
+    let width = 160;
+    Object.defineProperties(viewport, {
+      clientWidth: { get: () => width },
+      scrollWidth: { get: () => 480 },
+    });
+    const edges = (left: number) => {
+      viewport.scrollLeft = left;
+      viewport.dispatchEvent(new f.dom.window.Event('scroll'));
+      const rail = viewport.parentElement!;
+      return ['left', 'right'].map(edge => rail.hasAttribute(`data-bb-chat-ui-info-fade-${edge}`));
+    };
+    assert.deepEqual(edges(0), [false, true]);
+    assert.deepEqual(edges(64), [true, true]);
+    assert.deepEqual(edges(320), [true, false]);
+    width = 480;
+    assert.deepEqual(edges(0), [false, false]);
+  } finally {
+    stop();
+    f.dom.window.close();
+  }
+});

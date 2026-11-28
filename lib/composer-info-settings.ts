@@ -17,7 +17,7 @@ export const infoKinds = [
 ] as const;
 
 export type InfoKind = typeof infoKinds[number]["key"];
-export const infoSettingsNotice = "상단 표시는 내용이 있을 때 pill로 표시합니다. 공간이 부족한 활성 정보와 목록에만 표시한 활성 정보는 아이콘 스택에서 열 수 있습니다. 스택은 최대 3개와 나머지 활성 정보 수 +N을 표시합니다. 비활성 정보 표시를 켜면 내용이 없는 정보도 스택과 전체 목록에 포함합니다. 끄기는 모든 곳에서 숨깁니다. 입력 요청 중에는 요청만 표시합니다.";
+export const infoSettingsNotice = "상단 표시한 정보는 내용이 있을 때 필로 표시합니다. Fluid Composer에서는 필을 좌우로 스크롤합니다. 기본 Composer에서 공간이 부족한 필은 아이콘과 +N으로 접힙니다. 목록에만 표시한 정보도 아이콘과 +N에서 엽니다. 비활성 정보 표시를 켜면 내용이 없는 정보도 아이콘과 전체 목록에 포함합니다. 끄기는 모든 곳에서 숨깁니다. 입력 요청 중에는 요청만 표시합니다.";
 export const composerInfoSettings = { ...Object.fromEntries(infoKinds.map(kind => [kind.setting, {
   type: "select" as const,
   label: kind.label,
